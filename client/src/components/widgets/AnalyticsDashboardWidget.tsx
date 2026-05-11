@@ -1,0 +1,77 @@
+/**
+ * AnalyticsDashboardWidget — Owner Tools Section
+ * Generates an analytics dashboard image using Amazon Nova Canvas via the nova API.
+ * Requirements: 17.1, 17.2, 17.3, 17.4, 17.5
+ *
+ * Props:
+ *   profile       — the submitted BusinessProfile
+ *   onGenerateRef — callback to register the generate handler for Generate All
+ */
+
+import { useState, useCallback, useEffect } from "react";
+import type { BusinessProfile } from "../../types";
+import { useWidgetState } from "../../hooks/useWidgetState";
+import WidgetCard from "../WidgetCard";
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+interface AnalyticsDashboardWidgetProps {
+  profile: BusinessProfile;
+  onGenerateRef?: (fn: () => Promise<void>) => void;
+}
+
+export default function AnalyticsDashboardWidget({
+  profile,
+  onGenerateRef,
+}: AnalyticsDashboardWidgetProps) {
+  const { state, generate } = useWidgetState();
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+
+  const handleGenerate = useCallback(async () => {
+    setImageBase64(null);
+    await generate(async () => {
+      const prompt =
+        `Minimalist SaaS-style analytics dashboard for a Malaysian ${profile.industry} business. ` +
+        `Include: bar charts showing monthly revenue, line graph showing growth trend, ` +
+        `pie chart showing expense breakdown, KPI cards. ` +
+        `Dark background with purple/blue accent colours, clean modern UI design, professional data visualisation.`;
+
+      const res = await fetch("http://localhost:3001/api/nova/image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, width: 1024, height: 768 }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Image generation failed: HTTP ${res.status}`);
+      }
+
+      const data = (await res.json()) as { imageBase64?: string; error?: string };
+      if (!data.imageBase64) {
+        throw new Error(data.error ?? "No image returned. Please try again.");
+      }
+
+      setImageBase64(data.imageBase64);
+    });
+  }, [profile, generate]);
+
+  useEffect(() => {
+    onGenerateRef?.(handleGenerate);
+  }, [onGenerateRef, handleGenerate]);
+
+  return (
+    <WidgetCard
+      title="Analytics Dashboard"
+      onGenerate={handleGenerate}
+      state={state}
+    >
+      {imageBase64 && (
+        <img
+          src={`data:image/png;base64,${imageBase64}`}
+          alt="Analytics dashboard"
+          className="w-full rounded-lg"
+        />
+      )}
+    </WidgetCard>
+  );
+}

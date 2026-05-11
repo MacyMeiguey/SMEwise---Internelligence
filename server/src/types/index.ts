@@ -1,0 +1,58 @@
+/**
+ * SMEwise AI Assistant — Shared TypeScript types (server)
+ * Requirements: 1.2, 11.1, 19.1
+ */
+
+// ─── Business Profile ────────────────────────────────────────────────────────
+
+export type BusinessStage =
+  | "Idea Stage"
+  | "Just Launched"
+  | "1–2 Years Operating"
+  | "Established 3+ Years";
+
+export type BusinessType =
+  | "Enterprise"
+  | "Sdn Bhd"
+  | "PLT"
+  | "Sole Proprietorship"
+  | "Partnership";
+
+export interface BusinessProfile {
+  companyName: string;          // required
+  industry: string;             // required
+  city: string;                 // required
+  targetCustomer: string;       // required
+  mainGoal: string;             // optional (may be empty string)
+  currentFunds: number;         // required, range: 1,000 – 999,999,999
+  businessStage: BusinessStage; // required
+  businessType: BusinessType;   // required
+}
+
+// ─── Pricing Strategy ────────────────────────────────────────────────────────
+
+export interface PricingOptionalInputs {
+  monthlyRevenueRange: string | null;  // dropdown value
+  productServiceNames: string | null;  // textarea
+  costPerProduct: string | null;       // textarea
+}
+
+// ─── Widget State ─────────────────────────────────────────────────────────────
+
+export type WidgetStatus = "idle" | "loading" | "success" | "error";
+
+export interface WidgetState {
+  status: WidgetStatus;
+  content: string | null;       // text output
+  imageBase64: string | null;   // image output (base64-encoded PNG)
+  errorMessage: string | null;
+}
+
+// ─── Chat ─────────────────────────────────────────────────────────────────────
+
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: number; // Unix epoch ms
+}

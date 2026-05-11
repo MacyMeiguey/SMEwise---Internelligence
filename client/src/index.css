@@ -1,0 +1,165 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Design tokens ─────────────────────────────────────────────────────────── */
+:root {
+  --bg-app: #0f0d1a;
+  --bg-card: #1a1728;
+  --bg-input: #221f35;
+  --border-default: #3d3660;
+  --accent-primary: #7c3aed;
+  --accent-highlight: #a78bfa;
+}
+
+/* ── Keyframe animations ────────────────────────────────────────────────────── */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes progressBar {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    font-size: 15px;
+  }
+
+  html,
+  body {
+    @apply antialiased;
+  }
+
+  body {
+    background-color: #0f0d1a;
+    color: #f3f4f6;
+    font-family: Inter, system-ui, sans-serif;
+  }
+
+  /* ── Custom scrollbar ─────────────────────────────────────────────────────── */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #1a1728;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #3d3660;
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #7c3aed;
+  }
+
+  /* ── Purple slider thumb with white ring ──────────────────────────────────── */
+  input[type="range"] {
+    accent-color: #7c3aed;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #7c3aed;
+    border: 3px solid white;
+    cursor: pointer;
+    transition: box-shadow 0.15s ease;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover {
+    box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.35);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #7c3aed;
+    border: 3px solid white;
+    cursor: pointer;
+    transition: box-shadow 0.15s ease;
+  }
+
+  input[type="range"]::-moz-range-thumb:hover {
+    box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.35);
+  }
+
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 9999px;
+    background: #3d3660;
+  }
+
+  input[type="range"]::-moz-range-track {
+    height: 6px;
+    border-radius: 9999px;
+    background: #3d3660;
+  }
+}
+
+@layer components {
+  /* ── Fade-in-up animation class ─────────────────────────────────────────── */
+  .animate-fade-in-up {
+    animation: fadeInUp 0.4s ease both;
+  }
+
+  /* ── Task 19.1: animate-fadeInUp ────────────────────────────────────────── */
+  .animate-fadeInUp {
+    animation: fadeInUp 0.4s ease forwards;
+  }
+
+  /* ── Primary button ─────────────────────────────────────────────────────── */
+  .btn-primary {
+    @apply bg-[#7c3aed] hover:bg-[#6d28d9] text-white font-semibold px-4 py-2 rounded-[10px]
+           transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/50
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* ── Ghost button ───────────────────────────────────────────────────────── */
+  .btn-ghost {
+    @apply bg-transparent border border-[#7c3aed] text-[#a78bfa] rounded-[10px] px-4 py-2
+           hover:bg-[#7c3aed]/10 transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/50
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* ── Card ───────────────────────────────────────────────────────────────── */
+  .card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-default);
+    @apply rounded-xl p-5;
+  }
+
+  /* ── Input ──────────────────────────────────────────────────────────────── */
+  .input {
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-default);
+    @apply text-gray-100 rounded-[10px] px-3 py-2.5 w-full
+           focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/40
+           placeholder-[#6b6890] transition-all duration-200;
+  }
+
+  /* ── Field label ────────────────────────────────────────────────────────── */
+  .label {
+    @apply block text-[11px] uppercase tracking-widest text-[#a78bfa] font-semibold mb-1;
+  }
+}
