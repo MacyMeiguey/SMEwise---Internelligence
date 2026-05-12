@@ -2,164 +2,151 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Design tokens ─────────────────────────────────────────────────────────── */
+/* ── Brand design tokens ──────────────────────────────────────────────────── */
 :root {
-  --bg-app: #0f0d1a;
-  --bg-card: #1a1728;
-  --bg-input: #221f35;
-  --border-default: #3d3660;
-  --accent-primary: #7c3aed;
-  --accent-highlight: #a78bfa;
+  --brand-ink:      #0f0f0f;
+  --brand-lavender: #c4b5fd;   /* logo dot — violet-300 */
+  --brand-violet:   #7c3aed;   /* interactive — violet-600 */
+  --brand-bg:       #ffffff;
+  --brand-off:      #fafafa;
+  --brand-border:   #e5e5e5;
 }
 
-/* ── Keyframe animations ────────────────────────────────────────────────────── */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes progressBar {
-  from { width: 0%; }
-  to   { width: 100%; }
-}
-
+/* ── Base ──────────────────────────────────────────────────────────────────── */
 @layer base {
-  :root {
-    color-scheme: dark;
-  }
+  :root { color-scheme: light; }
 
-  html {
-    font-size: 15px;
-  }
+  html { font-size: 15px; scroll-behavior: smooth; }
 
-  html,
   body {
+    background-color: var(--brand-bg);
+    color: var(--brand-ink);
+    font-family: Inter, system-ui, sans-serif;
     @apply antialiased;
   }
 
-  body {
-    background-color: #0f0d1a;
-    color: #f3f4f6;
-    font-family: Inter, system-ui, sans-serif;
+  /* Scrollbar */
+  ::-webkit-scrollbar       { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #f5f5f5; }
+  ::-webkit-scrollbar-thumb { background: #d4d4d4; border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: #a78bfa; }
+
+  /* Range inputs */
+  input[type="range"] { accent-color: var(--brand-violet); }
+
+  ::selection {
+    background: #ddd6fe;
+    color: #4c1d95;
   }
 
-  /* ── Custom scrollbar ─────────────────────────────────────────────────────── */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: #1a1728;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: #3d3660;
-    border-radius: 9999px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: #7c3aed;
-  }
-
-  /* ── Purple slider thumb with white ring ──────────────────────────────────── */
-  input[type="range"] {
-    accent-color: #7c3aed;
-  }
-
-  input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #7c3aed;
-    border: 3px solid white;
-    cursor: pointer;
-    transition: box-shadow 0.15s ease;
-  }
-
-  input[type="range"]::-webkit-slider-thumb:hover {
-    box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.35);
-  }
-
-  input[type="range"]::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #7c3aed;
-    border: 3px solid white;
-    cursor: pointer;
-    transition: box-shadow 0.15s ease;
-  }
-
-  input[type="range"]::-moz-range-thumb:hover {
-    box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.35);
-  }
-
-  input[type="range"]::-webkit-slider-runnable-track {
-    height: 6px;
-    border-radius: 9999px;
-    background: #3d3660;
-  }
-
-  input[type="range"]::-moz-range-track {
-    height: 6px;
-    border-radius: 9999px;
-    background: #3d3660;
+  :focus-visible {
+    outline: 2px solid var(--brand-lavender);
+    outline-offset: 2px;
   }
 }
 
+/* ── Components ────────────────────────────────────────────────────────────── */
 @layer components {
-  /* ── Fade-in-up animation class ─────────────────────────────────────────── */
-  .animate-fade-in-up {
-    animation: fadeInUp 0.4s ease both;
+
+  /* ── Animate helpers ── */
+  .animate-fade-in-up  { animation: fadeUp  0.45s ease both; }
+  .animate-fadeInUp    { animation: fadeUp  0.45s ease forwards; }
+
+  /* ── Bento card base ── */
+  .bento-card {
+    @apply bg-white border border-neutral-200 rounded-2xl overflow-hidden;
   }
 
-  /* ── Task 19.1: animate-fadeInUp ────────────────────────────────────────── */
-  .animate-fadeInUp {
-    animation: fadeInUp 0.4s ease forwards;
+  /* Editorial "hard shadow" card */
+  .card-hard {
+    @apply bg-white border-2 border-ink rounded-2xl;
+    box-shadow: 4px 4px 0 0 #0f0f0f;
   }
 
-  /* ── Primary button ─────────────────────────────────────────────────────── */
+  /* Lavender accent card */
+  .card-brand {
+    @apply bg-primary-50 border border-primary-200 rounded-2xl;
+  }
+
+  /* ── Ink pill (dark badge) ── */
+  .pill-ink {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full
+           bg-neutral-950 text-white text-xs font-semibold tracking-wide;
+  }
+
+  /* ── Lavender pill ── */
+  .pill-brand {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full
+           bg-primary-100 text-primary-700 text-xs font-semibold tracking-wide;
+  }
+
+  /* ── Primary button ── */
   .btn-primary {
-    @apply bg-[#7c3aed] hover:bg-[#6d28d9] text-white font-semibold px-4 py-2 rounded-[10px]
-           transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/50
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl
+           bg-neutral-950 text-white text-sm font-semibold
+           hover:bg-neutral-800 active:bg-neutral-900
+           transition-colors duration-150
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2
            disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
-  /* ── Ghost button ───────────────────────────────────────────────────────── */
+  /* ── Brand (lavender) button ── */
+  .btn-brand {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl
+           bg-primary-600 text-white text-sm font-semibold
+           hover:bg-primary-700 active:bg-primary-800
+           transition-colors duration-150
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* ── Ghost button ── */
   .btn-ghost {
-    @apply bg-transparent border border-[#7c3aed] text-[#a78bfa] rounded-[10px] px-4 py-2
-           hover:bg-[#7c3aed]/10 transition-all duration-200
-           focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/50
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl
+           border border-neutral-300 bg-white text-neutral-800 text-sm font-medium
+           hover:bg-neutral-50 hover:border-neutral-400
+           transition-colors duration-150
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2
            disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
-  /* ── Card ───────────────────────────────────────────────────────────────── */
-  .card {
-    background-color: var(--bg-card);
-    border: 1px solid var(--border-default);
-    @apply rounded-xl p-5;
+  /* ── Form input ── */
+  .input-field {
+    @apply w-full px-4 py-2.5 rounded-xl border border-neutral-300 bg-white
+           text-neutral-900 text-sm placeholder:text-neutral-400
+           focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400
+           transition-all duration-150;
   }
 
-  /* ── Input ──────────────────────────────────────────────────────────────── */
-  .input {
-    background-color: var(--bg-input);
-    border: 1px solid var(--border-default);
-    @apply text-gray-100 rounded-[10px] px-3 py-2.5 w-full
-           focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/40
-           placeholder-[#6b6890] transition-all duration-200;
+  .input-field-error {
+    @apply border-error-400 focus:ring-error-300 focus:border-error-400;
   }
 
-  /* ── Field label ────────────────────────────────────────────────────────── */
-  .label {
-    @apply block text-[11px] uppercase tracking-widest text-[#a78bfa] font-semibold mb-1;
+  /* ── Section label (small eyebrow) ── */
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-widest text-neutral-500;
   }
+}
+
+/* ── Scrollbar hide utility ───────────────────────────────────────────────── */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
+/* ── Keyframes ─────────────────────────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideRight {
+  from { opacity: 0; transform: translateX(-14px); }
+  to   { opacity: 1; transform: translateX(0); }
 }

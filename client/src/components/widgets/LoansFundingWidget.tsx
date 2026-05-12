@@ -105,27 +105,25 @@ interface SubCardProps {
 
 function SubCard({ title, icon, content, isLoading }: SubCardProps) {
   return (
-    <div className="flex flex-col rounded-lg border border-[#3d3660] bg-[#0f0d1a] p-4 gap-3">
-      {/* Sub-card header */}
+    <div className="flex flex-col rounded-xl border-2 border-neutral-950 bg-white p-4 gap-3" style={{ boxShadow: '2px 2px 0 0 #ede9fe' }}>
       <div className="flex items-center gap-2">
-        <span className="text-[#a78bfa]" aria-hidden="true">
+        <span className="text-primary-600" aria-hidden="true">
           {icon}
         </span>
-        <h4 className="text-sm font-semibold text-white">{title}</h4>
+        <h4 className="text-sm font-bold text-neutral-950">{title}</h4>
       </div>
 
-      {/* Content area */}
       {isLoading && !content ? (
         <div className="animate-pulse space-y-2" role="status" aria-label={`Loading ${title}`}>
-          <div className="h-3 bg-[#3d3660]/40 rounded-lg w-full" />
-          <div className="h-3 bg-[#3d3660]/40 rounded-lg w-5/6" />
-          <div className="h-3 bg-[#3d3660]/40 rounded-lg w-4/6" />
-          <div className="h-3 bg-[#3d3660]/40 rounded-lg w-full" />
-          <div className="h-3 bg-[#3d3660]/40 rounded-lg w-3/4" />
+          <div className="h-3 bg-neutral-200 rounded-lg w-full" />
+          <div className="h-3 bg-neutral-200 rounded-lg w-5/6" />
+          <div className="h-3 bg-neutral-200 rounded-lg w-4/6" />
+          <div className="h-3 bg-neutral-200 rounded-lg w-full" />
+          <div className="h-3 bg-neutral-200 rounded-lg w-3/4" />
           <span className="sr-only">Loading…</span>
         </div>
       ) : (
-        <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
+        <p className="text-sm text-neutral-800 leading-relaxed whitespace-pre-wrap">
           {content}
         </p>
       )}

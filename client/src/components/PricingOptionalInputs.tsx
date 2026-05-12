@@ -1,10 +1,5 @@
 /**
  * PricingOptionalInputs — optional context fields for Pricing Strategy section
- * Requirements: 11.1
- *
- * Props:
- *   value    — current PricingOptionalInputs state
- *   onChange — callback when any field changes
  */
 
 import type { PricingOptionalInputs } from "../types";
@@ -23,23 +18,26 @@ const REVENUE_OPTIONS = [
   "Above RM 100,000",
 ] as const;
 
+const fieldClass =
+  "w-full bg-white border-2 border-neutral-300 rounded-xl px-3 py-2.5 text-neutral-900 text-sm " +
+  "placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400 transition-colors";
+
+const labelClass = "block text-xs font-bold text-neutral-800 mb-1.5 uppercase tracking-wide";
+
 export default function PricingOptionalInputsComponent({
   value,
   onChange,
 }: PricingOptionalInputsProps) {
   return (
-    <div className="rounded-xl border border-[#3d3660] bg-[#1a1728] px-5 py-4 flex flex-col gap-4">
-      <p className="text-sm font-medium text-[#a78bfa]">
-        Optional: Add details to improve pricing recommendations
+    <div className="rounded-xl border-2 border-neutral-950 bg-white px-5 py-5 flex flex-col gap-5" style={{ boxShadow: '2px 2px 0 0 #0f0f0f' }}>
+      <p className="text-sm font-medium text-neutral-900">Optional context for stronger pricing outputs</p>
+      <p className="text-xs text-neutral-600 -mt-3 leading-relaxed">
+        The more concrete you are about revenue band, SKUs, and costs, the more specific the widgets below can be.
       </p>
 
-      {/* Monthly Revenue Range */}
       <div className="flex flex-col gap-1.5">
-        <label
-          htmlFor="pricing-revenue-range"
-          className="block text-[11px] uppercase tracking-widest text-[#a78bfa] font-semibold mb-1"
-        >
-          Monthly Revenue Range
+        <label htmlFor="pricing-revenue-range" className={labelClass}>
+          Monthly revenue range
         </label>
         <select
           id="pricing-revenue-range"
@@ -50,9 +48,7 @@ export default function PricingOptionalInputsComponent({
               monthlyRevenueRange: e.target.value || null,
             })
           }
-          className="w-full bg-[#221f35] border border-[#3d3660] rounded-[10px] px-3 py-2 text-white
-                     placeholder-[#6b6890] focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/40
-                     transition-all duration-200 text-sm"
+          className={fieldClass}
         >
           {REVENUE_OPTIONS.map((opt) => (
             <option key={opt} value={opt}>
@@ -62,18 +58,14 @@ export default function PricingOptionalInputsComponent({
         </select>
       </div>
 
-      {/* Product or Service Names */}
       <div className="flex flex-col gap-1.5">
-        <label
-          htmlFor="pricing-product-names"
-          className="block text-[11px] uppercase tracking-widest text-[#a78bfa] font-semibold mb-1"
-        >
-          Product or Service Names
+        <label htmlFor="pricing-product-names" className={labelClass}>
+          Product or service names
         </label>
         <textarea
           id="pricing-product-names"
           rows={2}
-          placeholder="e.g. Nasi Lemak Set, Catering Package"
+          placeholder="e.g. Nasi lemak set, catering package"
           value={value.productServiceNames ?? ""}
           onChange={(e) =>
             onChange({
@@ -81,24 +73,18 @@ export default function PricingOptionalInputsComponent({
               productServiceNames: e.target.value || null,
             })
           }
-          className="w-full bg-[#221f35] border border-[#3d3660] rounded-[10px] px-3 py-2 text-white
-                     placeholder-[#6b6890] focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/40
-                     transition-all duration-200 text-sm resize-none"
+          className={`${fieldClass} resize-none`}
         />
       </div>
 
-      {/* Cost Per Product */}
       <div className="flex flex-col gap-1.5">
-        <label
-          htmlFor="pricing-cost-per-product"
-          className="block text-[11px] uppercase tracking-widest text-[#a78bfa] font-semibold mb-1"
-        >
-          Cost Per Product
+        <label htmlFor="pricing-cost-per-product" className={labelClass}>
+          Cost per product or package
         </label>
         <textarea
           id="pricing-cost-per-product"
           rows={2}
-          placeholder="e.g. Nasi Lemak Set costs RM 8 to make"
+          placeholder="e.g. Nasi lemak set costs RM 8 to make"
           value={value.costPerProduct ?? ""}
           onChange={(e) =>
             onChange({
@@ -106,9 +92,7 @@ export default function PricingOptionalInputsComponent({
               costPerProduct: e.target.value || null,
             })
           }
-          className="w-full bg-[#221f35] border border-[#3d3660] rounded-[10px] px-3 py-2 text-white
-                     placeholder-[#6b6890] focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/40
-                     transition-all duration-200 text-sm resize-none"
+          className={`${fieldClass} resize-none`}
         />
       </div>
     </div>

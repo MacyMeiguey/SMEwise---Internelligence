@@ -80,7 +80,7 @@ function TableOutput({ content }: { content: string }) {
 
   if (tableLines.length < 2) {
     return (
-      <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">
+      <p className="text-sm text-neutral-800 leading-relaxed whitespace-pre-wrap">
         {content}
       </p>
     );
@@ -101,15 +101,15 @@ function TableOutput({ content }: { content: string }) {
     separatorIndex !== -1 ? rows.slice(separatorIndex + 1) : rows.slice(1);
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-[#3d3660]">
-      <table className="w-full text-sm text-left text-gray-200 border-collapse">
+    <div className="overflow-x-auto rounded-xl border-2 border-neutral-200">
+      <table className="w-full text-sm text-left text-neutral-800 border-collapse">
         <thead>
-          <tr className="bg-[#221f35]">
+          <tr className="bg-primary-100 border-b-2 border-neutral-950">
             {headerRow.map((header, i) => (
               <th
                 key={i}
                 scope="col"
-                className="px-3 py-2 font-semibold text-[#a78bfa] whitespace-nowrap border-b border-[#3d3660]"
+                className="px-3 py-2 font-bold text-neutral-950 whitespace-nowrap"
               >
                 {header}
               </th>
@@ -120,12 +120,12 @@ function TableOutput({ content }: { content: string }) {
           {dataRows.map((row, rowIdx) => (
             <tr
               key={rowIdx}
-              className={rowIdx % 2 === 0 ? "bg-[#1a1728]" : "bg-[#0f0d1a]"}
+              className={rowIdx % 2 === 0 ? "bg-white" : "bg-primary-50/50"}
             >
               {row.map((cell, cellIdx) => (
                 <td
                   key={cellIdx}
-                  className="px-3 py-2 border-b border-[#3d3660]/50 align-top"
+                  className="px-3 py-2 border-b border-neutral-200 align-top"
                 >
                   {cell}
                 </td>

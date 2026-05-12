@@ -8,6 +8,9 @@
  */
 import type { BusinessProfile } from "../types";
 
+// Allow callers to pass a partially-filled form object before all fields are known.
+type PartialProfile = Partial<BusinessProfile>;
+
 /**
  * Validates the required fields of a BusinessProfile.
  *
@@ -27,7 +30,7 @@ import type { BusinessProfile } from "../types";
  * @returns A Record mapping field names to error messages; empty if all valid
  */
 export function validateProfile(
-  profile: BusinessProfile
+  profile: PartialProfile
 ): Record<string, string> {
   const errors: Record<string, string> = {};
 

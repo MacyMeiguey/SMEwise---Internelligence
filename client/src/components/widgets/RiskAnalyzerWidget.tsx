@@ -153,7 +153,7 @@ export default function RiskAnalyzerWidget({ profile, onGenerateRef }: RiskAnaly
       onGenerate={handleGenerate}
       state={state}
     >
-      <pre className="whitespace-pre-wrap font-sans text-sm text-gray-200 leading-relaxed">
+      <pre className="whitespace-pre-wrap font-sans text-sm text-neutral-800 leading-relaxed">
         {streamedContent}
       </pre>
     </WidgetCard>

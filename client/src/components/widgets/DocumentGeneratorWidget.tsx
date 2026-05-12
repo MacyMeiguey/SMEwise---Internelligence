@@ -198,19 +198,18 @@ export function DocumentGeneratorWidgetWithControls({
 
   return (
     <article
-      className="flex flex-col rounded-xl border border-[#3d3660] bg-[#1a1728] shadow-lg"
+      className="flex flex-col rounded-xl border-2 border-neutral-950 bg-white"
+      style={{ boxShadow: "3px 3px 0 0 #0f0f0f" }}
       aria-label="Document Generator widget"
     >
       {/* ── Card header ── */}
-      <header className="flex items-center justify-between gap-4 border-b border-[#3d3660] px-5 py-4">
-        <h3 className="text-base font-semibold text-white">Document Generator</h3>
+      <header className="flex items-center justify-between gap-4 border-b-2 border-neutral-950 px-5 py-4 bg-primary-50">
+        <h3 className="text-sm font-bold text-neutral-950">Document Generator</h3>
         {state.status !== "loading" && (
           <button
             type="button"
             onClick={handleGenerate}
-            className="bg-[#7c3aed] hover:bg-[#6d28d9] text-white font-semibold rounded-[10px] px-4 py-1.5 text-sm
-                       transition-all duration-200
-                       focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/50"
+            className="btn-brand text-xs py-2 px-4 rounded-lg"
             aria-label={state.status === "idle" ? "Generate Document" : "Regenerate Document"}
           >
             {state.status === "idle" ? "Generate" : "Regenerate"}
@@ -218,8 +217,7 @@ export function DocumentGeneratorWidgetWithControls({
         )}
         {state.status === "loading" && (
           <span
-            className="inline-block h-5 w-5 animate-spin rounded-full border-2
-                       border-[#7c3aed] border-t-transparent"
+            className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-primary-600 border-t-transparent"
             role="status"
             aria-label="Generating…"
           />
@@ -227,22 +225,20 @@ export function DocumentGeneratorWidgetWithControls({
       </header>
 
       {/* ── Controls (always visible) ── */}
-      <div className="flex flex-col gap-4 border-b border-[#3d3660] px-5 py-4">
+      <div className="flex flex-col gap-4 border-b-2 border-neutral-100 px-5 py-4">
         {/* Document type dropdown */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="doc-type-select"
-            className="block text-[11px] uppercase tracking-widest text-[#a78bfa] font-semibold mb-1"
+            className="text-xs font-semibold uppercase tracking-widest text-primary-700 mb-1"
           >
-            Document Type
+            Document type
           </label>
           <select
             id="doc-type-select"
             value={documentType}
             onChange={(e) => setDocumentType(e.target.value as DocumentType)}
-            className="w-full bg-[#221f35] border border-[#3d3660] rounded-[10px] px-3 py-2 text-white
-                       placeholder-[#6b6890] focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/40
-                       transition-all duration-200 text-sm"
+            className="input-field text-sm py-2.5"
           >
             {DOCUMENT_TYPES.map((type) => (
               <option key={type} value={type}>
@@ -256,10 +252,10 @@ export function DocumentGeneratorWidgetWithControls({
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="template-upload"
-            className="block text-[11px] uppercase tracking-widest text-[#a78bfa] font-semibold mb-1"
+            className="text-xs font-semibold uppercase tracking-widest text-primary-700 mb-1"
           >
-            Template File{" "}
-            <span className="text-[#6b6890] font-normal normal-case">(optional — .txt, .docx, .pdf)</span>
+            Template file{" "}
+            <span className="normal-case tracking-normal font-medium text-neutral-500"> (optional)</span>
           </label>
           <input
             id="template-upload"
@@ -267,64 +263,60 @@ export function DocumentGeneratorWidgetWithControls({
             type="file"
             accept=".txt,.docx,.pdf"
             onChange={handleFileChange}
-            className="text-sm text-[#6b6890] file:mr-3 file:rounded-[10px] file:border-0
-                       file:bg-[#221f35] file:px-3 file:py-1.5 file:text-sm
-                       file:font-medium file:text-[#a78bfa] hover:file:bg-[#3d3660]
-                       focus:outline-none transition-all duration-200"
+            className="text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-2 file:border-neutral-950
+                       file:bg-primary-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-neutral-950
+                       hover:file:bg-primary-100 focus:outline-none transition-all"
           />
           {templateText && (
-            <p className="text-xs text-green-400">
-              ✓ Template loaded ({templateText.length.toLocaleString()} characters)
+            <p className="text-xs font-medium text-primary-700">
+              Template loaded ({templateText.length.toLocaleString()} characters)
             </p>
           )}
         </div>
       </div>
 
       {/* ── Card body ── */}
-      <div className="flex flex-col px-5 py-4">
+      <div className="flex flex-col px-5 py-4 bg-white">
         {state.status === "idle" && (
-          <p className="text-sm text-[#6b6890] italic">
+          <p className="text-sm text-neutral-600 italic">
             Select a document type and click{" "}
-            <span className="text-[#a78bfa] font-medium">Generate</span> to create your document.
+            <span className="font-semibold text-primary-700 not-italic">Generate</span>{" "}
+            to create your document.
           </p>
         )}
 
         {state.status === "loading" && (
           <div className="animate-pulse space-y-3" role="status" aria-label="Loading">
-            <p className="text-sm text-[#a78bfa] font-medium">Generating document…</p>
-            <div className="h-4 bg-[#3d3660]/40 rounded-lg w-3/4" />
-            <div className="h-4 bg-[#3d3660]/40 rounded-lg w-full" />
-            <div className="h-4 bg-[#3d3660]/40 rounded-lg w-5/6" />
-            <div className="h-4 bg-[#3d3660]/40 rounded-lg w-2/3" />
+            <p className="text-sm text-primary-700 font-semibold">Generating document…</p>
+            <div className="h-4 bg-neutral-100 rounded-lg w-3/4" />
+            <div className="h-4 bg-neutral-100 rounded-lg w-full" />
+            <div className="h-4 bg-neutral-100 rounded-lg w-5/6" />
+            <div className="h-4 bg-neutral-100 rounded-lg w-2/3" />
             <span className="sr-only">Loading…</span>
           </div>
         )}
 
         {state.status === "success" && generatedContent && (
           <div className="flex flex-col gap-4">
-            <pre className="whitespace-pre-wrap font-sans text-sm text-gray-200 leading-relaxed border border-[#4c3d8f] rounded-lg p-4 shadow-[inset_0_0_0_1px_#4c3d8f] max-h-96 overflow-y-auto bg-[#0f0d1a]">
+            <pre className="whitespace-pre-wrap font-sans text-sm text-neutral-900 leading-relaxed border-2 border-neutral-950 rounded-xl p-4 max-h-96 overflow-y-auto bg-primary-50/40">
               {generatedContent}
             </pre>
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
                 onClick={handleDownloadPdf}
-                className="bg-transparent border border-[#7c3aed] text-[#a78bfa] rounded-[10px] px-4 py-2 text-sm font-medium
-                           hover:bg-[#7c3aed]/10 transition-all duration-200
-                           focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/50"
+                className="btn-ghost text-sm py-2 px-4 rounded-xl border-neutral-950"
                 aria-label="Download document as PDF"
               >
-                ⬇ Download PDF
+                Download PDF
               </button>
               <button
                 type="button"
                 onClick={handleDownloadDocx}
-                className="bg-transparent border border-[#7c3aed] text-[#a78bfa] rounded-[10px] px-4 py-2 text-sm font-medium
-                           hover:bg-[#7c3aed]/10 transition-all duration-200
-                           focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/50"
+                className="btn-primary text-sm py-2 px-4 rounded-xl"
                 aria-label="Download document as Word .docx"
               >
-                ⬇ Download .docx
+                Download .docx
               </button>
             </div>
           </div>
@@ -332,15 +324,13 @@ export function DocumentGeneratorWidgetWithControls({
 
         {state.status === "error" && (
           <div className="flex flex-col gap-3" role="alert" aria-live="assertive">
-            <p className="text-sm text-red-400">
+            <p className="text-sm text-error-700">
               {state.errorMessage ?? "Something went wrong. Please try again."}
             </p>
             <button
               type="button"
               onClick={handleGenerate}
-              className="self-start bg-transparent border border-[#7c3aed] text-[#a78bfa] rounded-[10px] px-4 py-2 text-sm font-medium
-                         hover:bg-[#7c3aed]/10 transition-all duration-200
-                         focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/50"
+              className="btn-brand self-start text-sm py-2 px-4 rounded-xl"
               aria-label="Retry generating document"
             >
               Retry

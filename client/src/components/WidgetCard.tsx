@@ -1,83 +1,45 @@
 /**
- * WidgetCard — reusable shell for all AI-powered Widgets.
- * Requirements: 20.6, 20.7, 23.1, 23.2, 23.4, 23.5
- *
- * Manages WidgetState (idle / loading / success / error) and renders the
- * appropriate sub-component based on the current status.
- *
- * Props:
- *  - title: string          — widget title shown in the card header
- *  - onGenerate: () => Promise<void>  — async function that performs the API call
- *  - state: WidgetState     — current widget state (managed by parent / useWidgetState)
- *  - children?: ReactNode   — rendered when status === "success"
+ * WidgetCard — editorial-style card for AI outputs
  */
 
 import type { ReactNode } from "react";
 import type { WidgetState } from "../types";
 
-// ─── Loading skeleton ─────────────────────────────────────────────────────────
-
 function LoadingState() {
   return (
-    <div
-      className="animate-pulse space-y-3"
-      role="status"
-      aria-label="Loading widget content"
-    >
-      <div className="h-4 bg-[#3d3660]/40 rounded-lg w-3/4" />
-      <div className="h-4 bg-[#3d3660]/40 rounded-lg w-full" />
-      <div className="h-4 bg-[#3d3660]/40 rounded-lg w-5/6" />
-      <div className="h-4 bg-[#3d3660]/40 rounded-lg w-2/3" />
-      <span className="sr-only">Loading…</span>
+    <div className="animate-pulse space-y-3" role="status" aria-label="Generating…">
+      <div className="h-3.5 bg-neutral-100 rounded-full w-3/4" />
+      <div className="h-3.5 bg-neutral-100 rounded-full w-full" />
+      <div className="h-3.5 bg-neutral-100 rounded-full w-5/6" />
+      <div className="h-3.5 bg-neutral-100 rounded-full w-2/3" />
+      <span className="sr-only">Generating…</span>
     </div>
   );
 }
 
-// ─── Idle prompt ──────────────────────────────────────────────────────────────
-
 function IdlePrompt() {
   return (
-    <p className="text-sm text-[#6b6890] italic">
-      Click <span className="text-[#a78bfa] font-medium">Generate</span> to get
-      AI-powered insights for this widget.
+    <p className="text-sm text-neutral-500 leading-relaxed">
+      Press <span className="font-semibold text-neutral-950">Generate</span> to create a draft.
+      Takes a few seconds — the result appears in the box below.
     </p>
   );
 }
 
-// ─── Error state ──────────────────────────────────────────────────────────────
-
-interface ErrorStateProps {
-  message: string;
-  onRetry: () => void;
-}
+interface ErrorStateProps { message: string; onRetry: () => void; }
 
 function ErrorState({ message, onRetry }: ErrorStateProps) {
   return (
-    <div
-      className="flex flex-col gap-3"
-      role="alert"
-      aria-live="assertive"
-    >
-      <p className="text-sm text-red-400">{message}</p>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="self-start bg-transparent border border-[#7c3aed] text-[#a78bfa] rounded-[10px] px-4 py-2 hover:bg-[#7c3aed]/10 transition-all duration-200
-                   focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/50"
-        aria-label="Retry generating widget content"
-      >
-        Retry
+    <div className="flex flex-col gap-3" role="alert" aria-live="assertive">
+      <p className="text-sm text-error-600 bg-error-50 border border-error-200 rounded-lg px-3 py-2">{message}</p>
+      <button type="button" onClick={onRetry} className="btn-ghost self-start text-sm py-1.5 px-3 rounded-lg">
+        Try again
       </button>
     </div>
   );
 }
 
-// ─── Regenerate button ────────────────────────────────────────────────────────
-
-interface RegenerateButtonProps {
-  onClick: () => void;
-  disabled?: boolean;
-}
+interface RegenerateButtonProps { onClick: () => void; disabled?: boolean; }
 
 function RegenerateButton({ onClick, disabled = false }: RegenerateButtonProps) {
   return (
@@ -85,98 +47,75 @@ function RegenerateButton({ onClick, disabled = false }: RegenerateButtonProps) 
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="mt-3 self-start bg-transparent border border-[#7c3aed] text-[#a78bfa] rounded-[10px] px-4 py-2 hover:bg-[#7c3aed]/10 transition-all duration-200
-                 disabled:cursor-not-allowed disabled:opacity-50
-                 focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/50"
-      aria-label="Regenerate widget content"
+      className="btn-ghost mt-3 self-start text-sm py-1.5 px-3 rounded-lg disabled:cursor-not-allowed disabled:opacity-50"
+      aria-label="Regenerate"
     >
-      ↺ Regenerate
+      Regenerate
     </button>
   );
 }
 
-// ─── WidgetCard ───────────────────────────────────────────────────────────────
-
 export interface WidgetCardProps {
-  /** Widget title shown in the card header */
   title: string;
-  /** Async function that performs the API call and updates state */
   onGenerate: () => Promise<void>;
-  /** Current widget state from parent */
   state: WidgetState;
-  /** Rendered when status is "success" (the actual widget output) */
   children?: ReactNode;
 }
 
-export default function WidgetCard({
-  title,
-  onGenerate,
-  state,
-  children,
-}: WidgetCardProps) {
+export default function WidgetCard({ title, onGenerate, state, children }: WidgetCardProps) {
   const { status, errorMessage } = state;
   const isLoading = status === "loading";
 
   return (
     <article
-      className="flex flex-col rounded-xl border border-[#3d3660] bg-[#1a1728] shadow-lg hover:-translate-y-0.5 transition-transform duration-200"
+      className="flex flex-col bg-white border-2 border-neutral-950 rounded-xl overflow-hidden"
+      style={{ boxShadow: '2px 2px 0 0 #0f0f0f' }}
       aria-label={`${title} widget`}
     >
-      {/* ── Card header ── */}
-      <header className="flex items-center justify-between gap-4 border-b border-[#3d3660] px-5 py-4">
-        <h3 className="text-base font-semibold text-white">{title}</h3>
+      {/* ── Header ── */}
+      <header className="flex items-center justify-between gap-3 border-b-2 border-neutral-950 px-4 sm:px-5 py-3.5">
+        <h3 className="text-sm font-bold text-neutral-950 tracking-tight">{title}</h3>
 
-        {/* Generate / Regenerate button in header — only shown when not loading */}
         {status !== "loading" && (
           <button
             type="button"
             onClick={onGenerate}
-            className="bg-[#7c3aed] hover:bg-[#6d28d9] text-white font-semibold rounded-[10px] px-4 py-1.5 text-sm transition-all duration-200
-                       focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/50"
-            aria-label={
-              status === "idle"
-                ? `Generate ${title}`
-                : `Regenerate ${title}`
-            }
+            className="btn-brand text-xs py-1.5 px-3.5 rounded-lg"
+            aria-label={status === "idle" ? `Generate ${title}` : `Regenerate ${title}`}
           >
             {status === "idle" ? "Generate" : "Regenerate"}
           </button>
         )}
 
-        {/* Spinner indicator while loading */}
         {isLoading && (
           <span
-            className="inline-block h-5 w-5 animate-spin rounded-full border-2
-                       border-[#7c3aed] border-t-transparent"
+            className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-primary-600 border-t-transparent"
             role="status"
             aria-label="Generating…"
           />
         )}
       </header>
 
-      {/* ── Card body ── */}
-      <div className="flex flex-col px-5 py-4">
-        {status === "idle" && <IdlePrompt />}
-
+      {/* ── Body ── */}
+      <div className="flex flex-col p-4 sm:p-5">
+        {status === "idle"    && <IdlePrompt />}
         {status === "loading" && <LoadingState />}
 
         {status === "success" && (
-          <div className="flex flex-col">
-            {/* AI output content area with glow border */}
-            <div className="border border-[#4c3d8f] rounded-lg p-4 shadow-[inset_0_0_0_1px_#4c3d8f] text-sm text-gray-200 leading-relaxed">
-              {children}
+          <div className="flex flex-col gap-3">
+            <p className="eyebrow">Result</p>
+            <div className="border-2 border-neutral-100 rounded-xl bg-neutral-50 max-h-[min(70vh,28rem)] overflow-y-auto overscroll-contain">
+              <div className="p-4 text-sm text-neutral-800 leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mt-1 [&_p+p]:mt-2">
+                {children}
+              </div>
             </div>
-
-            {/* Regenerate button below output */}
             <RegenerateButton onClick={onGenerate} />
           </div>
         )}
 
         {status === "error" && (
           <ErrorState
-            message={
-              errorMessage ?? "Something went wrong. Please try again."
-            }
+            message={errorMessage ?? "Something went wrong. Please try again."}
             onRetry={onGenerate}
           />
         )}

@@ -63,7 +63,7 @@ export default function FundsInput({ value, onChange }: FundsInputProps) {
           step={STEP}
           value={value}
           onChange={handleSliderChange}
-          className="flex-1 h-2 rounded-lg appearance-none cursor-pointer w-full accent-[#7c3aed]"
+          className="flex-1 h-2 rounded-lg appearance-none cursor-pointer w-full accent-primary-600"
           aria-label="Current funds slider"
         />
 
@@ -75,17 +75,13 @@ export default function FundsInput({ value, onChange }: FundsInputProps) {
           onChange={handleTextChange}
           onBlur={handleTextBlur}
           onKeyDown={handleTextKeyDown}
-          className="w-36 bg-[#221f35] border border-[#3d3660] rounded-[10px]
-                     px-3 py-2 text-right text-sm text-white
-                     placeholder-[#6b6890]
-                     focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/40
-                     transition-all duration-200"
+          className="w-36 input-field text-right py-2"
           aria-label="Current funds amount"
         />
       </div>
 
       {/* Formatted display */}
-      <p className="text-sm font-medium text-[#a78bfa]">
+      <p className="text-sm font-semibold text-primary-700">
         {formatRM(value)}
       </p>
     </div>

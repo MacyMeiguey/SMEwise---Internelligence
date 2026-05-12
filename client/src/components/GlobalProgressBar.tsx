@@ -21,7 +21,7 @@ export default function GlobalProgressBar() {
         left: 0,
         right: 0,
         height: "4px",
-        background: "#7c3aed",
+        background: "var(--brand-violet, #7c3aed)",
         zIndex: 9999,
         animation: "progressBar 2s ease-in-out infinite alternate",
         width: "100%",

@@ -10,7 +10,6 @@
 import { useRef, useState } from "react";
 import type { BusinessProfile, PricingOptionalInputs } from "../types";
 import SectionPanel from "./SectionPanel";
-import SectionTabBar from "./SectionTabBar";
 
 // ── Operations widgets ──
 import StartupRegistrationWidget from "./widgets/StartupRegistrationWidget";
@@ -41,6 +40,10 @@ import BusinessChatbot from "./BusinessChatbot";
 interface DashboardProps {
   profile: BusinessProfile | null;
   isUnlocked: boolean;
+  /** When set, only this section's panel is visible (state is always preserved). */
+  activeSection?: string;
+  /** Fires when the user picks a section so the advisor can follow focus */
+  onSectionNavigate?: (sectionTitle: string) => void;
 }
 
 const SECTIONS = [
@@ -57,7 +60,7 @@ const DEFAULT_PRICING_INPUTS: PricingOptionalInputs = {
   costPerProduct: null,
 };
 
-export default function Dashboard({ profile, isUnlocked }: DashboardProps) {
+export default function Dashboard({ profile, isUnlocked, activeSection }: DashboardProps) {
   // ── Pricing Strategy state ──
   const [pricingInputs, setPricingInputs] = useState<PricingOptionalInputs>(
     DEFAULT_PRICING_INPUTS
@@ -65,9 +68,6 @@ export default function Dashboard({ profile, isUnlocked }: DashboardProps) {
 
   // ── Marketing state ──
   const [marketingStrategy, setMarketingStrategy] = useState<string>("");
-
-  // ── Active section for mobile tab bar ──
-  const [activeSection, setActiveSection] = useState<string>("Operations");
 
   // ── Refs to each widget's generate handler so Generate All can call them ──
   const startupRegRef = useRef<(() => Promise<void>) | null>(null);
@@ -126,68 +126,19 @@ export default function Dashboard({ profile, isUnlocked }: DashboardProps) {
   return (
     <section
       aria-label="Dashboard"
-      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8"
+      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-10"
     >
-      {/* ── Dashboard heading ── */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7c3aed] to-[#a78bfa] flex items-center justify-center">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4 text-white"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-            />
-          </svg>
-        </div>
-        <div>
-          <h2 className="text-lg font-semibold text-white">Your Dashboard</h2>
-          {profile && (
-            <p className="text-sm text-[#6b6890]">
-              Personalised guidance for{" "}
-              <span className="text-[#a78bfa] font-medium">
-                {profile.companyName}
-              </span>
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* ── Locked notice (shown when profile not yet submitted) ── */}
+      {/* ── Locked notice ── */}
       {!isUnlocked && (
-        <div
-          role="status"
-          className="mb-6 flex items-center gap-3 rounded-xl border border-yellow-800/50 bg-yellow-900/20 px-4 py-3 text-sm text-yellow-300"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4 shrink-0"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-            />
-          </svg>
+        <div role="status" className="mb-6 rounded-xl border-2 border-primary-400 bg-primary-50 px-4 py-3 text-sm text-neutral-950 font-medium">
           Submit your business profile above to unlock all sections.
         </div>
       )}
 
-      {/* ── Five section panels ── */}
+      {/* ── Section panels — all stay mounted so generated content is preserved ── */}
       <div className="flex flex-col gap-8">
         {SECTIONS.map((section, index) => (
+          <div key={section} className={activeSection && activeSection !== section ? 'hidden' : ''}>
           <SectionPanel
             key={section}
             title={section}
@@ -291,14 +242,9 @@ export default function Dashboard({ profile, isUnlocked }: DashboardProps) {
               </div>
             )}
           </SectionPanel>
+          </div>
         ))}
       </div>
-
-      {/* ── Mobile sticky tab bar ── */}
-      <SectionTabBar
-        activeSection={activeSection}
-        onTabClick={setActiveSection}
-      />
     </section>
   );
 }

@@ -84,14 +84,13 @@ async function streamClaude(
 function TypingIndicator() {
   return (
     <div
-      className="flex items-center gap-1 px-4 py-3 rounded-2xl rounded-bl-sm
-                 bg-[#221f35] text-[#a78bfa] self-start max-w-xs"
+      className="flex items-center gap-1.5 px-3.5 py-3 rounded-xl bg-primary-50 border-2 border-primary-200 self-start"
       role="status"
       aria-label="SMEwise is typing"
     >
-      <span className="w-2 h-2 rounded-full bg-[#a78bfa] animate-bounce [animation-delay:-0.3s]" />
-      <span className="w-2 h-2 rounded-full bg-[#a78bfa] animate-bounce [animation-delay:-0.15s]" />
-      <span className="w-2 h-2 rounded-full bg-[#a78bfa] animate-bounce" />
+      <span className="w-2 h-2 rounded-full bg-primary-400 animate-pulse" />
+      <span className="w-2 h-2 rounded-full bg-primary-400 animate-pulse [animation-delay:150ms]" />
+      <span className="w-2 h-2 rounded-full bg-primary-400 animate-pulse [animation-delay:300ms]" />
     </div>
   );
 }
@@ -118,13 +117,13 @@ function MessageBubble({ message, onRetry }: MessageBubbleProps) {
       className={`flex flex-col gap-1 ${isUser ? "items-end" : "items-start"}`}
     >
       <div
-        className={`px-4 py-3 rounded-2xl text-sm leading-relaxed max-w-[80%] whitespace-pre-wrap
+        className={`px-4 py-3 rounded-xl text-sm leading-relaxed max-w-[85%] whitespace-pre-wrap border-2
           ${
             isUser
-              ? "bg-[#7c3aed] text-white rounded-br-sm"
+              ? "bg-neutral-950 text-white border-neutral-950"
               : isError
-              ? "bg-red-900/50 border border-red-700 text-red-300 rounded-bl-sm"
-              : "bg-[#221f35] border border-[#3d3660] text-gray-100 rounded-bl-sm"
+              ? "bg-error-50 border-error-300 text-error-800"
+              : "bg-primary-50 border-primary-200 text-neutral-900"
           }`}
       >
         {displayContent}
@@ -132,7 +131,7 @@ function MessageBubble({ message, onRetry }: MessageBubbleProps) {
           <button
             type="button"
             onClick={onRetry}
-            className="mt-2 block text-xs text-red-400 underline hover:text-red-300
+            className="mt-2 block text-xs text-red-700 underline hover:text-red-900
                        focus:outline-none focus:ring-1 focus:ring-red-500 rounded"
             aria-label="Retry last message"
           >
@@ -141,7 +140,7 @@ function MessageBubble({ message, onRetry }: MessageBubbleProps) {
         )}
       </div>
       <time
-        className="text-xs text-[#6b6890] px-1"
+        className="text-xs text-neutral-400 px-1"
         dateTime={new Date(message.timestamp).toISOString()}
       >
         {time}
@@ -272,46 +271,32 @@ export default function BusinessChatbot({ profile }: BusinessChatbotProps) {
 
   return (
     <article
-      className="flex flex-col rounded-xl border border-[#3d3660] bg-[#1a1728] shadow-lg"
+      className="flex flex-col rounded-xl border-2 border-neutral-950 bg-white"
+      style={{ boxShadow: '3px 3px 0 0 #0f0f0f' }}
       aria-label="SMEwise Business Chatbot"
     >
       {/* ── Header ── */}
-      <header className="flex items-center gap-3 border-b border-[#3d3660] px-5 py-4">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7c3aed] to-[#a78bfa] flex items-center justify-center shrink-0">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4 text-white"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-            />
-          </svg>
+      <header className="flex items-center gap-3 border-b-2 border-neutral-950 px-5 py-4 bg-primary-50">
+        <div className="w-9 h-9 rounded-xl bg-neutral-950 border-2 border-neutral-950 flex items-center justify-center shrink-0 text-white text-sm font-bold" aria-hidden>
+          S
         </div>
         <div>
-          <h3 className="text-base font-semibold text-white">SMEwise Advisor</h3>
-          <p className="text-xs text-[#6b6890]">
-            Your personalised AI business advisor
-          </p>
+          <h3 className="text-sm font-bold text-neutral-950 tracking-tight">Inline advisor</h3>
+          <p className="text-xs text-neutral-600">Owner Tools · uses same profile</p>
         </div>
       </header>
 
       {/* ── Message history ── */}
       <div
-        className="flex flex-col gap-3 overflow-y-auto px-4 sm:px-5 py-4 min-h-[300px] max-h-[500px]"
+        className="flex flex-col gap-3 overflow-y-auto px-4 sm:px-5 py-4 min-h-[260px] max-h-[420px] bg-neutral-50"
         role="log"
         aria-label="Chat messages"
         aria-live="polite"
       >
         {messages.length === 0 && (
-          <p className="text-sm text-[#6b6890] italic text-center mt-8">
-            Ask me anything about your business — strategy, finances, marketing, and more.
+          <p className="text-sm text-neutral-600 text-center mt-8 leading-relaxed px-2">
+            Ask about strategy, cash flow, or operations. The main advisor panel on the right also uses your
+            profile — this chat is here if you want a second thread inside Owner Tools.
           </p>
         )}
 
@@ -334,7 +319,7 @@ export default function BusinessChatbot({ profile }: BusinessChatbotProps) {
       </div>
 
       {/* ── Input area ── */}
-      <div className="border-t border-[#3d3660] px-4 sm:px-5 py-4">
+      <div className="border-t-2 border-neutral-950 px-4 sm:px-5 py-4 bg-white">
         <div className="flex gap-2 sm:gap-3">
           <input
             type="text"
@@ -343,21 +328,14 @@ export default function BusinessChatbot({ profile }: BusinessChatbotProps) {
             onKeyDown={handleKeyDown}
             placeholder="Ask about your business…"
             disabled={isTyping}
-            className="flex-1 min-w-0 w-full bg-[#221f35] border border-[#3d3660] rounded-[10px] px-3 sm:px-4 py-2.5
-                       text-sm text-white placeholder-[#6b6890]
-                       focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/40
-                       transition-all duration-200
-                       disabled:cursor-not-allowed disabled:opacity-60"
+            className="input-field flex-1 min-w-0 disabled:cursor-not-allowed disabled:opacity-60"
             aria-label="Type your message"
           />
           <button
             type="button"
             onClick={() => sendMessage(inputText)}
             disabled={isTyping || !inputText.trim()}
-            className="shrink-0 bg-[#7c3aed] hover:bg-[#6d28d9] text-white font-semibold rounded-[10px] px-3 sm:px-4 py-2.5 text-sm
-                       transition-all duration-200
-                       disabled:cursor-not-allowed disabled:opacity-50
-                       focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/50"
+            className="btn-primary shrink-0 px-4 py-2.5 rounded-xl disabled:cursor-not-allowed disabled:opacity-50"
             aria-label="Send message"
           >
             Send
