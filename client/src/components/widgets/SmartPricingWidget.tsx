@@ -106,6 +106,9 @@ export default function SmartPricingWidget({
       title="Smart Pricing Suggestions"
       onGenerate={handleGenerate}
       state={state}
+      idleHint="Builds a defendable price ladder with margin callouts — pair with the competitor card first."
+      idleButtonLabel="Price SKUs"
+      regenerateLabel="Reprice"
     >
       <pre className="whitespace-pre-wrap font-sans text-sm text-neutral-800 leading-relaxed">
         {content}

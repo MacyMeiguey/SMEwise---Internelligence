@@ -103,6 +103,9 @@ export default function CompetitorPricingWidget({
       title="Competitor Pricing Analysis"
       onGenerate={handleGenerate}
       state={state}
+      idleHint="Benchmarks peers around your city and category — optional SKUs above make it sharper."
+      idleButtonLabel="Benchmark peers"
+      regenerateLabel="Refresh benchmark"
     >
       <pre className="whitespace-pre-wrap font-sans text-sm text-neutral-800 leading-relaxed">
         {content}

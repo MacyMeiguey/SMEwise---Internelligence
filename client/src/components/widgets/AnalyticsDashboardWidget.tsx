@@ -65,6 +65,9 @@ export default function AnalyticsDashboardWidget({
       title="Analytics Dashboard"
       onGenerate={handleGenerate}
       state={state}
+      idleHint="Illustrative KPI collage for decks or lender updates — each run produces a fresh composition."
+      idleButtonLabel="Create snapshot"
+      regenerateLabel="New snapshot"
     >
       {imageBase64 && (
         <img

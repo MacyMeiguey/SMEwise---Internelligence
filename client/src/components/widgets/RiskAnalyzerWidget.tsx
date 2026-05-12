@@ -152,6 +152,9 @@ export default function RiskAnalyzerWidget({ profile, onGenerateRef }: RiskAnaly
       title="Risk Analyzer"
       onGenerate={handleGenerate}
       state={state}
+      idleHint="Flags operational blind spots for the next 90 days — calm tone, concrete mitigations."
+      idleButtonLabel="Scan risks"
+      regenerateLabel="Scan again"
     >
       <pre className="whitespace-pre-wrap font-sans text-sm text-neutral-800 leading-relaxed">
         {streamedContent}

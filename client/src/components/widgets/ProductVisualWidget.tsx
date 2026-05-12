@@ -67,6 +67,9 @@ export default function ProductVisualWidget({
       title="Product Visual"
       onGenerate={handleGenerate}
       state={state}
+      idleHint="A poster-style still life for listings — great for Shopee, GrabMart, or IG carousel covers."
+      idleButtonLabel="Render visual"
+      regenerateLabel="New visual"
     >
       {imageBase64 && (
         <img

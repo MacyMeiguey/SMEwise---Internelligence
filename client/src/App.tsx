@@ -1,15 +1,17 @@
 /**
- * App — Multi-view SPA with proper workspace navigation
+ * App — SPA with URL-backed navigation (React Router)
  *
- * Views:
- *   landing    → public landing page (always reachable via logo click)
- *   onboarding → profile wizard
- *   workspace  → tabbed workspace (overview + 5 section tabs)
+ * Routes:
+ *   /                     → Landing
+ *   /onboarding           → Profile wizard
+ *   /workspace/:tab       → Workspace (overview, operations, …)
  */
 
 import { useState, useEffect } from 'react';
+import { useNavigate, useLocation, matchPath, Navigate, Link } from 'react-router-dom';
+import { Menu, Moon, Sun, Monitor } from 'lucide-react';
 import type { BusinessProfile } from './types';
-import type { AppView, WorkspaceTab } from './types/navigation';
+import type { WorkspaceTab } from './types/navigation';
 import { loadProfile, saveProfile } from './utils/storage';
 
 import HeroSection from './components/hero/HeroSection';
@@ -17,8 +19,15 @@ import ProfileWizard from './components/profile/ProfileWizard';
 import InsightsDashboard from './components/dashboard/InsightsDashboard';
 import Dashboard from './components/Dashboard';
 import AIAssistantPanel from './components/assistant/AIAssistantPanel';
-import WorkspaceNav, { WORKSPACE_TABS } from './components/workspace/WorkspaceNav';
+import WorkspaceSidebar from './components/workspace/WorkspaceSidebar';
+import LandingStage3D from './components/three/LandingStage3D';
+import SplashScreen, { hasShownSplash } from './components/SplashScreen';
+import ScrollProgressBar from './components/hero/ScrollProgressBar';
+import SectionDotNav from './components/hero/SectionDotNav';
+import BackToTop from './components/hero/BackToTop';
+import LogoWordmark from './components/shared/LogoWordmark';
 import { LoadingProvider } from './context/LoadingContext';
+import { useTheme, useWorkspaceHtmlTheme } from './context/ThemeContext';
 
 // Map workspace tab id → Dashboard section title
 const TAB_TO_SECTION: Record<WorkspaceTab, string> = {
@@ -30,30 +39,74 @@ const TAB_TO_SECTION: Record<WorkspaceTab, string> = {
   owner:      'Owner Tools',
 };
 
-// ── Header height CSS variable so WorkspaceNav can offset correctly ───────────
+function isWorkspaceTabId(id: string): id is WorkspaceTab {
+  return Object.prototype.hasOwnProperty.call(TAB_TO_SECTION, id);
+}
+
 function setHeaderHeight(el: HTMLElement | null) {
   if (!el) return;
   document.documentElement.style.setProperty('--header-h', `${el.offsetHeight}px`);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 function AppContent() {
-  const [view, setView]               = useState<AppView>('landing');
-  const [activeTab, setActiveTab]     = useState<WorkspaceTab>('overview');
-  const [profile, setProfile]         = useState<BusinessProfile | null>(null);
-  const [headerEl, setHeaderEl]       = useState<HTMLElement | null>(null);
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const { preference, effective, cyclePreference } = useTheme();
+  useWorkspaceHtmlTheme(pathname);
 
-  // Restore profile on mount
+  const [profile, setProfile]  = useState<BusinessProfile | null>(null);
+  const [headerEl, setHeaderEl] = useState<HTMLElement | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [splashDone, setSplashDone] = useState<boolean>(() => hasShownSplash());
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try { return window.localStorage.getItem('smewise:sidebar-collapsed') === '1'; }
+    catch { return false; }
+  });
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try { window.localStorage.setItem('smewise:sidebar-collapsed', next ? '1' : '0'); }
+      catch { /* ignore */ }
+      return next;
+    });
+  };
+  const [assistantCollapsed, setAssistantCollapsed] = useState<boolean>(() => {
+    try {
+      return window.localStorage.getItem('smewise:assistant-collapsed') === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleAssistant = () => {
+    setAssistantCollapsed((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem('smewise:assistant-collapsed', next ? '1' : '0');
+      } catch {
+        // ignore quota/private-mode storage errors
+      }
+      return next;
+    });
+  };
+
+  const workspaceMatch = matchPath({ path: '/workspace/:tab', end: true }, pathname);
+  const rawTab           = workspaceMatch?.params.tab;
+  const workspaceTabOk   = rawTab && isWorkspaceTabId(rawTab) ? rawTab : null;
+
   useEffect(() => {
     const saved = loadProfile();
-    if (saved) {
-      setProfile(saved);
-      setView('workspace');
+    if (saved) setProfile(saved);
+    const booted = sessionStorage.getItem('smewiseBoot');
+    if (!booted) {
+      sessionStorage.setItem('smewiseBoot', '1');
+      if (saved && window.location.pathname === '/') {
+        navigate('/workspace/overview', { replace: true });
+      }
     }
-  }, []);
+  }, [navigate]);
 
-  // Keep --header-h in sync with actual header height
   useEffect(() => {
     if (!headerEl) return;
     const ro = new ResizeObserver(() => setHeaderHeight(headerEl));
@@ -62,19 +115,38 @@ function AppContent() {
     return () => ro.disconnect();
   }, [headerEl]);
 
-  // Scroll to top on view/tab change
+  const showWorkspaceChrome = Boolean(profile && workspaceTabOk);
+
+  const view =
+    pathname === '/' ? 'landing' :
+      pathname === '/onboarding' ? 'onboarding' :
+        showWorkspaceChrome ? 'workspace' :
+          pathname.startsWith('/workspace') ? 'workspace' :
+            'landing';
+
+  const activeTab: WorkspaceTab =
+    showWorkspaceChrome && workspaceTabOk ? workspaceTabOk : 'overview';
+
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [view, activeTab]);
+  }, [view]);
 
-  // ── Handlers ───────────────────────────────────────────────────────────────
+  // Dark scrollbar on <html> for landing + workspace so it matches the UI chrome.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (view === 'landing' || showWorkspaceChrome || view === 'onboarding') root.classList.add('app-deep-scrollbar');
+    else root.classList.remove('app-deep-scrollbar');
+    return () => root.classList.remove('app-deep-scrollbar');
+  }, [view, showWorkspaceChrome]);
 
-  const goLanding    = () => setView('landing');
-  const goOnboarding = () => setView('onboarding');
-  const goWorkspace  = (tab: WorkspaceTab = 'overview') => {
-    setActiveTab(tab);
-    setView('workspace');
-  };
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    setSidebarOpen(false);
+  }, [activeTab]);
+
+  const goLanding    = () => navigate('/');
+  const goOnboarding = () => navigate('/onboarding');
+  const goWorkspace  = (tab: WorkspaceTab = 'overview') => navigate(`/workspace/${tab}`);
 
   const handleProfileSubmit = (submitted: BusinessProfile) => {
     saveProfile(submitted);
@@ -82,94 +154,157 @@ function AppContent() {
     goWorkspace('overview');
   };
 
-  const handleTabChange = (tab: WorkspaceTab) => {
-    setActiveTab(tab);
-  };
-
-  // When user clicks a bento card, jump to that section tab
   const handleViewDetails = (sectionTitle: string) => {
     const entry = Object.entries(TAB_TO_SECTION).find(([, v]) => v === sectionTitle);
     if (entry) goWorkspace(entry[0] as WorkspaceTab);
   };
 
-  // Section label for the AI advisor
   const advisorSection = TAB_TO_SECTION[activeTab];
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  if (!profile && pathname.startsWith('/workspace')) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (profile && (pathname === '/workspace' || pathname === '/workspace/')) {
+    return <Navigate to="/workspace/overview" replace />;
+  }
+
+  if (profile && pathname.startsWith('/workspace/') && workspaceMatch && rawTab && !workspaceTabOk) {
+    return <Navigate to="/workspace/overview" replace />;
+  }
+
+  if (pathname !== '/' && pathname !== '/onboarding' && !pathname.startsWith('/workspace')) {
+    return <Navigate to="/" replace />;
+  }
+
+  const isLanding = view === 'landing';
+  const isOnboarding = view === 'onboarding';
+  // Dark header on landing + onboarding; workspace follows theme (light = paper chrome).
+  const darkChrome =
+    isLanding || isOnboarding || (showWorkspaceChrome && effective === 'dark');
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className={`min-h-screen flex flex-col relative ${
+      isLanding
+        ? 'bg-transparent text-white'
+        : showWorkspaceChrome
+          ? 'bg-neutral-100 text-neutral-950 dark:bg-[#07070b] dark:text-white'
+          : isOnboarding
+            ? 'bg-[#07070b] text-white'
+            : 'bg-white'
+    }`}>
+      {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
 
-      {/* ══════════════════════════════════════════════
-          HEADER — always visible
-      ══════════════════════════════════════════════ */}
+      {isLanding && <ScrollProgressBar />}
+      {isLanding && <LandingStage3D />}
+      {isLanding && <SectionDotNav />}
+      {isLanding && <BackToTop />}
+
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
+
       <header
         ref={setHeaderEl}
-        className="sticky top-0 z-30 bg-white border-b-2 border-neutral-950"
+        className={`sticky top-0 z-30 border-b ${
+          darkChrome
+            ? 'bg-[#07070b]/85 backdrop-blur-xl border-white/[0.08] text-white'
+            : 'bg-white/95 backdrop-blur-xl border-neutral-200 text-neutral-900'
+        }`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3">
+        <div className="px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3">
           <div className="flex items-center justify-between gap-4">
 
-            {/* Logo — always goes to landing */}
-            <button
-              type="button"
-              onClick={goLanding}
-              className="flex items-center gap-3 min-w-0 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 rounded-lg"
-              aria-label="Go to home"
-            >
-              <img
-                src="/smewise-logo.png"
-                alt="SMEwise"
-                className="h-10 sm:h-12 w-auto max-w-[min(220px,55vw)] object-contain object-left"
-                loading="eager"
-                decoding="async"
-              />
-            </button>
+            <div className="flex items-center gap-2 min-w-0">
+              {showWorkspaceChrome && profile && (
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen(true)}
+                  className={`lg:hidden p-2 -ml-1.5 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 transition-colors ${
+                    darkChrome
+                      ? 'text-neutral-200 hover:bg-white/10'
+                      : 'text-neutral-700 hover:bg-neutral-100'
+                  }`}
+                  aria-label="Open workspace navigation"
+                  aria-controls="workspace-sidebar"
+                  aria-expanded={sidebarOpen}
+                >
+                  <Menu className="h-6 w-6" />
+                </button>
+              )}
 
-            {/* Right side actions */}
+              <Link
+                to="/"
+                className="flex items-center gap-3 min-w-0 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 rounded-lg px-1 py-1"
+                aria-label="Go to home"
+              >
+                <LogoWordmark size="lg" variant={darkChrome ? 'light' : 'dark'} />
+              </Link>
+            </div>
+
             <div className="flex items-center gap-3 shrink-0">
-              {view === 'workspace' && profile && (
-                <>
-                  {/* Company name — visible on larger screens */}
-                  <span className="hidden sm:inline text-sm text-neutral-500 font-medium border-r-2 border-neutral-200 pr-3 max-w-[160px] truncate">
-                    {profile.companyName}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={goOnboarding}
-                    className="btn-ghost text-sm py-1.5 px-3.5 rounded-lg"
-                  >
-                    Edit profile
-                  </button>
-                </>
+              {showWorkspaceChrome && profile && (
+                <button
+                  type="button"
+                  onClick={cyclePreference}
+                  title={`Theme: ${
+                    preference === 'dark' ? 'Dark' : preference === 'light' ? 'Light' : 'System'
+                  } — click to switch`}
+                  aria-label={`Color theme: ${
+                    preference === 'dark' ? 'Dark' : preference === 'light' ? 'Light' : 'System'
+                  }. Click to cycle.`}
+                  className={`p-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 ${
+                    darkChrome
+                      ? 'text-neutral-200 hover:bg-white/10 border border-white/12 bg-white/5'
+                      : 'text-neutral-800 hover:bg-neutral-100 border border-neutral-200 bg-white'
+                  }`}
+                >
+                  {preference === 'dark' ? (
+                    <Moon className="h-5 w-5" aria-hidden />
+                  ) : preference === 'light' ? (
+                    <Sun className="h-5 w-5" aria-hidden />
+                  ) : (
+                    <Monitor className="h-5 w-5" aria-hidden />
+                  )}
+                </button>
+              )}
+
+              {showWorkspaceChrome && profile && (
+                <button
+                  type="button"
+                  onClick={goOnboarding}
+                  className={`text-sm font-semibold py-1.5 px-3.5 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 ${
+                    darkChrome
+                      ? 'border border-white/15 bg-white/5 hover:bg-white/10 text-white'
+                      : 'border border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-800'
+                  }`}
+                >
+                  Edit profile
+                </button>
               )}
 
               {view === 'onboarding' && (
                 <button
                   type="button"
-                  onClick={profile ? () => goWorkspace() : goLanding}
-                  className="text-sm font-semibold text-neutral-600 hover:text-neutral-950 underline underline-offset-2"
+                  onClick={profile ? () => goWorkspace('overview') : goLanding}
+                  className={`text-sm font-semibold underline underline-offset-2 ${
+                    darkChrome
+                      ? 'text-neutral-400 hover:text-white'
+                      : 'text-neutral-600 hover:text-neutral-950'
+                  }`}
                 >
                   ← {profile ? 'Back to workspace' : 'Back to home'}
                 </button>
               )}
 
               {view === 'landing' && !profile && (
-                <button
-                  type="button"
-                  onClick={goOnboarding}
-                  className="btn-primary text-sm py-2 px-4 rounded-xl"
-                >
+                <button type="button" onClick={goOnboarding} className="btn-primary text-sm py-2 px-4 rounded-xl">
                   Get started
                 </button>
               )}
 
               {view === 'landing' && profile && (
-                <button
-                  type="button"
-                  onClick={() => goWorkspace()}
-                  className="btn-primary text-sm py-2 px-4 rounded-xl"
-                >
+                <button type="button" onClick={() => goWorkspace('overview')} className="btn-primary text-sm py-2 px-4 rounded-xl">
                   My workspace
                 </button>
               )}
@@ -177,66 +312,56 @@ function AppContent() {
           </div>
         </div>
 
-        {/* Workspace tab bar — rendered inside sticky header so it scrolls with it */}
-        {view === 'workspace' && profile && (
-          <WorkspaceNav activeTab={activeTab} onTabChange={handleTabChange} />
-        )}
       </header>
 
+      {showWorkspaceChrome && profile && (
+        <WorkspaceSidebar
+          isMobileOpen={sidebarOpen}
+          onMobileClose={() => setSidebarOpen(false)}
+          companyName={profile.companyName}
+          isCollapsed={sidebarCollapsed}
+          onToggleCollapse={toggleSidebar}
+        />
+      )}
 
-      {/* ══════════════════════════════════════════════
-          MAIN CONTENT
-      ══════════════════════════════════════════════ */}
-
-      {/* ── Landing ── */}
       {view === 'landing' && (
-        <main className="flex-1">
+        <main id="main-content" className="flex-1 relative z-10">
           <HeroSection
             profile={profile}
             onGetStarted={goOnboarding}
-            onGoToWorkspace={() => goWorkspace()}
+            onGoToWorkspace={() => goWorkspace('overview')}
           />
           <LandingFooter />
         </main>
       )}
 
-      {/* ── Onboarding ── */}
       {view === 'onboarding' && (
-        <main className="flex-1">
-          <ProfileWizard
-            onSubmit={handleProfileSubmit}
-            initialProfile={profile}
-          />
+        <main id="main-content" className="flex-1 bg-[#07070b] text-white">
+          <ProfileWizard onSubmit={handleProfileSubmit} initialProfile={profile} />
         </main>
       )}
 
-      {/* ── Workspace ── */}
-      {view === 'workspace' && profile && (
-        <main className={`flex-1 ${activeTab !== 'overview' ? 'lg:pr-[26rem] xl:pr-[28rem]' : 'lg:pr-[26rem] xl:pr-[28rem]'}`}>
+      {showWorkspaceChrome && profile && (
+        <main
+          id="main-content"
+          className={`flex-1 bg-neutral-100 text-neutral-950 transition-[padding] duration-200 dark:bg-[#07070b] dark:text-white ${
+            sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-60 xl:pl-64'
+          } ${
+            assistantCollapsed ? 'lg:pr-24' : 'lg:pr-[26rem] xl:pr-[28rem]'
+          }`}
+        >
 
-          {/* Overview tab → InsightsDashboard */}
           {activeTab === 'overview' && (
             <InsightsDashboard
               profile={profile}
               onViewDetails={handleViewDetails}
+              onEditProfile={goOnboarding}
+              onOpenAdvisor={() => setAssistantCollapsed(false)}
             />
           )}
 
-          {/* Tool tabs → Dashboard (all sections mounted, only active one visible) */}
           {activeTab !== 'overview' && (
-            <div className="bg-neutral-50 py-8 sm:py-10 min-h-[60vh]">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
-                <p className="eyebrow mb-2">
-                  {WORKSPACE_TABS.find(t => t.id === activeTab)?.label}
-                </p>
-                <h1 className="text-2xl sm:text-3xl font-bold text-neutral-950">
-                  {TAB_TO_SECTION[activeTab]}
-                </h1>
-                <p className="mt-2 text-sm text-neutral-600 max-w-2xl">
-                  Press <strong className="text-neutral-950">Generate all</strong> to run every card, or generate
-                  individual ones. Results stay until you regenerate.
-                </p>
-              </div>
+            <div className="py-6 sm:py-8 min-h-[60vh]">
               <Dashboard
                 profile={profile}
                 isUnlocked={true}
@@ -246,29 +371,32 @@ function AppContent() {
             </div>
           )}
 
-          {/* AI advisor — always visible in workspace */}
-          <AIAssistantPanel profile={profile} currentSection={advisorSection} />
+          <AIAssistantPanel
+            profile={profile}
+            currentSection={advisorSection}
+            isCollapsed={assistantCollapsed}
+            onToggleCollapse={toggleAssistant}
+          />
         </main>
       )}
-
     </div>
   );
 }
 
-// ── Landing footer ────────────────────────────────────────────────────────────
-
 function LandingFooter() {
   return (
-    <footer className="border-t-2 border-neutral-950 bg-white py-8">
+    <footer className="relative border-t border-white/[0.08] bg-[#07070b]/45 backdrop-blur-xl py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <img src="/smewise-logo.png" alt="SMEwise" className="h-7 w-auto opacity-80" />
-            <span className="text-xs text-neutral-500">© 2026 · For Malaysian SMEs</span>
+          <div className="flex items-center gap-3">
+            <LogoWordmark size="sm" variant="light" />
+            <span className="text-xs text-neutral-400">© 2026 · For Malaysian SMEs</span>
           </div>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-neutral-500">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-neutral-400">
             {['Privacy', 'Terms', 'Support'].map((l) => (
-              <a key={l} href="#" className="hover:text-neutral-950 transition-colors">{l}</a>
+              <a key={l} href="#" className="hover:text-white transition-colors">
+                {l}
+              </a>
             ))}
           </div>
         </div>
@@ -276,8 +404,6 @@ function LandingFooter() {
     </footer>
   );
 }
-
-// ── Root ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
   return (

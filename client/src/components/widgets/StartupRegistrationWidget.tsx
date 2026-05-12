@@ -143,6 +143,9 @@ export default function StartupRegistrationWidget({
       title="Startup Registration Guidelines"
       onGenerate={handleGenerate}
       state={state}
+      idleHint="Pulls SSM-flavoured first steps for your structure and stage — edit the list before you file anything."
+      idleButtonLabel="Draft checklist"
+      regenerateLabel="Refresh checklist"
     >
       {/* Rendered when status === "success" */}
       <div className="whitespace-pre-wrap leading-relaxed">

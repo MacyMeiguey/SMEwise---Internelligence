@@ -110,6 +110,9 @@ export default function OfficeLocationWidget({ profile, onGenerateRef }: OfficeL
       title="Office & Location Finder"
       onGenerate={handleGenerate}
       state={state}
+      idleHint="Weighs city, business type, and traffic patterns into a shortlist you can actually visit."
+      idleButtonLabel="Suggest sites"
+      regenerateLabel="Rerun search"
     >
       <p className="whitespace-pre-wrap">{content}</p>
     </WidgetCard>

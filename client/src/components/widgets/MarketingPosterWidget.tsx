@@ -67,6 +67,9 @@ export default function MarketingPosterWidget({
       title="Marketing Poster"
       onGenerate={handleGenerate}
       state={state}
+      idleHint="Landscape artwork with headline space — generate strategy first for tighter copy on the poster."
+      idleButtonLabel="Design poster"
+      regenerateLabel="Another layout"
     >
       {imageBase64 && (
         <img

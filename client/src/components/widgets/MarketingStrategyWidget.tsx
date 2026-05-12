@@ -123,6 +123,9 @@ export default function MarketingStrategyWidget({
       title="Marketing Strategy"
       onGenerate={handleGenerate}
       state={state}
+      idleHint="Channel mix + weekly cadence written for your audience sentence — paste into Notion or Slides."
+      idleButtonLabel="Write strategy"
+      regenerateLabel="Rewrite plan"
     >
       {parseError ? (
         <p className="text-sm text-error-600">{parseError}</p>

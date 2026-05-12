@@ -105,6 +105,9 @@ export default function FinancialReturnWidget({ profile, onGenerateRef }: Financ
       title="Financial Return Projection"
       onGenerate={handleGenerate}
       state={state}
+      idleHint="Shows how a tweak in price or volume ripples through margin — numbers stay in RM."
+      idleButtonLabel="Model returns"
+      regenerateLabel="Re-model"
     >
       <pre className="whitespace-pre-wrap font-sans text-sm text-neutral-800 leading-relaxed">
         {content}

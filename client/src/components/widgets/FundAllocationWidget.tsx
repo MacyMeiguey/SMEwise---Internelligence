@@ -177,6 +177,9 @@ export default function FundAllocationWidget({
       title="Fund Allocation Table"
       onGenerate={handleGenerate}
       state={state}
+      idleHint="Splits your stated capital across essentials, growth, and buffer — tuned to Malaysian cost norms."
+      idleButtonLabel="Build table"
+      regenerateLabel="Rebuild table"
     >
       {content && <TableOutput content={content} />}
     </WidgetCard>

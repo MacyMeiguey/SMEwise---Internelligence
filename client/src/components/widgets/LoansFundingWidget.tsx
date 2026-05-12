@@ -211,6 +211,9 @@ Respond in 100 words or fewer.`;
       title="Loans & Funding Panel"
       onGenerate={handleGenerate}
       state={state}
+      idleHint="Surfaces grants, schemes, or loan angles worth a second look — not a promise of approval."
+      idleButtonLabel="Map funding"
+      regenerateLabel="Remap funding"
     >
       {/* Two side-by-side sub-cards — stacked on mobile, side-by-side on md+ */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

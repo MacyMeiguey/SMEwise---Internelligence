@@ -4,8 +4,9 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { BusinessProfile, ChatMessage } from '../../types';
-import { MessageCircle, Send, X } from 'lucide-react';
+import { MessageCircle, Send, X, ChevronsRight, ChevronsLeft } from 'lucide-react';
 import { API_BASE } from '../../lib/api';
+import ChatAvatar3D from '../three/ChatAvatar3D';
 
 const MAX_WORDS = 200;
 
@@ -76,6 +77,9 @@ async function streamBedrock(
 export interface AIAssistantPanelProps {
   profile: BusinessProfile;
   currentSection?: string;
+  /** Desktop-only collapse state. When omitted, the panel manages itself uncollapsed. */
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 function getSuggestedPrompts(focus: string): string[] {
@@ -134,7 +138,12 @@ function buildWelcomeMessage(profile: BusinessProfile): ChatMessage {
   };
 }
 
-export default function AIAssistantPanel({ profile, currentSection = 'Overview' }: AIAssistantPanelProps) {
+export default function AIAssistantPanel({
+  profile,
+  currentSection = 'Overview',
+  isCollapsed = false,
+  onToggleCollapse,
+}: AIAssistantPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(() => [buildWelcomeMessage(profile)]);
   const [inputText, setInputText] = useState('');
@@ -229,23 +238,27 @@ export default function AIAssistantPanel({ profile, currentSection = 'Overview' 
 
   return (
     <>
-      {/* Mobile FAB */}
+      {/* Mobile FAB with mini 3D mascot */}
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="lg:hidden fixed bottom-[5.25rem] right-4 sm:right-5 w-14 h-14 bg-neutral-950 hover:bg-neutral-800 text-white rounded-full flex items-center justify-center z-40 border-2 border-neutral-950"
+        className="lg:hidden fixed bottom-[5.25rem] right-4 sm:right-5 z-40 flex items-center gap-2 bg-neutral-950 hover:bg-neutral-800 text-white rounded-2xl pl-1.5 pr-3 py-1.5 border-2 border-neutral-950"
         style={{ boxShadow: '3px 3px 0 0 #c4b5fd' }}
         aria-label="Open business advisor — same details as your summary"
       >
-        <MessageCircle size={22} strokeWidth={2} />
+        <ChatAvatar3D speaking={isTyping} nodSignal={userMessageCount} size={40} />
+        <span className="flex flex-col items-start leading-tight pr-1">
+          <span className="text-[10px] font-semibold tracking-wide uppercase text-primary-200">Advisor</span>
+          <span className="text-xs font-bold">Ask anything</span>
+        </span>
+        <MessageCircle size={18} strokeWidth={2.2} className="opacity-70" aria-hidden />
       </button>
 
       {/* Mobile sheet */}
       {isOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setIsOpen(false)}>
+        <div className="lg:hidden fixed inset-0 z-50 bg-black/60" onClick={() => setIsOpen(false)}>
           <div
-            className="absolute bottom-0 left-0 right-0 bg-white border-t-2 border-neutral-950 rounded-t-2xl max-h-[85vh] flex flex-col"
-            style={{ boxShadow: '0 -4px 0 0 #0f0f0f' }}
+            className="absolute bottom-0 left-0 right-0 bg-white border-t border-neutral-200 rounded-t-2xl max-h-[85vh] flex flex-col dark:bg-neutral-900 dark:border-white/[0.10]"
             onClick={(e) => e.stopPropagation()}
           >
             <AssistantContent
@@ -260,6 +273,7 @@ export default function AIAssistantPanel({ profile, currentSection = 'Overview' 
               handleSuggestedPrompt={handleSuggestedPrompt}
               messagesEndRef={messagesEndRef}
               showSuggested={userMessageCount === 0}
+              nodSignal={userMessageCount}
               onClose={() => setIsOpen(false)}
               isMobile
             />
@@ -267,25 +281,55 @@ export default function AIAssistantPanel({ profile, currentSection = 'Overview' 
         </div>
       )}
 
-      {/* Desktop fixed panel */}
-      <div
-        className="hidden lg:flex fixed top-20 right-5 bottom-6 w-[min(100%,22rem)] xl:w-96 flex-col z-40 bg-white rounded-2xl border-2 border-neutral-950"
-        style={{ boxShadow: '4px 4px 0 0 #0f0f0f' }}
-      >
-        <AssistantContent
-          profile={profile}
-          focusLabel={focusLabel}
-          messages={messages}
-          inputText={inputText}
-          setInputText={setInputText}
-          isTyping={isTyping}
-          sendMessage={sendMessage}
-          suggestedPrompts={suggestedPrompts}
-          handleSuggestedPrompt={handleSuggestedPrompt}
-          messagesEndRef={messagesEndRef}
-          showSuggested={userMessageCount === 0}
-        />
-      </div>
+      {/* Desktop — collapsed launcher (rail edge) */}
+      {isCollapsed && (
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          className="hidden lg:flex fixed top-24 right-4 z-40 flex-col items-center gap-2 bg-white hover:bg-neutral-50 text-neutral-900 rounded-2xl border border-neutral-200 px-2.5 py-3 group transition-colors dark:bg-neutral-900 dark:hover:bg-neutral-800 dark:text-white dark:border-white/[0.12]"
+          style={{ boxShadow: '0 0 0 1px rgba(167,139,250,0.15), 0 8px 24px rgba(0,0,0,0.12)', transitionProperty: 'color, background-color, border-color' }}
+          aria-label="Open business advisor"
+          aria-expanded={false}
+          aria-controls="ai-assistant-panel"
+        >
+          <ChatAvatar3D speaking={isTyping} nodSignal={userMessageCount} size={48} />
+          <span className="flex flex-col items-center leading-tight gap-0.5 mt-1">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-primary-600 dark:text-primary-200">
+              Advisor
+            </span>
+            <span className="text-[11px] font-semibold text-neutral-800 dark:text-white">
+              {isTyping ? 'Thinking…' : 'Ask'}
+            </span>
+          </span>
+          <ChevronsLeft className="h-4 w-4 opacity-70 group-hover:opacity-100 mt-1" aria-hidden />
+        </button>
+      )}
+
+      {/* Desktop — full panel */}
+      {!isCollapsed && (
+        <div
+          id="ai-assistant-panel"
+          className="hidden lg:flex fixed top-20 right-5 bottom-6 w-[min(100%,22rem)] xl:w-96 flex-col z-40 rounded-2xl border bg-white border-neutral-200 shadow-[0_24px_48px_rgba(15,23,42,0.08)] dark:bg-neutral-900 dark:border-white/[0.10] dark:shadow-[0_24px_48px_rgba(0,0,0,0.6)]"
+          role="complementary"
+          aria-label="Business advisor"
+        >
+          <AssistantContent
+            profile={profile}
+            focusLabel={focusLabel}
+            messages={messages}
+            inputText={inputText}
+            setInputText={setInputText}
+            isTyping={isTyping}
+            sendMessage={sendMessage}
+            suggestedPrompts={suggestedPrompts}
+            handleSuggestedPrompt={handleSuggestedPrompt}
+            messagesEndRef={messagesEndRef}
+            showSuggested={userMessageCount === 0}
+            nodSignal={userMessageCount}
+            onCollapse={onToggleCollapse}
+          />
+        </div>
+      )}
     </>
   );
 }
@@ -303,6 +347,10 @@ interface AssistantContentProps {
   messagesEndRef: React.RefObject<HTMLDivElement>;
   showSuggested: boolean;
   onClose?: () => void;
+  /** Desktop collapse handler — shows the minimize button on the right when provided. */
+  onCollapse?: () => void;
+  /** Increments when the user sends a message; drives the avatar nod. */
+  nodSignal?: number;
   isMobile?: boolean;
 }
 
@@ -319,6 +367,8 @@ function AssistantContent({
   messagesEndRef,
   showSuggested,
   onClose,
+  onCollapse,
+  nodSignal,
   isMobile,
 }: AssistantContentProps) {
   const focusDisplay =
@@ -327,30 +377,61 @@ function AssistantContent({
   return (
     <>
       {/* Panel header */}
-      <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-4 border-b-2 border-neutral-950 bg-primary-50">
-        <div className="min-w-0">
-          <h3 className="text-sm font-bold text-neutral-950 tracking-tight">Business advisor</h3>
-          <p className="text-xs text-neutral-600 truncate mt-0.5">For {profile.companyName}</p>
+      <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-4 border-b border-neutral-200 bg-neutral-50/80 dark:border-white/[0.08] dark:bg-white/[0.03]">
+        <div className="flex items-center gap-3 min-w-0">
+          <ChatAvatar3D speaking={isTyping} nodSignal={nodSignal} size={52} />
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-neutral-900 tracking-tight flex items-center gap-2 dark:text-white">
+              Business advisor
+              <span
+                className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${
+                  isTyping
+                    ? 'bg-primary-100 text-primary-700 border-primary-200 dark:bg-primary-900/50 dark:text-primary-300 dark:border-primary-700/50'
+                    : 'bg-primary-50 text-primary-700 border-primary-200 dark:bg-white/[0.06] dark:text-primary-300 dark:border-primary-500/25'
+                }`}
+                aria-live="polite"
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${isTyping ? 'bg-primary-400 animate-pulse' : 'bg-primary-400'}`} />
+                {isTyping ? 'Thinking…' : 'Online'}
+              </span>
+            </h3>
+            <p className="text-xs text-neutral-500 truncate mt-0.5">For {profile.companyName}</p>
+          </div>
         </div>
-        {isMobile && onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            className="shrink-0 text-neutral-500 hover:text-neutral-900 p-1 rounded-lg hover:bg-neutral-100"
-            aria-label="Close"
-          >
-            <X size={20} />
-          </button>
-        )}
+        <div className="flex items-center gap-1 shrink-0">
+          {!isMobile && onCollapse && (
+            <button
+              type="button"
+              onClick={onCollapse}
+              className="text-neutral-500 hover:text-neutral-800 p-1.5 rounded-lg hover:bg-neutral-100 transition-colors dark:hover:text-neutral-200 dark:hover:bg-white/[0.07]"
+              aria-label="Collapse advisor"
+              aria-expanded={true}
+              aria-controls="ai-assistant-panel"
+              title="Collapse"
+            >
+              <ChevronsRight size={18} />
+            </button>
+          )}
+          {isMobile && onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-neutral-500 hover:text-neutral-800 p-1 rounded-lg hover:bg-neutral-100 transition-colors dark:hover:text-neutral-200 dark:hover:bg-white/[0.07]"
+              aria-label="Close"
+            >
+              <X size={20} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Context band */}
-      <div className="px-4 sm:px-5 py-2.5 border-b-2 border-neutral-200 bg-neutral-50">
-        <p className="text-xs text-neutral-800">
-          <span className="font-semibold">Answering for:</span> {focusDisplay}
+      <div className="px-4 sm:px-5 py-2 border-b border-neutral-200 bg-neutral-50/50 dark:border-white/[0.06] dark:bg-white/[0.02]">
+        <p className="text-xs text-neutral-700 dark:text-neutral-300">
+          <span className="font-semibold text-neutral-900 dark:text-neutral-200">Answering for:</span> {focusDisplay}
         </p>
         <p className="mt-0.5 text-[11px] text-neutral-500 leading-snug">
-          Follows the section you open. Switch via summary cards or bottom tabs.
+          Context updates as you open toolkit sections.
         </p>
       </div>
 
@@ -364,14 +445,14 @@ function AssistantContent({
 
         {showSuggested && !isTyping && (
           <div className="space-y-2 pt-1">
-            <p className="eyebrow">Try asking</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500">Try asking</p>
             <div className="flex flex-col gap-2 mt-2">
               {suggestedPrompts.map((prompt) => (
                 <button
                   key={prompt}
                   type="button"
                   onClick={() => handleSuggestedPrompt(prompt)}
-                  className="text-left px-3 py-2.5 rounded-xl bg-white border-2 border-neutral-200 text-sm text-neutral-800 hover:border-neutral-950 transition-colors"
+                  className="text-left px-3 py-2.5 rounded-xl bg-neutral-100 border border-neutral-200 text-sm text-neutral-800 hover:bg-neutral-200/80 hover:text-neutral-950 hover:border-neutral-300 transition-all dark:bg-white/[0.05] dark:border-white/[0.08] dark:text-neutral-300 dark:hover:bg-white/[0.09] dark:hover:text-white dark:hover:border-white/[0.14]"
                 >
                   {prompt}
                 </button>
@@ -383,7 +464,7 @@ function AssistantContent({
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="px-4 sm:px-5 py-4 border-t-2 border-neutral-950 bg-white">
+      <div className="px-4 sm:px-5 py-4 border-t border-neutral-200 bg-neutral-50/50 dark:border-white/[0.08] dark:bg-white/[0.02]">
         <div className="flex gap-2">
           <input
             type="text"
@@ -397,13 +478,13 @@ function AssistantContent({
             }}
             placeholder="Ask about your business…"
             disabled={isTyping}
-            className="input-field flex-1 min-w-0 py-2"
+            className="flex-1 min-w-0 px-4 py-2.5 rounded-xl border border-neutral-300 bg-white text-neutral-900 text-sm placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-400/50 transition-all dark:border-white/[0.10] dark:bg-white/[0.06] dark:text-white"
           />
           <button
             type="button"
             onClick={() => sendMessage(inputText)}
             disabled={isTyping || !inputText.trim()}
-            className="shrink-0 w-11 h-11 rounded-xl bg-neutral-950 hover:bg-neutral-800 text-white flex items-center justify-center border-2 border-neutral-950 disabled:opacity-40 disabled:pointer-events-none"
+            className="shrink-0 w-11 h-11 rounded-xl bg-primary-600 hover:bg-primary-500 text-white flex items-center justify-center border border-primary-500/50 disabled:opacity-30 disabled:pointer-events-none transition-colors"
             aria-label="Send"
           >
             <Send size={16} />
@@ -431,24 +512,24 @@ function MessageBubble({ message }: MessageBubbleProps) {
   return (
     <div className={`flex flex-col gap-1 ${isUser ? 'items-end' : 'items-start'}`}>
       <div
-        className={`px-3.5 py-2.5 rounded-xl text-sm leading-relaxed max-w-[92%] whitespace-pre-wrap border-2 ${
+        className={`px-3.5 py-2.5 rounded-xl text-sm leading-relaxed max-w-[92%] whitespace-pre-wrap ${
           isUser
-            ? 'bg-neutral-950 text-white border-neutral-950'
+            ? 'bg-primary-600/70 text-white border border-primary-500/40'
             : isError
-            ? 'bg-error-50 border-error-300 text-error-800'
-            : 'bg-primary-50 border-primary-200 text-neutral-900'
+            ? 'bg-red-900/30 border border-red-700/40 text-red-300'
+            : 'bg-neutral-100 border border-neutral-200 text-neutral-800 dark:bg-white/[0.07] dark:border-white/[0.08] dark:text-neutral-200'
         }`}
       >
         {displayContent}
       </div>
-      <time className="text-[10px] text-neutral-400 px-1">{time}</time>
+      <time className="text-[10px] text-neutral-600 px-1">{time}</time>
     </div>
   );
 }
 
 function TypingIndicator() {
   return (
-    <div className="flex items-center gap-1.5 px-3.5 py-3 rounded-xl bg-primary-50 border-2 border-primary-200 self-start">
+    <div className="flex items-center gap-1.5 px-3.5 py-3 rounded-xl bg-neutral-100 border border-neutral-200 self-start dark:bg-white/[0.07] dark:border-white/[0.08]">
       <span className="w-2 h-2 rounded-full bg-primary-400 animate-pulse" />
       <span className="w-2 h-2 rounded-full bg-primary-400 animate-pulse [animation-delay:150ms]" />
       <span className="w-2 h-2 rounded-full bg-primary-400 animate-pulse [animation-delay:300ms]" />

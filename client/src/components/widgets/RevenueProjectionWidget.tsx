@@ -87,6 +87,9 @@ export default function RevenueProjectionWidget({
       title="Revenue Projection"
       onGenerate={handleGenerate}
       state={state}
+      idleHint="Turns your runway + industry into a simple chart you can screenshot for partners."
+      idleButtonLabel="Plot revenue"
+      regenerateLabel="Redraw chart"
     >
       {imageBase64 && (
         <img

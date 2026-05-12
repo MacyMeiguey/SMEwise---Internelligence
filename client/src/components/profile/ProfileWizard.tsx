@@ -1,14 +1,22 @@
 /**
- * ProfileWizard Component
- * Multi-step, grouped business profile input
+ * ProfileWizard — multi-step business profile (first-time or edit).
+ * UX: clear progress, edit mode copy, per-field review jumps, accessible labels.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId, useRef } from 'react';
 import type { BusinessProfile, BusinessStage, BusinessType } from '../../types';
 import { validateProfile } from '../../utils/validateProfile';
-import Card, { CardHeader, CardBody } from '../shared/Card';
 import Button from '../shared/Button';
-import { Building2, Target, CheckCircle2 } from 'lucide-react';
+import LogoWordmark from '../shared/LogoWordmark';
+import {
+  Building2,
+  Target,
+  CheckCircle2,
+  ChevronRight,
+  Wallet,
+  ClipboardCheck,
+  Pencil,
+} from 'lucide-react';
 
 interface ProfileWizardProps {
   onSubmit: (profile: BusinessProfile) => void;
@@ -30,8 +38,23 @@ const BUSINESS_TYPE_OPTIONS: BusinessType[] = [
   'Partnership',
 ];
 
+const STEPS = [
+  { n: 1, title: 'Business basics', hint: 'Name, place, structure', icon: Building2 },
+  { n: 2, title: 'Goals & funds', hint: 'Who you serve and capital', icon: Wallet },
+  { n: 3, title: 'Review', hint: 'Confirm before saving', icon: ClipboardCheck },
+] as const;
+
+const panelClass =
+  'rounded-2xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-md shadow-panel p-6 sm:p-8';
+const btnPrimaryDark =
+  '!bg-primary-600 hover:!bg-primary-500 active:!bg-primary-700 !border-2 !border-primary-400/40 !text-white';
+const btnGhostDark =
+  '!border-2 !border-white/15 !text-neutral-200 hover:!bg-white/[0.07] hover:!border-white/25 !bg-transparent';
+
 export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizardProps) {
-  // Form state
+  const formId = useId();
+  const topRef = useRef<HTMLDivElement>(null);
+
   const [companyName, setCompanyName] = useState('');
   const [industry, setIndustry] = useState('');
   const [city, setCity] = useState('');
@@ -45,20 +68,28 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
 
-  // Pre-populate from initialProfile
+  const isEdit = Boolean(
+    initialProfile &&
+      (initialProfile.companyName || initialProfile.industry || initialProfile.city),
+  );
+
   useEffect(() => {
-    if (initialProfile) {
-      setCompanyName(initialProfile.companyName);
-      setIndustry(initialProfile.industry);
-      setCity(initialProfile.city);
-      setBusinessStage(initialProfile.businessStage);
-      setBusinessType(initialProfile.businessType);
-      setTargetCustomer(initialProfile.targetCustomer);
-      setMainGoal(initialProfile.mainGoal ?? '');
-      setCurrentFunds(initialProfile.currentFunds);
-      setCurrentStep(3); // Jump to review if editing
-    }
+    if (!initialProfile) return;
+    setCompanyName(initialProfile.companyName);
+    setIndustry(initialProfile.industry);
+    setCity(initialProfile.city);
+    setBusinessStage(initialProfile.businessStage);
+    setBusinessType(initialProfile.businessType);
+    setTargetCustomer(initialProfile.targetCustomer);
+    setMainGoal(initialProfile.mainGoal ?? '');
+    setCurrentFunds(initialProfile.currentFunds);
+    // Start on step 1 so owners can scan and edit every section — not only review
+    setCurrentStep(1);
   }, [initialProfile]);
+
+  useEffect(() => {
+    topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [currentStep]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,10 +109,19 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
     setErrors(validationErrors);
 
     if (Object.keys(validationErrors).length > 0) {
-      // Jump to the step with errors
-      if (validationErrors.companyName || validationErrors.industry || validationErrors.city || validationErrors.businessStage || validationErrors.businessType) {
+      if (
+        validationErrors.companyName ||
+        validationErrors.industry ||
+        validationErrors.city ||
+        validationErrors.businessStage ||
+        validationErrors.businessType
+      ) {
         setCurrentStep(1);
-      } else if (validationErrors.targetCustomer || validationErrors.mainGoal || validationErrors.currentFunds) {
+      } else if (
+        validationErrors.targetCustomer ||
+        validationErrors.mainGoal ||
+        validationErrors.currentFunds
+      ) {
         setCurrentStep(2);
       }
       return;
@@ -101,132 +141,183 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
     setTimeout(() => setIsSubmitting(false), 1500);
   };
 
-  const canProceedToStep2 = companyName && industry && city && businessStage && businessType;
-  const canProceedToStep3 = canProceedToStep2 && targetCustomer && currentFunds >= 1000;
+  const canProceedToStep2 =
+    !!(companyName && industry && city && businessStage && businessType);
+  const canProceedToStep3 = canProceedToStep2 && !!(targetCustomer && currentFunds >= 1000);
+
+  const goTryReview = () => {
+    if (canProceedToStep3) setCurrentStep(3);
+  };
 
   return (
-    <section className="bg-white border-b-2 border-neutral-950 py-12 px-4">
-      <div className="max-w-3xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <p className="eyebrow mb-3">One-time setup · ~3 minutes</p>
-          <h2 className="text-3xl sm:text-4xl font-bold text-neutral-950 leading-tight">
-            Tell us about<br />your business<span className="text-primary-300">.</span>
-          </h2>
-          <p className="text-neutral-600 text-sm sm:text-base mt-3 max-w-md leading-relaxed">
-            We only ask what the tools need. Edit anytime from the header.
+    <div
+      ref={topRef}
+      className="relative min-h-[min(100vh,1200px)] border-b border-white/[0.06] bg-[#07070b] text-white [color-scheme:dark]"
+    >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_85%_55%_at_50%_-15%,rgba(124,58,237,0.22),transparent_55%),radial-gradient(ellipse_50%_45%_at_100%_0%,rgba(196,181,253,0.08),transparent_50%)]"
+      />
+      <div className="relative max-w-2xl mx-auto px-4 sm:px-6 py-10 sm:py-14 pb-28 sm:pb-14">
+        <header className="text-center mb-10 sm:mb-12">
+          <div className="flex justify-center mb-4">
+            <LogoWordmark size="lg" variant="light" />
+          </div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary-300 mb-2">
+            {isEdit ? 'Edit profile' : 'Get started'}
           </p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight text-balance">
+            {isEdit ? 'Update your business profile' : 'Tell us about your business'}
+          </h1>
+          <p className="mt-3 text-sm sm:text-base text-neutral-400 max-w-md mx-auto leading-relaxed">
+            {isEdit
+              ? 'Changes apply to your workspace, generators, and advisor immediately. Saved on this device only.'
+              : 'Rough answers are fine — you can refine anything later. About three minutes.'}
+          </p>
+        </header>
+
+        <div className="mb-8" role="navigation" aria-label="Form progress">
+          <div className="h-1.5 rounded-full bg-white/[0.08] overflow-hidden mb-6">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-primary-500 to-primary-400 transition-[width] duration-500 ease-out shadow-[0_0_12px_rgba(167,139,250,0.35)]"
+              style={{ width: `${((currentStep - 1) / 2) * 100}%` }}
+            />
+          </div>
+          <ol className="flex justify-between gap-2">
+            {STEPS.map(({ n, title, hint, icon: Icon }) => {
+              const done = currentStep > n;
+              const active = currentStep === n;
+              const canClick =
+                n === 1 ||
+                (n === 2 && canProceedToStep2) ||
+                (n === 3 && canProceedToStep3);
+              return (
+                <li key={n} className="flex-1 min-w-0">
+                  <button
+                    type="button"
+                    disabled={!canClick}
+                    onClick={() => canClick && setCurrentStep(n)}
+                    className={`w-full flex flex-col items-center text-center gap-1.5 rounded-xl px-2 py-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070b] ${
+                      active
+                        ? 'bg-white/[0.08] shadow-panel ring-1 ring-white/[0.12]'
+                        : done
+                          ? 'hover:bg-white/[0.05]'
+                          : 'opacity-55 hover:opacity-90'
+                    } ${!canClick ? 'cursor-not-allowed opacity-35' : ''}`}
+                    aria-current={active ? 'step' : undefined}
+                  >
+                    <span
+                      className={`flex h-9 w-9 items-center justify-center rounded-full border-2 text-sm font-bold ${
+                        done
+                          ? 'border-primary-400/50 bg-primary-500/20 text-primary-200'
+                          : active
+                            ? 'border-primary-300 bg-primary-600/30 text-white'
+                            : 'border-white/15 bg-white/[0.04] text-neutral-500'
+                      }`}
+                    >
+                      {done ? <CheckCircle2 className="h-4 w-4" aria-hidden /> : <Icon className="h-4 w-4" aria-hidden />}
+                    </span>
+                    <span className="text-[11px] sm:text-xs font-semibold text-neutral-100 leading-tight truncate w-full">
+                      {title}
+                    </span>
+                    <span className="text-[10px] text-neutral-500 leading-tight hidden sm:block">{hint}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+          {isEdit && canProceedToStep3 && currentStep !== 3 && (
+            <button
+              type="button"
+              onClick={goTryReview}
+              className="mt-4 w-full sm:w-auto mx-auto flex items-center justify-center gap-1.5 text-sm font-semibold text-primary-300 hover:text-primary-200 underline underline-offset-2 decoration-primary-500/50"
+            >
+              Jump to review <ChevronRight className="h-4 w-4" aria-hidden />
+            </button>
+          )}
         </div>
 
-        {/* Progress bar */}
-        <div className="flex items-center gap-0 mb-8 max-w-sm">
-          {[1, 2, 3].map((step) => (
-            <div key={step} className="flex items-center flex-1">
-              <button
-                type="button"
-                onClick={() => {
-                  if (step === 1) setCurrentStep(1);
-                  if (step === 2 && canProceedToStep2) setCurrentStep(2);
-                  if (step === 3 && canProceedToStep3) setCurrentStep(3);
-                }}
-                className={`w-9 h-9 rounded-xl border-2 flex items-center justify-center text-sm font-bold transition-all duration-200 ${
-                  currentStep === step
-                    ? 'bg-neutral-950 text-white border-neutral-950'
-                    : currentStep > step
-                    ? 'bg-primary-300 text-neutral-950 border-neutral-950'
-                    : 'bg-white text-neutral-400 border-neutral-300'
-                }`}
-                aria-label={`Step ${step}`}
-                aria-current={currentStep === step ? 'step' : undefined}
-              >
-                {currentStep > step ? (
-                  <CheckCircle2 size={16} strokeWidth={2.5} />
-                ) : (
-                  step
-                )}
-              </button>
-              {step < 3 && (
-                <div
-                  className={`flex-1 h-0.5 mx-1 transition-colors duration-200 ${
-                    currentStep > step ? 'bg-neutral-950' : 'bg-neutral-200'
-                  }`}
-                />
-              )}
-            </div>
-          ))}
-          <p className="ml-4 text-sm font-medium text-neutral-600 whitespace-nowrap" aria-live="polite">
-            {currentStep === 1 && 'Registration'}
-            {currentStep === 2 && 'Goals & funds'}
-            {currentStep === 3 && 'Review'}
-          </p>
-        </div>
+        <p className="text-sm text-neutral-400 mb-6" aria-live="polite">
+          Step {currentStep} of 3 · {STEPS[currentStep - 1]?.title}
+        </p>
 
-        <form onSubmit={handleSubmit}>
-          {/* Step 1: Business Basics */}
+        <form id={formId} onSubmit={handleSubmit} className="space-y-6">
           {currentStep === 1 && (
-            <Card variant="bordered" padding="lg" className="mb-6 border-2 border-neutral-950" style={{ boxShadow: '4px 4px 0 0 #0f0f0f' }}>
-              <CardHeader
-                title="Business basics"
-                subtitle="Registration-style details — takes 2 minutes"
-              />
-              <CardBody className="mt-6 space-y-5">
+            <section
+              aria-labelledby={`${formId}-step1-title`}
+              className={panelClass}
+            >
+              <h2 id={`${formId}-step1-title`} className="text-lg font-bold text-white">
+                Business basics
+              </h2>
+              <p className="text-sm text-neutral-400 mt-1 mb-6">
+                Registration-style details your tools use for Malaysian context.
+              </p>
+              <div className="space-y-5">
                 <FormField
-                  label="Company Name"
+                  id={`${formId}-company`}
+                  label="Company name"
                   required
                   error={errors.companyName}
-                  helper="Your registered or trading business name"
+                  helper="Registered or trading name"
                 >
                   <input
+                    id={`${formId}-company`}
                     type="text"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     placeholder="e.g. Warung Maju Sdn Bhd"
+                    autoComplete="organization"
                     className={inputClass(errors.companyName)}
                   />
                 </FormField>
-
                 <FormField
-                  label="Industry or Niche"
+                  id={`${formId}-industry`}
+                  label="Industry or niche"
                   required
                   error={errors.industry}
-                  helper="The sector your business operates in"
+                  helper="Sector or focus area"
                 >
                   <input
+                    id={`${formId}-industry`}
                     type="text"
                     value={industry}
                     onChange={(e) => setIndustry(e.target.value)}
-                    placeholder="e.g. F&B, e-commerce, IT consulting"
+                    placeholder="e.g. F&B, e-commerce, retail"
                     className={inputClass(errors.industry)}
                   />
                 </FormField>
-
                 <FormField
-                  label="City or State"
+                  id={`${formId}-city`}
+                  label="City or state"
                   required
                   error={errors.city}
-                  helper="Your primary operating location in Malaysia"
+                  helper="Primary operating location"
                 >
                   <input
+                    id={`${formId}-city`}
                     type="text"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
-                    placeholder="e.g. Kuala Lumpur, Penang, Johor Bahru"
+                    placeholder="e.g. Kuala Lumpur, Johor Bahru"
+                    autoComplete="address-level2"
                     className={inputClass(errors.city)}
                   />
                 </FormField>
-
-                <div className="grid md:grid-cols-2 gap-5">
+                <div className="grid sm:grid-cols-2 gap-5">
                   <FormField
-                    label="Business Stage"
+                    id={`${formId}-stage`}
+                    label="Business stage"
                     required
                     error={errors.businessStage}
                   >
                     <select
+                      id={`${formId}-stage`}
                       value={businessStage}
                       onChange={(e) => setBusinessStage(e.target.value as BusinessStage)}
                       className={inputClass(errors.businessStage)}
                     >
-                      <option value="">Select stage...</option>
+                      <option value="">Select stage…</option>
                       {BUSINESS_STAGE_OPTIONS.map((opt) => (
                         <option key={opt} value={opt}>
                           {opt}
@@ -234,19 +325,20 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
                       ))}
                     </select>
                   </FormField>
-
                   <FormField
+                    id={`${formId}-type`}
                     label="Business type"
                     required
                     error={errors.businessType}
-                    helper="How you’re registered (e.g. enterprise, Sdn Bhd, sole prop)"
+                    helper="SSM / structure"
                   >
                     <select
+                      id={`${formId}-type`}
                       value={businessType}
                       onChange={(e) => setBusinessType(e.target.value as BusinessType)}
                       className={inputClass(errors.businessType)}
                     >
-                      <option value="">Select type...</option>
+                      <option value="">Select type…</option>
                       {BUSINESS_TYPE_OPTIONS.map((opt) => (
                         <option key={opt} value={opt}>
                           {opt}
@@ -255,79 +347,84 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
                     </select>
                   </FormField>
                 </div>
-              </CardBody>
-              <div className="mt-6 flex justify-end">
+              </div>
+              <div className="mt-8 hidden sm:flex justify-end">
                 <Button
                   type="button"
                   onClick={() => setCurrentStep(2)}
                   disabled={!canProceedToStep2}
-                  rightIcon={
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                    </svg>
-                  }
+                  className={btnPrimaryDark}
+                  rightIcon={<ChevronRight className="w-5 h-5" aria-hidden />}
                 >
-                  Continue to Goals
+                  Continue
                 </Button>
               </div>
-            </Card>
+            </section>
           )}
 
-          {/* Step 2: Your Goals */}
           {currentStep === 2 && (
-            <Card variant="bordered" padding="lg" className="mb-6 border-2 border-neutral-950" style={{ boxShadow: '4px 4px 0 0 #0f0f0f' }}>
-              <CardHeader
-                title="Goals & Funds"
-                subtitle="Targets and available capital"
-              />
-              <CardBody className="mt-6 space-y-5">
+            <section
+              aria-labelledby={`${formId}-step2-title`}
+              className={panelClass}
+            >
+              <h2 id={`${formId}-step2-title`} className="text-lg font-bold text-white">
+                Goals & funds
+              </h2>
+              <p className="text-sm text-neutral-400 mt-1 mb-6">
+                Used for pricing, marketing, and money tools — all in RM.
+              </p>
+              <div className="space-y-5">
                 <FormField
-                  label="Target Customer"
+                  id={`${formId}-audience`}
+                  label="Target customer"
                   required
                   error={errors.targetCustomer}
-                  helper="Describe your ideal customer"
+                  helper="Who buys from you?"
                 >
                   <input
+                    id={`${formId}-audience`}
                     type="text"
                     value={targetCustomer}
                     onChange={(e) => setTargetCustomer(e.target.value)}
-                    placeholder="e.g. Young urban professionals aged 25–35"
+                    placeholder="e.g. Office workers nearby, families, B2B buyers"
                     className={inputClass(errors.targetCustomer)}
                   />
                 </FormField>
-
                 <FormField
-                  label="Main Business Goal"
+                  id={`${formId}-goal`}
+                  label="Main business goal"
                   error={errors.mainGoal}
-                  helper="Optional: Your primary objective"
+                  helper="Optional — helps the advisor prioritise"
                 >
                   <input
+                    id={`${formId}-goal`}
                     type="text"
                     value={mainGoal}
                     onChange={(e) => setMainGoal(e.target.value)}
-                    placeholder="e.g. Reach RM 50,000 monthly revenue within 12 months"
+                    placeholder="e.g. Stabilise cash flow in the next 6 months"
                     className={inputClass(errors.mainGoal)}
                   />
                 </FormField>
-
                 <FormField
-                  label="Current Funds (RM)"
+                  id={`${formId}-funds`}
+                  label="Current funds (RM)"
                   required
                   error={errors.currentFunds}
-                  helper="Total capital available to invest"
+                  helper="Capital you can deploy (estimate is OK)"
                 >
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-neutral-500 pointer-events-none">
                       RM
                     </span>
                     <input
+                      id={`${formId}-funds`}
                       type="number"
                       value={currentFunds}
                       onChange={(e) => setCurrentFunds(Number(e.target.value))}
                       min={1000}
                       max={999999999}
                       step={1000}
-                      className={`${inputClass(errors.currentFunds)} pl-12`}
+                      className={`${inputClass(errors.currentFunds)} pl-[2.75rem] tabular-nums`}
                     />
                   </div>
                   <input
@@ -337,110 +434,158 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
                     min={1000}
                     max={500000}
                     step={1000}
-                    className="w-full mt-2"
+                    aria-label="Adjust amount roughly"
+                    className="wizard-range mt-3 w-full h-2 rounded-full appearance-none cursor-pointer bg-white/10 accent-primary-400"
                   />
-                  <div className="flex justify-between text-xs text-neutral-500 mt-1">
-                    <span>RM 1,000</span>
-                    <span>RM {currentFunds.toLocaleString()}</span>
-                    <span>RM 500,000+</span>
+                  <div className="flex justify-between text-xs text-neutral-500 mt-2 tabular-nums">
+                    <span>RM 1k</span>
+                    <span className="font-semibold text-primary-200">RM {currentFunds.toLocaleString('en-MY')}</span>
+                    <span>RM 500k+</span>
                   </div>
                 </FormField>
-              </CardBody>
-              <div className="mt-6 flex justify-between">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setCurrentStep(1)}
-                >
+              </div>
+              <div className="mt-8 hidden sm:flex flex-col-reverse sm:flex-row sm:justify-between gap-3">
+                <Button type="button" variant="ghost" className={btnGhostDark} onClick={() => setCurrentStep(1)}>
                   Back
                 </Button>
                 <Button
                   type="button"
                   onClick={() => setCurrentStep(3)}
                   disabled={!canProceedToStep3}
-                  rightIcon={
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                    </svg>
-                  }
+                  className={btnPrimaryDark}
+                  rightIcon={<ChevronRight className="w-5 h-5" aria-hidden />}
                 >
-                  Review & Generate
+                  Review
                 </Button>
               </div>
-            </Card>
+            </section>
           )}
 
-          {/* Step 3: Review & Generate */}
           {currentStep === 3 && (
-            <Card variant="bordered" padding="lg" className="mb-6 border-2 border-neutral-950" style={{ boxShadow: '4px 4px 0 0 #0f0f0f' }}>
-              <CardHeader
-                title="Review & continue"
-                subtitle="Check your details — you can edit anytime"
-              />
-              <CardBody className="mt-6">
-                <div className="bg-neutral-50 rounded-xl border-2 border-neutral-200 p-6 space-y-4">
-                  <ReviewItem label="Company" value={companyName} icon={<Building2 size={18} />} />
-                  <ReviewItem label="Industry" value={industry} />
-                  <ReviewItem label="Location" value={city} />
-                  <ReviewItem label="Stage" value={businessStage} />
-                  <ReviewItem label="Type" value={businessType} />
-                  <ReviewItem label="Target Customer" value={targetCustomer} icon={<Target size={18} />} />
-                  {mainGoal && <ReviewItem label="Goal" value={mainGoal} />}
-                  <ReviewItem label="Funds" value={`RM ${currentFunds.toLocaleString()}`} />
-                </div>
-              </CardBody>
-              <div className="mt-6 flex justify-between">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setCurrentStep(2)}
-                >
+            <section
+              aria-labelledby={`${formId}-step3-title`}
+              className={panelClass}
+            >
+              <h2 id={`${formId}-step3-title`} className="text-lg font-bold text-white">
+                Review
+              </h2>
+              <p className="text-sm text-neutral-400 mt-1 mb-6">
+                {isEdit ? 'Tap edit on any row to change it.' : 'Double-check once — you can edit anytime later.'}
+              </p>
+              <ul className="rounded-xl border border-white/[0.08] divide-y divide-white/[0.06] bg-white/[0.03] overflow-hidden">
+                <ReviewRow
+                  label="Company"
+                  value={companyName}
+                  onEdit={() => setCurrentStep(1)}
+                  icon={<Building2 className="h-4 w-4" />}
+                />
+                <ReviewRow label="Industry" value={industry} onEdit={() => setCurrentStep(1)} />
+                <ReviewRow label="Location" value={city} onEdit={() => setCurrentStep(1)} />
+                <ReviewRow label="Stage" value={businessStage} onEdit={() => setCurrentStep(1)} />
+                <ReviewRow label="Type" value={businessType} onEdit={() => setCurrentStep(1)} />
+                <ReviewRow
+                  label="Target customer"
+                  value={targetCustomer}
+                  onEdit={() => setCurrentStep(2)}
+                  icon={<Target className="h-4 w-4" />}
+                />
+                {mainGoal ? (
+                  <ReviewRow label="Goal" value={mainGoal} onEdit={() => setCurrentStep(2)} />
+                ) : null}
+                <ReviewRow
+                  label="Funds"
+                  value={`RM ${currentFunds.toLocaleString('en-MY')}`}
+                  onEdit={() => setCurrentStep(2)}
+                />
+              </ul>
+              <div className="mt-8 flex flex-col-reverse sm:flex-row sm:justify-between gap-3">
+                <Button type="button" variant="ghost" className={btnGhostDark} onClick={() => setCurrentStep(2)}>
                   Back
                 </Button>
                 <Button
                   type="submit"
                   size="lg"
+                  variant="primary"
+                  className={btnPrimaryDark}
                   isLoading={isSubmitting}
                   rightIcon={
-                    !isSubmitting && (
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                    )
+                    !isSubmitting ? <ChevronRight className="w-5 h-5" aria-hidden /> : undefined
                   }
                 >
-                  Generate My Business Guidance
+                  {isEdit ? 'Save & return to workspace' : 'Generate my business guidance'}
                 </Button>
               </div>
-            </Card>
+            </section>
           )}
         </form>
       </div>
-    </section>
+
+      {/* Mobile sticky action — only when step has primary forward action */}
+      {currentStep < 3 && (
+        <div className="sm:hidden fixed bottom-0 inset-x-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-[#07070b]/95 backdrop-blur-xl border-t border-white/[0.08] z-20">
+          {currentStep === 1 && (
+            <Button
+              type="button"
+              fullWidth
+              onClick={() => setCurrentStep(2)}
+              disabled={!canProceedToStep2}
+              className={btnPrimaryDark}
+              rightIcon={<ChevronRight className="w-5 h-5" aria-hidden />}
+            >
+              Continue
+            </Button>
+          )}
+          {currentStep === 2 && (
+            <div className="flex gap-2">
+              <Button type="button" variant="ghost" className={`flex-1 shrink-0 ${btnGhostDark}`} onClick={() => setCurrentStep(1)}>
+                Back
+              </Button>
+              <Button
+                type="button"
+                className={`flex-[2] min-w-0 ${btnPrimaryDark}`}
+                onClick={() => setCurrentStep(3)}
+                disabled={!canProceedToStep3}
+                rightIcon={<ChevronRight className="w-5 h-5" aria-hidden />}
+              >
+                Review
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
-// ── Helper Components ──
-
-interface FormFieldProps {
+function FormField({
+  id,
+  label,
+  required,
+  error,
+  helper,
+  children,
+}: {
+  id: string;
   label: string;
   required?: boolean;
   error?: string;
   helper?: string;
   children: React.ReactNode;
-}
-
-function FormField({ label, required, error, helper, children }: FormFieldProps) {
+}) {
   return (
     <div>
-      <label className="block text-sm font-semibold text-neutral-900 mb-1.5">
+      <label htmlFor={id} className="block text-sm font-semibold text-neutral-200 mb-1.5">
         {label}
-        {required && <span className="text-error-600 ml-1">*</span>}
+        {required && (
+          <span className="text-primary-300 ml-0.5" aria-hidden>
+            *
+          </span>
+        )}
       </label>
       {helper && <p className="text-xs text-neutral-500 mb-2">{helper}</p>}
       {children}
       {error && (
-        <p className="mt-1.5 text-xs text-error-600" role="alert">
+        <p className="mt-1.5 text-sm text-red-400" role="alert">
           {error}
         </p>
       )}
@@ -448,30 +593,40 @@ function FormField({ label, required, error, helper, children }: FormFieldProps)
   );
 }
 
-interface ReviewItemProps {
+function ReviewRow({
+  label,
+  value,
+  icon,
+  onEdit,
+}: {
   label: string;
   value: string;
   icon?: React.ReactNode;
-}
-
-function ReviewItem({ label, value, icon }: ReviewItemProps) {
+  onEdit: () => void;
+}) {
   return (
-    <div className="flex items-start gap-3">
-      {icon && <div className="text-primary-600 mt-0.5">{icon}</div>}
+    <li className="flex items-start gap-3 px-4 py-3.5 bg-white/[0.02]">
+      {icon && <span className="mt-0.5 text-primary-300 shrink-0">{icon}</span>}
       <div className="flex-1 min-w-0">
-        <div className="text-xs font-medium text-neutral-500 uppercase tracking-wide">
-          {label}
-        </div>
-        <div className="text-sm font-medium text-neutral-900 mt-0.5">{value}</div>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">{label}</p>
+        <p className="text-sm font-medium text-neutral-100 mt-0.5 break-words">{value || '—'}</p>
       </div>
-    </div>
+      <button
+        type="button"
+        onClick={onEdit}
+        className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-primary-300 hover:text-primary-200 px-2 py-1 rounded-lg hover:bg-white/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+      >
+        <Pencil className="h-3.5 w-3.5" aria-hidden />
+        Edit
+      </button>
+    </li>
   );
 }
 
 function inputClass(error?: string) {
-  return `w-full px-4 py-2.5 rounded-xl border ${
+  return `w-full px-3.5 py-2.5 rounded-xl border text-sm transition-shadow duration-150 bg-white/[0.06] text-white placeholder:text-neutral-500 ${
     error
-      ? 'border-error-300 focus:border-error-500 focus:ring-error-500'
-      : 'border-neutral-300 focus:border-primary-500 focus:ring-primary-500'
-  } bg-white text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-offset-0 transition-colors duration-200`;
+      ? '!border-red-500/70 focus:!border-red-400 focus:ring-2 focus:ring-red-500/25'
+      : 'border-white/[0.12] focus:border-primary-400 focus:ring-2 focus:ring-primary-500/25 hover:border-white/20'
+  } focus:outline-none`;
 }

@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Section anchor offset so scroll-to-id never hides under the sticky header ── */
+section[id] {
+  scroll-margin-top: calc(var(--header-h, 64px) + 12px);
+}
+
+/* ── Dark scrollbar — landing + workspace (see App.tsx `.app-deep-scrollbar` on <html>) ── */
+html.app-deep-scrollbar ::-webkit-scrollbar-track { background: #0a0a0a; }
+html.app-deep-scrollbar ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 9999px; }
+html.app-deep-scrollbar ::-webkit-scrollbar-thumb:hover { background: #a78bfa; }
+
 /* ── Brand design tokens ──────────────────────────────────────────────────── */
 :root {
   --brand-ink:      #0f0f0f;
@@ -22,7 +32,42 @@
     background-color: var(--brand-bg);
     color: var(--brand-ink);
     font-family: Inter, system-ui, sans-serif;
+    text-rendering: optimizeLegibility;
+    line-height: 1.55;
     @apply antialiased;
+  }
+
+  /* Skip navigation — WCAG (“skip to content”) */
+  .skip-link {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    border: 0;
+    word-wrap: normal;
+  }
+  .skip-link:focus {
+    position: fixed;
+    inset: auto;
+    width: auto;
+    height: auto;
+    margin: 0;
+    clip-path: none;
+    overflow: visible;
+    z-index: 100;
+    padding: 0.75rem 1rem;
+    top: 0.75rem;
+    left: 0.75rem;
+    background: var(--brand-ink);
+    color: #fff;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border-radius: 0.75rem;
+    outline: 2px solid var(--brand-lavender);
+    outline-offset: 2px;
   }
 
   /* Scrollbar */
@@ -55,6 +100,14 @@
   /* ── Bento card base ── */
   .bento-card {
     @apply bg-white border border-neutral-200 rounded-2xl overflow-hidden;
+  }
+
+  /* Light data card on dark workspace (Metrica / finance dashboard) */
+  .surface-widget {
+    @apply bg-white rounded-2xl border border-neutral-200/90;
+    box-shadow:
+      0 4px 28px -6px rgba(0, 0, 0, 0.42),
+      0 0 0 1px rgba(255, 255, 255, 0.04);
   }
 
   /* Editorial "hard shadow" card */
