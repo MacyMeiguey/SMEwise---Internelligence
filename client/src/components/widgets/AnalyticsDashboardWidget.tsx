@@ -12,6 +12,7 @@ import { useState, useCallback, useEffect } from "react";
 import type { BusinessProfile } from "../../types";
 import { useWidgetState } from "../../hooks/useWidgetState";
 import WidgetCard from "../WidgetCard";
+import { API_BASE } from "../../lib/api";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -36,7 +37,7 @@ export default function AnalyticsDashboardWidget({
         `pie chart showing expense breakdown, KPI cards. ` +
         `Dark background with purple/blue accent colours, clean modern UI design, professional data visualisation.`;
 
-      const res = await fetch("http://localhost:3001/api/nova/image", {
+      const res = await fetch(`${API_BASE}/api/nova/image`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, width: 1024, height: 768 }),

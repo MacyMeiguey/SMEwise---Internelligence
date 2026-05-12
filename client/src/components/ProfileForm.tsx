@@ -43,6 +43,8 @@ const FIELD_TOOLTIPS: Record<keyof BusinessProfile, string> = {
     "How far along your business is. SMEwise adjusts registration steps, risk analysis, and financial projections based on your stage.",
   businessType:
     "Your legal business structure in Malaysia. Determines applicable SSM registration requirements, tax obligations, and funding eligibility.",
+  fundAllocation:
+    "Optional breakdown of how you plan to allocate your funds across business categories.",
 };
 
 // ─── Tooltip Icon ─────────────────────────────────────────────────────────────

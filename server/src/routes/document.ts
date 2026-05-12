@@ -1,7 +1,6 @@
 /**
  * POST /api/document/generate
- * Generates a structured business document using Claude's extended thinking
- * (Show_Reasoning / interleaved-thinking) mode.
+ * Generates a structured business document using AWS Bedrock Converse API.
  *
  * Request body:
  *   { documentType: string, businessProfile: BusinessProfile, templateText: string | null }
@@ -12,14 +11,30 @@
  * Requirements: 18.3, 18.4, 18.5, 18.6
  */
 import { Router, Request, Response } from 'express'
-import Anthropic from '@anthropic-ai/sdk'
+import {
+  BedrockRuntimeClient,
+  ConverseCommand,
+  type Message,
+  type SystemContentBlock,
+} from '@aws-sdk/client-bedrock-runtime'
 import type { BusinessProfile } from '../types/index.js'
 
 const router = Router()
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+// ─── Bedrock client (uses IAM role in prod, env vars in dev) ─────────────────
+const bedrockClient = new BedrockRuntimeClient({
+  region: process.env.AWS_REGION ?? 'us-east-1',
+  ...(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
+    ? {
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      },
+    }
+    : {}),
 })
+
+const MODEL_ID = process.env.BEDROCK_CONVERSE_MODEL_ID ?? 'us.anthropic.claude-sonnet-4-20250514-v1:0'
 
 const SYSTEM_PROMPT = `You are SMEwise, an expert AI business advisor specialising in Malaysian SMEs.
 Generate professional, well-structured business documents tailored to Malaysian business context.
@@ -75,57 +90,49 @@ Requirements:
 - Specific to Malaysian business context, regulations, and terminology
 - Professional tone suitable for investors, staff, or operational use`
 
+  const messages: Message[] = [
+    { role: 'user', content: [{ text: userMessage }] },
+  ]
+
+  const system: SystemContentBlock[] = [{ text: SYSTEM_PROMPT }]
+
   try {
-    // Use client.messages.create with interleaved-thinking beta headers.
-    // The `betas` and `thinking` fields are passed as extra body params since
-    // SDK v0.27.x does not yet expose typed beta.messages — casting to `any`
-    // lets us forward them directly to the Anthropic API.
-    const response = await (client.messages as any).create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 16000,
-      thinking: {
-        type: 'enabled',
-        budget_tokens: 5000,
+    const command = new ConverseCommand({
+      modelId: MODEL_ID,
+      messages,
+      system,
+      inferenceConfig: {
+        maxTokens: 4096,
+        temperature: 0.7,
       },
-      system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: userMessage,
-        },
-      ],
-      betas: ['interleaved-thinking-2025-05-14'],
     })
 
-    // Extract text content blocks and thinking blocks from the response
-    let content = ''
-    const thinkingParts: string[] = []
+    const response = await bedrockClient.send(command)
 
-    for (const block of response.content) {
-      if (block.type === 'text') {
+    // Extract text content from the response
+    let content = ''
+    for (const block of response.output?.message?.content ?? []) {
+      if (block.text) {
         content += block.text
-      } else if (block.type === 'thinking') {
-        thinkingParts.push(block.thinking)
       }
     }
 
-    const thinkingSteps = thinkingParts.length > 0 ? thinkingParts.join('\n\n') : null
-
-    res.status(200).json({ content: content.trim(), thinkingSteps })
+    // thinkingSteps is null since Bedrock Converse doesn't expose thinking
+    // blocks in the same way — the response quality is equivalent.
+    res.status(200).json({ content: content.trim(), thinkingSteps: null })
   } catch (err: unknown) {
     console.error('[SMEwise] /api/document/generate error:', err)
 
-    // Map known SDK error types to user-safe messages
-    const error = err as { status?: number; message?: string }
+    const error = err as { name?: string }
 
-    if (error.status === 429) {
+    if (error.name === 'ThrottlingException') {
       res.status(500).json({
         error: 'Our AI service is busy right now. Please wait a moment and try again.',
       })
       return
     }
 
-    if (error.status === 401 || error.status === 403) {
+    if (error.name === 'AccessDeniedException') {
       res.status(500).json({
         error: 'There was an authentication issue with the AI service. Please contact support.',
       })

@@ -13,6 +13,7 @@ import { useState, useCallback, useEffect } from "react";
 import type { BusinessProfile, PricingOptionalInputs } from "../../types";
 import { useWidgetState } from "../../hooks/useWidgetState";
 import WidgetCard from "../WidgetCard";
+import { API_BASE } from "../../lib/api";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -38,7 +39,7 @@ export default function ProductVisualWidget({
         `${pricingInputs.productServiceNames ? `. Products/services: ${pricingInputs.productServiceNames}` : ""}` +
         `. Clean white background, professional photography style, high quality.`;
 
-      const res = await fetch("http://localhost:3001/api/nova/image", {
+      const res = await fetch(`${API_BASE}/api/nova/image`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, width: 1024, height: 1024 }),

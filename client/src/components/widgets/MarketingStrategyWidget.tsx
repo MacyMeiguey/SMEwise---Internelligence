@@ -14,6 +14,7 @@ import type { BusinessProfile } from "../../types";
 import { useWidgetState } from "../../hooks/useWidgetState";
 import WidgetCard from "../WidgetCard";
 import MarketingPlan, { type MarketingPlan as MarketingPlanData } from "./MarketingPlan";
+import { API_BASE } from "../../lib/api";
 
 // ─── API call ─────────────────────────────────────────────────────────────────
 
@@ -36,7 +37,7 @@ async function fetchMarketingPlan(profile: BusinessProfile): Promise<string> {
   console.table(payload);                        // neat table in DevTools
   console.log("Raw JSON:", JSON.stringify(payload, null, 2));
 
-  const res = await fetch("http://localhost:3001/api/bedrock/marketing", {
+  const res = await fetch(`${API_BASE}/api/bedrock/marketing`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

@@ -1,6 +1,6 @@
 # SMEwise — AI Business Assistant for Malaysian SMEs
 
-SMEwise is an AI-powered web application that provides personalised business guidance to Malaysian SME founders. It uses Anthropic Claude for text generation and Amazon Nova Canvas (via AWS Bedrock) for image and chart generation.
+SMEwise is an AI-powered web application that provides personalised business guidance to Malaysian SME founders. It uses AWS Bedrock (Claude via Converse API for text generation, Nova Canvas for image generation, and Bedrock Agents for marketing plans).
 
 ---
 
@@ -35,8 +35,7 @@ SMEwise/
 
 - **Node.js** v18 or later
 - **npm** v8 or later
-- An **Anthropic API key** (for Claude)
-- **AWS credentials** with Bedrock access (for Nova Canvas)
+- **AWS credentials** with Bedrock access (for Claude Converse, Nova Canvas, and Bedrock Agents)
 
 ---
 
@@ -58,7 +57,6 @@ cp .env.example .env
 Edit `.env` and fill in your API keys:
 
 ```env
-ANTHROPIC_API_KEY=sk-ant-...
 AWS_ACCESS_KEY_ID=AKIA...
 AWS_SECRET_ACCESS_KEY=...
 AWS_REGION=us-east-1
@@ -127,8 +125,9 @@ npm run build
 |----------|-------------------------------------------------|
 | Frontend | React 18, Vite, TypeScript, Tailwind CSS        |
 | Backend  | Node.js, Express, TypeScript                    |
-| AI Text  | Anthropic Claude (`claude-sonnet-4-20250514`)   |
+| AI Text  | AWS Bedrock Converse API (Claude Sonnet 4)      |
 | AI Image | Amazon Nova Canvas via AWS Bedrock              |
+| AI Agent | AWS Bedrock Agents (Marketing Plan)             |
 | Testing  | Vitest, Testing Library, fast-check (PBT)       |
 
 ---
@@ -147,9 +146,11 @@ SMEwise uses a dark theme with purple/violet accents:
 
 | Variable               | Description                                      |
 |------------------------|--------------------------------------------------|
-| `ANTHROPIC_API_KEY`    | Anthropic API key for Claude                     |
 | `AWS_ACCESS_KEY_ID`    | AWS access key ID for Bedrock                    |
 | `AWS_SECRET_ACCESS_KEY`| AWS secret access key for Bedrock                |
 | `AWS_REGION`           | AWS region (e.g., `us-east-1`)                   |
+| `BEDROCK_CONVERSE_MODEL_ID` | Optional: override the Converse model       |
+| `BEDROCK_AGENT_ID`     | Bedrock Agent ID for marketing plans             |
+| `BEDROCK_AGENT_ALIAS_ID` | Bedrock Agent Alias ID                         |
 | `PORT`                 | Server port (optional, defaults to `3001`)       |
 | `NODE_ENV`             | Environment (`development` or `production`)      |

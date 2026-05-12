@@ -8,6 +8,9 @@
  *
  *   The agent is expected to return a single JSON object that matches the
  *   MarketingPlan schema consumed by the client-side MarketingPlan component.
+ *
+ *   If the agent does not return valid JSON, the request is retried up to
+ *   5 times before returning an error.
  */
 
 import { Router, Request, Response } from 'express'
@@ -20,14 +23,73 @@ const router = Router()
 
 const client = new BedrockAgentRuntimeClient({
     region: process.env.AWS_REGION ?? 'ap-southeast-1',
-    credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? '',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? '',
-    },
+    // In production (App Runner / ECS / EC2) credentials come from the
+    // attached IAM role via the default credential provider chain.
+    // In local dev we fall back to env vars loaded from .env.
+    ...(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
+        ? {
+            credentials: {
+                accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+                secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+            },
+        }
+        : {}),
 })
 
-const AGENT_ID = process.env.BEDROCK_AGENT_ID ?? 'HOG3CDST5J'
-const AGENT_ALIAS_ID = process.env.BEDROCK_AGENT_ALIAS_ID ?? 'UBOYDO9UHN'
+const MAX_RETRIES = 5
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Strip markdown code fences and extract the JSON object from a raw string.
+ * Returns the cleaned string (may or may not be valid JSON).
+ */
+function extractJsonString(raw: string): string {
+    let cleaned = raw.trim()
+
+    // Remove markdown code fences if present
+    if (cleaned.startsWith('```')) {
+        cleaned = cleaned
+            .replace(/^```(?:json)?\n?/i, '')
+            .replace(/\n?```$/, '')
+            .trim()
+    }
+
+    // Try to isolate the first { ... } block if there's surrounding text
+    const start = cleaned.indexOf('{')
+    const end = cleaned.lastIndexOf('}')
+    if (start !== -1 && end !== -1 && end > start) {
+        cleaned = cleaned.slice(start, end + 1)
+    }
+
+    return cleaned
+}
+
+/**
+ * Invoke the Bedrock agent and return the raw response string.
+ */
+async function invokeAgent(inputText: string, sessionId: string): Promise<string> {
+    const AGENT_ID = process.env.BEDROCK_AGENT_ID ?? 'HOG3CDST5J'
+    const AGENT_ALIAS_ID = process.env.BEDROCK_AGENT_ALIAS_ID ?? 'UBOYDO9UHN'
+
+    const command = new InvokeAgentCommand({
+        agentId: AGENT_ID,
+        agentAliasId: AGENT_ALIAS_ID,
+        sessionId,
+        inputText,
+    })
+
+    const agentResponse = await client.send(command)
+
+    let raw = ''
+    for await (const chunk of agentResponse.completion ?? []) {
+        if (chunk.chunk?.bytes) {
+            raw += new TextDecoder().decode(chunk.chunk.bytes)
+        }
+    }
+
+    return raw
+}
 
 // ─── POST /api/bedrock/marketing ─────────────────────────────────────────────
 
@@ -60,13 +122,12 @@ router.post('/marketing', async (req: Request, res: Response) => {
     }
 
     // ─── Derive marketing budget from fund allocation ─────────────────────────
-    // fundAllocation is a string like "20%" or "20% for marketing"
-    // Extract the numeric percentage; fall back to 20% if unparseable
     const pctMatch = fundAllocation?.match(/(\d+(\.\d+)?)/)
     const marketingPct = pctMatch ? parseFloat(pctMatch[1]) : 20
 
-    const fundAllocationLine = fundAllocation
-        ?? `${marketingPct}% of current funds (RM ${Number(currentFunds).toLocaleString('en-MY')}) allocated to marketing`
+    const fundAllocationLine =
+        fundAllocation ??
+        `${marketingPct}% of current funds (RM ${Number(currentFunds).toLocaleString('en-MY')}) allocated to marketing`
 
     const inputText = [
         `Company: ${companyName}`,
@@ -82,65 +143,55 @@ router.post('/marketing', async (req: Request, res: Response) => {
         .filter(Boolean)
         .join('\n')
 
-    console.log("=== inputText sent to Bedrock agent ===\n", inputText)
-    // Use a unique session per request so conversations don't bleed into each other
-    const sessionId = `marketing-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    console.log('=== inputText sent to Bedrock agent ===\n', inputText)
 
-    const command = new InvokeAgentCommand({
-        agentId: AGENT_ID,
-        agentAliasId: AGENT_ALIAS_ID,
-        sessionId,
-        inputText,
-    })
+    // ─── Retry loop: keep invoking until we get valid JSON (max 5 attempts) ──
+    let lastRaw = ''
 
-    try {
-        const agentResponse = await client.send(command)
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        // Use a unique session per attempt so conversations don't bleed
+        const sessionId = `marketing-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
-        // Collect all streamed chunks into one string
-        let raw = ''
-        for await (const chunk of agentResponse.completion ?? []) {
-            if (chunk.chunk?.bytes) {
-                const decoded = new TextDecoder().decode(chunk.chunk.bytes)
-                console.log('[Bedrock] chunk received:', decoded)
-                raw += decoded
-            }
-        }
-
-        // ─── Debug: inspect the full raw response ────────────────────────────
-        console.log('=== Bedrock raw response (full) ===')
-        console.log(raw)
-        console.log('=== Bedrock raw response length:', raw.length, 'chars ===')
-
-        let cleanRaw = raw.trim();
-        if (cleanRaw.startsWith('```')) {
-            cleanRaw = cleanRaw
-                .replace(/^```(?:json)?\n?/i, '') // Remove starting ```json or ```
-                .replace(/\n?```$/, '')           // Remove ending ```
-                .trim();
-        }
-
-        // 2. Try to parse the cleaned string as JSON
         try {
-            const parsed = JSON.parse(cleanRaw);
-            console.log('=== Bedrock response parsed as JSON ===');
-            
-            // Optional: If you want to send the cleaned JSON back to the client
-            // instead of the raw string, you can do:
-            // res.status(200).json({ content: parsed });
-            // return;
-        } catch (parseError) {
-            console.log('=== Bedrock response is NOT valid JSON (plain text or partial) ===');
-            console.error(parseError);
-        }
-        // ─────────────────────────────────────────────────────────────────────
+            const raw = await invokeAgent(inputText, sessionId)
+            lastRaw = raw
 
-        res.status(200).json({ content: raw })
-    } catch (err) {
-        console.error('[SMEwise] /api/bedrock/marketing error:', err)
-        res.status(500).json({
-            error: 'Something went wrong while generating the marketing plan. Please try again.',
-        })
+            console.log(`[Bedrock] Attempt ${attempt}/${MAX_RETRIES} — response length: ${raw.length} chars`)
+
+            const jsonString = extractJsonString(raw)
+
+            // Validate that it's parseable JSON
+            JSON.parse(jsonString)
+
+            // Success — return the raw response (client does its own extraction)
+            console.log(`[Bedrock] Attempt ${attempt} returned valid JSON`)
+            res.status(200).json({ content: raw })
+            return
+        } catch (err) {
+            // If it's a JSON parse error, retry
+            if (err instanceof SyntaxError) {
+                console.warn(
+                    `[Bedrock] Attempt ${attempt}/${MAX_RETRIES} did NOT return valid JSON. ` +
+                    (attempt < MAX_RETRIES ? 'Retrying...' : 'No retries left.'),
+                )
+                continue
+            }
+
+            // For any other error (network, SDK), fail immediately
+            console.error(`[SMEwise] /api/bedrock/marketing error on attempt ${attempt}:`, err)
+            res.status(500).json({
+                error: 'Something went wrong while generating the marketing plan. Please try again.',
+            })
+            return
+        }
     }
+
+    // All retries exhausted — return the last raw response anyway so the client
+    // can attempt to display whatever partial content was returned.
+    console.error(
+        `[Bedrock] All ${MAX_RETRIES} attempts failed to return valid JSON. Returning last raw response.`,
+    )
+    res.status(200).json({ content: lastRaw })
 })
 
 export default router

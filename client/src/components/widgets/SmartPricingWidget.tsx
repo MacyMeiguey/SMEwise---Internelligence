@@ -13,6 +13,7 @@ import { useState, useCallback, useEffect } from "react";
 import type { BusinessProfile, PricingOptionalInputs } from "../../types";
 import { useWidgetState } from "../../hooks/useWidgetState";
 import WidgetCard from "../WidgetCard";
+import { API_BASE } from "../../lib/api";
 
 // ─── System prompt ────────────────────────────────────────────────────────────
 
@@ -26,11 +27,11 @@ const SYSTEM_PROMPT =
 
 // ─── SSE streaming helper ─────────────────────────────────────────────────────
 
-async function streamClaude(
+async function streamBedrock(
   body: object,
   onChunk: (delta: string) => void
 ): Promise<void> {
-  const res = await fetch("http://localhost:3001/api/claude/stream", {
+  const res = await fetch(`${API_BASE}/api/bedrock/converse/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -86,11 +87,10 @@ export default function SmartPricingWidget({
         `${profile.mainGoal ? `. Business goal: ${profile.mainGoal}` : ""}` +
         `. Include: pricing table (cost, recommended price, margin, monthly target), strategy explanation, quick action plan, and revenue path to goal. All RM values. Maximum 300 words.`;
 
-      await streamClaude(
+      await streamBedrock(
         {
           systemPrompt: SYSTEM_PROMPT,
           userMessage,
-          tools: ["web_search"],
         },
         (delta) => setContent((prev) => prev + delta)
       );

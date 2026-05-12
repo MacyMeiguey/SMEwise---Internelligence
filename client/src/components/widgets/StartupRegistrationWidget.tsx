@@ -11,6 +11,7 @@ import { useState, useCallback, useEffect } from "react";
 import type { BusinessProfile } from "../../types";
 import { useWidgetState } from "../../hooks/useWidgetState";
 import WidgetCard from "../WidgetCard";
+import { API_BASE } from "../../lib/api";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -41,7 +42,7 @@ function buildUserMessage(profile: BusinessProfile): string {
 // ─── SSE streaming helper ─────────────────────────────────────────────────────
 
 /**
- * Calls POST /api/claude/stream with web_search enabled and streams the SSE
+ * Calls POST /api/bedrock/converse/stream with web_search enabled and streams the SSE
  * response, invoking `onChunk` for each text delta received.
  * Returns the fully accumulated text.
  */
@@ -49,13 +50,12 @@ async function streamRegistrationGuidance(
   profile: BusinessProfile,
   onChunk: (chunk: string) => void
 ): Promise<string> {
-  const response = await fetch("http://localhost:3001/api/claude/stream", {
+  const response = await fetch(`${API_BASE}/api/bedrock/converse/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       systemPrompt: SYSTEM_PROMPT,
       userMessage: buildUserMessage(profile),
-      tools: ["web_search"],
       maxTokens: 1024,
     }),
   });

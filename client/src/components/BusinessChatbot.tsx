@@ -9,6 +9,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { BusinessProfile, ChatMessage } from "../types";
+import { API_BASE } from "../lib/api";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -42,12 +43,12 @@ function generateId(): string {
 
 // ─── SSE streaming helper ─────────────────────────────────────────────────────
 
-async function streamClaude(
+async function streamBedrock(
   body: object,
   onChunk: (delta: string) => void,
   signal?: AbortSignal
 ): Promise<void> {
-  const res = await fetch("http://localhost:3001/api/claude/stream", {
+  const res = await fetch(`${API_BASE}/api/bedrock/converse/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -204,12 +205,11 @@ export default function BusinessChatbot({ profile }: BusinessChatbotProps) {
       try {
         let accumulated = "";
 
-        await streamClaude(
+        await streamBedrock(
           {
             systemPrompt: buildSystemPrompt(profile),
             userMessage: trimmed,
             temperature: 0.5,
-            tools: [],
           },
           (delta) => {
             accumulated += delta;

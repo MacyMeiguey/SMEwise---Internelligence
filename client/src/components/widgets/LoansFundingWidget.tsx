@@ -2,11 +2,11 @@
  * LoansFundingWidget — Financial Planning Section
  * Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 10.8, 10.9
  *
- * Makes TWO parallel streaming calls to POST /api/claude/stream:
+ * Makes TWO parallel streaming calls to POST /api/bedrock/converse/stream:
  *   1. Loan Guide — SME Bank, TEKUN, Bank Negara, commercial banks (max 100 words)
  *   2. Investor & Grants Guide — Cradle, MDEC, MIDA, MBAN, MaGIC, pitchIN (max 100 words)
  *
- * Both calls use tools: ["web_search"] and inject the full BusinessProfile as context.
+ * Both calls inject the full BusinessProfile as context.
  * Results are displayed as two side-by-side cards (grid-cols-2 on md+, stacked on mobile).
  *
  * Props:
@@ -17,6 +17,7 @@ import { useState, useCallback, useEffect } from "react";
 import type { BusinessProfile } from "../../types";
 import { useWidgetState } from "../../hooks/useWidgetState";
 import WidgetCard from "../WidgetCard";
+import { API_BASE } from "../../lib/api";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -38,22 +39,21 @@ Omit any URL you cannot verify.`;
 // ─── Streaming helper ─────────────────────────────────────────────────────────
 
 /**
- * Streams a response from POST /api/claude/stream and calls onChunk for each
+ * Streams a response from POST /api/bedrock/converse/stream and calls onChunk for each
  * text delta. Returns the full accumulated text when the stream ends.
  */
-async function streamClaudeResponse(
+async function streamBedrockResponse(
   systemPrompt: string,
   userMessage: string,
   onChunk: (chunk: string) => void,
 ): Promise<void> {
-  const response = await fetch("http://localhost:3001/api/claude/stream", {
+  const response = await fetch(`${API_BASE}/api/bedrock/converse/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       systemPrompt,
       userMessage,
       temperature: 0.7,
-      tools: ["web_search"],
       maxTokens: 512,
     }),
   });
@@ -188,10 +188,10 @@ Respond in 100 words or fewer.`;
     await generate(async () => {
       // Fire both streams in parallel
       await Promise.all([
-        streamClaudeResponse(SYSTEM_PROMPT, loanPrompt, (chunk) => {
+        streamBedrockResponse(SYSTEM_PROMPT, loanPrompt, (chunk) => {
           setLoanContent((prev) => prev + chunk);
         }),
-        streamClaudeResponse(SYSTEM_PROMPT, grantsPrompt, (chunk) => {
+        streamBedrockResponse(SYSTEM_PROMPT, grantsPrompt, (chunk) => {
           setGrantsContent((prev) => prev + chunk);
         }),
       ]);

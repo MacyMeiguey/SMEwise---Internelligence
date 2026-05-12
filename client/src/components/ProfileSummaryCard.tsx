@@ -11,6 +11,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { BusinessProfile } from "../types";
 import { formatRM } from "../utils/formatRM";
+import { API_BASE } from "../lib/api";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -161,7 +162,7 @@ export default function ProfileSummaryCard({ profile, trigger }: ProfileSummaryC
     setErrorMessage(null);
 
     try {
-      const response = await fetch("http://localhost:3001/api/claude/complete", {
+      const response = await fetch(`${API_BASE}/api/bedrock/converse/complete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

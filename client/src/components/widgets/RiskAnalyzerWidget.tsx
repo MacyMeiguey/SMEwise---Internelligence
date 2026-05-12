@@ -11,6 +11,7 @@ import { useState, useCallback, useEffect } from "react";
 import type { BusinessProfile } from "../../types";
 import { useWidgetState } from "../../hooks/useWidgetState";
 import WidgetCard from "../WidgetCard";
+import { API_BASE } from "../../lib/api";
 
 // ─── System prompt ────────────────────────────────────────────────────────────
 
@@ -59,14 +60,13 @@ export default function RiskAnalyzerWidget({ profile, onGenerateRef }: RiskAnaly
     setStreamedContent("");
 
     await generate(async () => {
-      const response = await fetch("http://localhost:3001/api/claude/stream", {
+      const response = await fetch(`${API_BASE}/api/bedrock/converse/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           systemPrompt: SYSTEM_PROMPT,
           userMessage: buildUserMessage(profile),
           temperature: 0.4,
-          tools: ["web_search"],
         }),
       });
 

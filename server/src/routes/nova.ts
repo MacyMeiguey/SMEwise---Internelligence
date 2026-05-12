@@ -14,13 +14,19 @@ const router = Router()
 
 const MODEL_ID = 'amazon.nova-canvas-v1:0'
 
-// Initialise the Bedrock client using env vars set at startup
+// Initialise the Bedrock client.
+// In production the default credential provider chain picks up credentials
+// from the attached IAM role; in local dev we fall back to env vars.
 const bedrockClient = new BedrockRuntimeClient({
   region: process.env.AWS_REGION ?? 'us-east-1',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  },
+  ...(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
+    ? {
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      },
+    }
+    : {}),
 })
 
 interface NovaImageRequest {

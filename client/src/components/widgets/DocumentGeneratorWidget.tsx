@@ -19,6 +19,7 @@ import {
 } from "docx";
 import type { BusinessProfile } from "../../types";
 import { useWidgetState } from "../../hooks/useWidgetState";
+import { API_BASE } from "../../lib/api";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -169,7 +170,7 @@ export function DocumentGeneratorWidgetWithControls({
   const handleGenerate = useCallback(async () => {
     setGeneratedContent("");
     await generate(async () => {
-      const res = await fetch("http://localhost:3001/api/document/generate", {
+      const res = await fetch(`${API_BASE}/api/document/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ documentType, businessProfile: profile, templateText }),

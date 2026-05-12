@@ -5,6 +5,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { BusinessProfile, ChatMessage } from '../../types';
 import { MessageCircle, Send, X } from 'lucide-react';
+import { API_BASE } from '../../lib/api';
 
 const MAX_WORDS = 200;
 
@@ -35,12 +36,12 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-async function streamClaude(
+async function streamBedrock(
   body: object,
   onChunk: (delta: string) => void,
   signal?: AbortSignal
 ): Promise<void> {
-  const res = await fetch('http://localhost:3001/api/claude/stream', {
+  const res = await fetch(`${API_BASE}/api/bedrock/converse/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -185,12 +186,11 @@ export default function AIAssistantPanel({ profile, currentSection = 'Overview' 
       try {
         let accumulated = '';
 
-        await streamClaude(
+        await streamBedrock(
           {
             systemPrompt: buildSystemPrompt(profile, focusLabel),
             userMessage: trimmed + contextualHint,
             temperature: 0.5,
-            tools: [],
           },
           (delta) => {
             accumulated += delta;
