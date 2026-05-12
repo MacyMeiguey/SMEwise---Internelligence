@@ -5,13 +5,13 @@ import claudeRouter from './routes/claude.js'
 import novaRouter from './routes/nova.js'
 import healthRouter from './routes/health.js'
 import documentRouter from './routes/document.js'
+import bedrockRouter from './routes/bedrock.js'
 
 const app = express()
 const PORT = process.env.PORT ?? 3001
 
 // Validate required environment variables on startup
 const requiredEnvVars = [
-  'ANTHROPIC_API_KEY',
   'AWS_ACCESS_KEY_ID',
   'AWS_SECRET_ACCESS_KEY',
   'AWS_REGION',
@@ -21,7 +21,7 @@ const missingVars = requiredEnvVars.filter((v) => !process.env[v])
 if (missingVars.length > 0) {
   console.error(
     `[SMEwise] Missing required environment variables: ${missingVars.join(', ')}\n` +
-      'Please copy .env.example to .env and fill in the values.',
+    'Please copy .env.example to .env and fill in the values.',
   )
   process.exit(1)
 }
@@ -40,6 +40,7 @@ app.use('/api/health', healthRouter)
 app.use('/api/claude', claudeRouter)
 app.use('/api/nova', novaRouter)
 app.use('/api/document', documentRouter)
+app.use('/api/bedrock', bedrockRouter)
 
 // Start server
 app.listen(PORT, () => {

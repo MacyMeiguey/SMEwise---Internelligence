@@ -27,6 +27,7 @@ export interface BusinessProfile {
   currentFunds: number;         // required, range: 1,000 – 999,999,999
   businessStage: BusinessStage; // required
   businessType: BusinessType;   // required
+  fundAllocation ?: string;     // optional
 }
 
 // ─── Pricing Strategy ────────────────────────────────────────────────────────
