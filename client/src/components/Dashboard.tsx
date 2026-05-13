@@ -14,6 +14,7 @@ import FundAllocationWidget from './widgets/FundAllocationWidget';
 import RevenueProjectionWidget from './widgets/RevenueProjectionWidget';
 import FinancialReturnWidget from './widgets/FinancialReturnWidget';
 import LoansFundingWidget from './widgets/LoansFundingWidget';
+import InvestorFundingWidget from './widgets/InvestorFundingWidget';
 
 import PricingOptionalInputsComponent from './PricingOptionalInputs';
 import CompetitorPricingWidget from './widgets/CompetitorPricingWidget';
@@ -64,6 +65,7 @@ export default function Dashboard({ profile, isUnlocked, activeSection }: Dashbo
   const revenueRef = useRef<(() => Promise<void>) | null>(null);
   const financialReturnRef = useRef<(() => Promise<void>) | null>(null);
   const loansRef = useRef<(() => Promise<void>) | null>(null);
+  const investorFundingRef = useRef<(() => Promise<void>) | null>(null);
 
   const competitorPricingRef = useRef<(() => Promise<void>) | null>(null);
   const smartPricingRef = useRef<(() => Promise<void>) | null>(null);
@@ -89,6 +91,7 @@ export default function Dashboard({ profile, isUnlocked, activeSection }: Dashbo
         revenueRef.current?.(),
         financialReturnRef.current?.(),
         loansRef.current?.(),
+        investorFundingRef.current?.(),
       ]);
     } else if (section === 'Pricing Strategy') {
       await Promise.all([
@@ -188,6 +191,14 @@ export default function Dashboard({ profile, isUnlocked, activeSection }: Dashbo
                       loansRef.current = fn;
                     }}
                   />
+                  <div className="lg:col-span-2">
+                    <InvestorFundingWidget
+                      profile={profile}
+                      onGenerateRef={(fn) => {
+                        investorFundingRef.current = fn;
+                      }}
+                    />
+                  </div>
                 </div>
               )}
 

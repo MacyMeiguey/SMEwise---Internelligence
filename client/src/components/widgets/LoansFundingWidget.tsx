@@ -1,267 +1,352 @@
 /**
  * LoansFundingWidget — Financial Planning Section
- * Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 10.8, 10.9
+ * Calls the dedicated AWS Bedrock Agent (5I7B8BCVX0) which returns a
+ * structured JSON loans & funding recommendation, then renders it with
+ * animated entrance transitions.
  *
- * Makes TWO parallel streaming calls to POST /api/bedrock/converse/stream:
- *   1. Loan Guide — SME Bank, TEKUN, Bank Negara, commercial banks (max 100 words)
- *   2. Investor & Grants Guide — Cradle, MDEC, MIDA, MBAN, MaGIC, pitchIN (max 100 words)
+ * Sections rendered:
+ *   - Government Schemes (cards with links)
+ *   - Commercial Banks (cards with links)
+ *   - Best Fit Recommendation (highlighted panel)
+ *   - Requirements (checklist)
+ *   - Timeline
  *
- * Both calls inject the full BusinessProfile as context.
- * Results are displayed as two side-by-side cards (grid-cols-2 on md+, stacked on mobile).
- *
- * Props:
- *   profile — the submitted BusinessProfile
+ * Requirements: 10.1–10.9
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { BusinessProfile } from "../../types";
 import { useWidgetState } from "../../hooks/useWidgetState";
 import WidgetCard from "../WidgetCard";
 import { API_BASE } from "../../lib/api";
+import {
+  Building2,
+  Landmark,
+  Star,
+  ClipboardList,
+  Clock,
+  ExternalLink,
+  CheckCircle2,
+} from "lucide-react";
 
-// ─── Props ────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface GovernmentScheme {
+  name: string;
+  url: string;
+}
+
+interface CommercialBank {
+  bank: string;
+  url: string;
+}
+
+interface BestFit {
+  scheme: string;
+  reason: string;
+  alternative: string;
+}
+
+interface LoansFundingPlan {
+  company: string;
+  industry: string;
+  governmentSchemes: GovernmentScheme[];
+  commercialBanks: CommercialBank[];
+  bestFit: BestFit;
+  requirements: string[];
+  timeline: string;
+}
+
+// ─── API call ─────────────────────────────────────────────────────────────────
+
+async function fetchLoansFunding(profile: BusinessProfile): Promise<LoansFundingPlan> {
+  const payload = {
+    companyName:   profile.companyName,
+    industry:      profile.industry,
+    businessStage: profile.businessStage,
+    city:          profile.city,
+    currentFunds:  profile.currentFunds,
+    businessType:  profile.businessType,
+  };
+
+  const res = await fetch(`${API_BASE}/api/bedrock/loans-funding`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error ?? `HTTP ${res.status}`);
+  }
+
+  const data = (await res.json()) as { content: string };
+
+  let jsonStr = data.content.trim();
+  if (jsonStr.startsWith("```")) {
+    jsonStr = jsonStr.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/, "").trim();
+  }
+  const start = jsonStr.indexOf("{");
+  const end   = jsonStr.lastIndexOf("}");
+  if (start !== -1 && end !== -1) jsonStr = jsonStr.slice(start, end + 1);
+
+  return JSON.parse(jsonStr) as LoansFundingPlan;
+}
+
+// ─── Animation hook ───────────────────────────────────────────────────────────
+// Triggers a CSS fade-up animation when the element enters the viewport.
+
+function useFadeIn() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.classList.add("loans-visible");
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return ref;
+}
+
+// ─── Small reusable pieces ────────────────────────────────────────────────────
+
+function SectionHeading({
+  icon,
+  label,
+}: {
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <span className="text-primary-300">{icon}</span>
+      <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-400">
+        {label}
+      </h3>
+    </div>
+  );
+}
+
+function LinkCard({
+  name,
+  url,
+  delay,
+}: {
+  name: string;
+  url: string;
+  delay: number;
+}) {
+  const ref = useFadeIn();
+  return (
+    <div
+      ref={ref}
+      className="loans-fade-up rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] transition-colors p-3 flex items-center justify-between gap-3 group"
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <span className="text-sm font-medium text-neutral-200 leading-snug">{name}</span>
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Visit ${name}`}
+        className="shrink-0 flex items-center gap-1 text-xs font-semibold text-primary-300 hover:text-primary-200 transition-colors"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+        <span className="hidden sm:inline">Visit</span>
+      </a>
+    </div>
+  );
+}
+
+// ─── Main result renderer ─────────────────────────────────────────────────────
+
+function LoansPlanView({ plan }: { plan: LoansFundingPlan }) {
+  const bestFitRef  = useFadeIn();
+  const reqRef      = useFadeIn();
+  const timelineRef = useFadeIn();
+
+  return (
+    <div className="space-y-6">
+
+      {/* ── Government Schemes ── */}
+      <section>
+        <SectionHeading
+          icon={<Landmark className="h-4 w-4" />}
+          label="Government Schemes"
+        />
+        <div className="grid sm:grid-cols-2 gap-2">
+          {plan.governmentSchemes.map((s, i) => (
+            <LinkCard key={s.name} name={s.name} url={s.url} delay={i * 60} />
+          ))}
+        </div>
+      </section>
+
+      {/* ── Commercial Banks ── */}
+      <section>
+        <SectionHeading
+          icon={<Building2 className="h-4 w-4" />}
+          label="Commercial Banks"
+        />
+        <div className="grid sm:grid-cols-2 gap-2">
+          {plan.commercialBanks.map((b, i) => (
+            <LinkCard
+              key={b.bank}
+              name={b.bank}
+              url={b.url}
+              delay={i * 60 + 120}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* ── Best Fit ── */}
+      <section>
+        <SectionHeading icon={<Star className="h-4 w-4" />} label="Best Fit" />
+        <div
+          ref={bestFitRef}
+          className="loans-fade-up rounded-xl border border-primary-500/30 bg-primary-500/[0.07] p-4 space-y-3"
+          style={{ animationDelay: "240ms" }}
+        >
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary-500/20 border border-primary-400/30">
+              <Star className="h-3.5 w-3.5 text-primary-300" aria-hidden />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-primary-200">{plan.bestFit.scheme}</p>
+              <p className="text-sm text-neutral-300 mt-1 leading-relaxed">
+                {plan.bestFit.reason}
+              </p>
+            </div>
+          </div>
+          <div className="rounded-lg bg-white/[0.04] border border-white/[0.06] px-3 py-2 flex items-start gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 shrink-0 mt-0.5">
+              Alt
+            </span>
+            <p className="text-sm text-neutral-400">{plan.bestFit.alternative}</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Requirements ── */}
+      <section>
+        <SectionHeading
+          icon={<ClipboardList className="h-4 w-4" />}
+          label="Requirements"
+        />
+        <div
+          ref={reqRef}
+          className="loans-fade-up rounded-xl border border-white/[0.08] bg-white/[0.03] p-4"
+          style={{ animationDelay: "300ms" }}
+        >
+          <ul className="space-y-2">
+            {plan.requirements.map((req, i) => (
+              <li key={i} className="flex items-start gap-2.5 text-sm text-neutral-300">
+                <CheckCircle2
+                  className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5"
+                  aria-hidden
+                />
+                {req}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      {/* ── Timeline ── */}
+      <section>
+        <SectionHeading icon={<Clock className="h-4 w-4" />} label="Timeline" />
+        <div
+          ref={timelineRef}
+          className="loans-fade-up rounded-xl border border-amber-500/20 bg-amber-500/[0.05] px-4 py-3 flex items-start gap-3"
+          style={{ animationDelay: "360ms" }}
+        >
+          <Clock className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" aria-hidden />
+          <p className="text-sm text-neutral-300 leading-relaxed">{plan.timeline}</p>
+        </div>
+      </section>
+
+    </div>
+  );
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 interface LoansFundingWidgetProps {
   profile: BusinessProfile;
   onGenerateRef?: (fn: () => Promise<void>) => void;
 }
 
-// ─── Shared system prompt ─────────────────────────────────────────────────────
-
-const SYSTEM_PROMPT = `You are SMEwise, an AI business advisor specialising in Malaysian SMEs.
-Always use Malaysian context: RM currency, SSM/LHDN/EPF/SOCSO regulations,
-Malaysian platforms (Shopee, Lazada, TikTok, WhatsApp Business, Google My Business),
-and local financing (TEKUN, Cradle, MDEC, MIDA, MBAN, MaGIC, pitchIN).
-Never use USD or reference non-Malaysian regulations.
-When including URLs, use the web_search tool to verify they are live before including them.
-Omit any URL you cannot verify.`;
-
-// ─── Streaming helper ─────────────────────────────────────────────────────────
-
-/**
- * Streams a response from POST /api/bedrock/converse/stream and calls onChunk for each
- * text delta. Returns the full accumulated text when the stream ends.
- */
-async function streamBedrockResponse(
-  systemPrompt: string,
-  userMessage: string,
-  onChunk: (chunk: string) => void,
-): Promise<void> {
-  const response = await fetch(`${API_BASE}/api/bedrock/converse/stream`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      systemPrompt,
-      userMessage,
-      temperature: 0.7,
-      maxTokens: 512,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status}`);
-  }
-
-  const reader = response.body?.getReader();
-  if (!reader) throw new Error("No response body");
-
-  const decoder = new TextDecoder();
-  let buffer = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith("data:")) continue;
-
-      const payload = trimmed.slice(5).trim();
-      if (payload === "[DONE]") return;
-
-      try {
-        const parsed = JSON.parse(payload) as { delta?: string; error?: string };
-        if (parsed.error) throw new Error(parsed.error);
-        if (parsed.delta) onChunk(parsed.delta);
-      } catch {
-        // Ignore malformed SSE lines
-      }
-    }
-  }
-}
-
-// ─── Sub-card component ───────────────────────────────────────────────────────
-
-interface SubCardProps {
-  title: string;
-  icon: React.ReactNode;
-  content: string;
-  isLoading: boolean;
-}
-
-function SubCard({ title, icon, content, isLoading }: SubCardProps) {
-  return (
-    <div className="flex flex-col rounded-xl border-2 border-neutral-950 bg-white p-4 gap-3" style={{ boxShadow: '2px 2px 0 0 #ede9fe' }}>
-      <div className="flex items-center gap-2">
-        <span className="text-primary-600" aria-hidden="true">
-          {icon}
-        </span>
-        <h4 className="text-sm font-bold text-neutral-950">{title}</h4>
-      </div>
-
-      {isLoading && !content ? (
-        <div className="animate-pulse space-y-2" role="status" aria-label={`Loading ${title}`}>
-          <div className="h-3 bg-neutral-200 rounded-lg w-full" />
-          <div className="h-3 bg-neutral-200 rounded-lg w-5/6" />
-          <div className="h-3 bg-neutral-200 rounded-lg w-4/6" />
-          <div className="h-3 bg-neutral-200 rounded-lg w-full" />
-          <div className="h-3 bg-neutral-200 rounded-lg w-3/4" />
-          <span className="sr-only">Loading…</span>
-        </div>
-      ) : (
-        <p className="text-sm text-neutral-800 leading-relaxed whitespace-pre-wrap">
-          {content}
-        </p>
-      )}
-    </div>
-  );
-}
-
-// ─── LoansFundingWidget ───────────────────────────────────────────────────────
-
-export default function LoansFundingWidget({ profile, onGenerateRef }: LoansFundingWidgetProps) {
-  const { state, generate } = useWidgetState();
-
-  // Track streaming content for each sub-widget independently
-  const [loanContent, setLoanContent] = useState<string>("");
-  const [grantsContent, setGrantsContent] = useState<string>("");
-
-  const profileContext = `
-Business Profile:
-- Company: ${profile.companyName}
-- Industry: ${profile.industry}
-- City/State: ${profile.city}
-- Business Stage: ${profile.businessStage}
-- Business Type: ${profile.businessType}
-- Current Funds: RM ${profile.currentFunds.toLocaleString()}
-- Target Customer: ${profile.targetCustomer}
-${profile.mainGoal ? `- Main Goal: ${profile.mainGoal}` : ""}
-`.trim();
-
-  const loanPrompt = `${profileContext}
-
-Generate a concise Loan Guide for a Malaysian SME founder. Cover:
-- SME Bank (smebank.com.my) — loan products, eligibility, RM amounts
-- TEKUN Nasional (tekun.com.my) — micro-financing, eligibility, RM amounts
-- Bank Negara Malaysia (bnm.gov.my) — SME financing schemes, eligibility
-- Major commercial banks (Maybank, CIMB, RHB) — SME loan products, RM amounts
-
-Use the web_search tool to verify each URL before including it. Omit any URL you cannot verify.
-Include real URLs, eligibility criteria, and loan amounts in RM.
-Tailor recommendations to the business stage (${profile.businessStage}), type (${profile.businessType}), and industry (${profile.industry}).
-Respond in 100 words or fewer.`;
-
-  const grantsPrompt = `${profileContext}
-
-Generate a concise Investor & Grants Guide for a Malaysian SME founder. Cover:
-- Cradle Fund (cradle.com.my) — CIP grants, eligibility, RM amounts
-- MDEC (mdec.com.my) — digital economy grants, eligibility
-- MIDA (mida.gov.my) — investment incentives, eligibility
-- MBAN (mban.com.my) — angel investment network, eligibility
-- MaGIC (mymagic.my) — accelerator programmes, eligibility
-- pitchIN (pitchin.my) — equity crowdfunding, eligibility, RM amounts
-
-Use the web_search tool to verify each URL before including it. Omit any URL you cannot verify.
-Include real URLs, grant amounts in RM, and eligibility criteria.
-Tailor recommendations to the business stage (${profile.businessStage}), type (${profile.businessType}), and industry (${profile.industry}).
-Respond in 100 words or fewer.`;
+export default function LoansFundingWidget({
+  profile,
+  onGenerateRef,
+}: LoansFundingWidgetProps) {
+  const { state, generate }         = useWidgetState();
+  const [plan, setPlan]             = useState<LoansFundingPlan | null>(null);
+  const [parseError, setParseError] = useState<string | null>(null);
 
   const handleGenerate = useCallback(async () => {
-    // Reset sub-widget content before each generation
-    setLoanContent("");
-    setGrantsContent("");
+    setPlan(null);
+    setParseError(null);
 
     await generate(async () => {
-      // Fire both streams in parallel
-      await Promise.all([
-        streamBedrockResponse(SYSTEM_PROMPT, loanPrompt, (chunk) => {
-          setLoanContent((prev) => prev + chunk);
-        }),
-        streamBedrockResponse(SYSTEM_PROMPT, grantsPrompt, (chunk) => {
-          setGrantsContent((prev) => prev + chunk);
-        }),
-      ]);
+      try {
+        const result = await fetchLoansFunding(profile);
+        setPlan(result);
+      } catch (err) {
+        if (err instanceof SyntaxError) {
+          setParseError(
+            "The agent returned a response that couldn't be parsed. Try regenerating.",
+          );
+          throw new Error("Failed to parse loans & funding JSON.");
+        }
+        throw err;
+      }
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, generate]);
 
-  // Register the generate handler with the parent (for Generate All)
   useEffect(() => {
     onGenerateRef?.(handleGenerate);
   }, [onGenerateRef, handleGenerate]);
 
-  const isLoading = state.status === "loading";
-
   return (
-    <WidgetCard
-      title="Loans & Funding Panel"
-      onGenerate={handleGenerate}
-      state={state}
-      idleHint="Surfaces grants, schemes, or loan angles worth a second look — not a promise of approval."
-      idleButtonLabel="Map funding"
-      regenerateLabel="Remap funding"
-    >
-      {/* Two side-by-side sub-cards — stacked on mobile, side-by-side on md+ */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <SubCard
-          title="Loan Guide"
-          icon={
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-              />
-            </svg>
-          }
-          content={loanContent}
-          isLoading={isLoading}
-        />
-        <SubCard
-          title="Investor & Grants Guide"
-          icon={
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-              />
-            </svg>
-          }
-          content={grantsContent}
-          isLoading={isLoading}
-        />
-      </div>
-    </WidgetCard>
+    <>
+      {/* Scoped keyframe — injected once, no extra dependency */}
+      <style>{`
+        .loans-fade-up {
+          opacity: 0;
+          transform: translateY(14px);
+          transition: opacity 0.45s ease, transform 0.45s ease;
+        }
+        .loans-visible.loans-fade-up,
+        .loans-visible .loans-fade-up {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      `}</style>
+
+      <WidgetCard
+        title="Loans & Funding Panel"
+        onGenerate={handleGenerate}
+        state={state}
+        idleHint="Government schemes, commercial banks, best-fit recommendation, requirements and timeline — all in one place."
+        idleButtonLabel="Map funding"
+        regenerateLabel="Remap funding"
+      >
+        {parseError ? (
+          <p className="text-sm text-red-400">{parseError}</p>
+        ) : plan ? (
+          <LoansPlanView plan={plan} />
+        ) : null}
+      </WidgetCard>
+    </>
   );
 }

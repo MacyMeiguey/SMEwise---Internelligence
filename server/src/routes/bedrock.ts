@@ -93,6 +93,14 @@ async function invokeAgent(
         if (chunk.chunk?.bytes) {
             raw += new TextDecoder().decode(chunk.chunk.bytes)
         }
+        // Log any trace or error events from the agent stream
+        if (chunk.trace) {
+            console.log(`[Bedrock agent trace] agentId=${agentId}`, JSON.stringify(chunk.trace).slice(0, 300))
+        }
+    }
+
+    if (raw.length === 0) {
+        console.warn(`[Bedrock] agentId=${agentId} aliasId=${agentAliasId} returned EMPTY response. Check: 1) alias is PREPARED in AWS console, 2) agent has correct region, 3) action groups are enabled.`)
     }
 
     return raw
@@ -404,6 +412,260 @@ router.post('/marketing-forecast', async (req: Request, res: Response) => {
 
     console.error(
         `[marketing-forecast] All ${MAX_RETRIES} attempts failed to return valid JSON. Returning last raw response.`,
+    )
+    res.status(200).json({ content: lastRaw })
+})
+
+// ─── POST /api/bedrock/revenue-projection ────────────────────────────────────
+
+router.post('/revenue-projection', async (req: Request, res: Response) => {
+    const {
+        companyName,
+        industry,
+        businessStage,
+        currentFunds,
+        mainGoal,
+        businessType,
+    } = req.body as {
+        companyName: string
+        industry: string
+        businessStage: string
+        currentFunds: number
+        mainGoal?: string
+        businessType: string
+    }
+
+    if (!companyName || !industry || !businessStage || !currentFunds || !businessType) {
+        res.status(400).json({
+            error: 'companyName, industry, businessStage, currentFunds, and businessType are required.',
+        })
+        return
+    }
+
+    const REVENUE_AGENT_ID = process.env.BEDROCK_REVENUE_AGENT_ID ?? 'B2WJZPIFMU'
+    const REVENUE_AGENT_ALIAS_ID = process.env.BEDROCK_REVENUE_AGENT_ALIAS_ID ?? 'ZWVMV74XKS'
+
+    const inputText = [
+        `Company: ${companyName}`,
+        `Industry: ${industry}`,
+        `Stage: ${businessStage}`,
+        `Business Type: ${businessType}`,
+        `Current Funds: RM ${Number(currentFunds).toLocaleString('en-MY')}`,
+        mainGoal ? `Business Goal: ${mainGoal}` : null,
+    ]
+        .filter(Boolean)
+        .join('\n')
+
+    console.log('=== [revenue-projection] inputText sent to Bedrock agent ===\n', inputText)
+
+    let lastRaw = ''
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        const sessionId = `revenue-proj-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+        try {
+            const raw = await invokeAgent(inputText, sessionId, REVENUE_AGENT_ID, REVENUE_AGENT_ALIAS_ID)
+            lastRaw = raw
+
+            console.log(
+                `[revenue-projection] Attempt ${attempt}/${MAX_RETRIES} — response length: ${raw.length} chars`,
+            )
+
+            const jsonString = extractJsonString(raw)
+            JSON.parse(jsonString) // validate
+
+            console.log(`[revenue-projection] Attempt ${attempt} returned valid JSON`)
+            res.status(200).json({ content: raw })
+            return
+        } catch (err) {
+            if (err instanceof SyntaxError) {
+                console.warn(
+                    `[revenue-projection] Attempt ${attempt}/${MAX_RETRIES} did NOT return valid JSON. ` +
+                    (attempt < MAX_RETRIES ? 'Retrying...' : 'No retries left.'),
+                )
+                continue
+            }
+
+            console.error(`[SMEwise] /api/bedrock/revenue-projection error on attempt ${attempt}:`, err)
+            res.status(500).json({
+                error: 'Something went wrong while generating the revenue projection. Please try again.',
+            })
+            return
+        }
+    }
+
+    console.error(
+        `[revenue-projection] All ${MAX_RETRIES} attempts failed to return valid JSON. Returning last raw response.`,
+    )
+    res.status(200).json({ content: lastRaw })
+})
+
+// ─── POST /api/bedrock/loans-funding ─────────────────────────────────────────
+
+router.post('/loans-funding', async (req: Request, res: Response) => {
+    const {
+        companyName,
+        industry,
+        businessStage,
+        city,
+        currentFunds,
+        businessType,
+    } = req.body as {
+        companyName: string
+        industry: string
+        businessStage: string
+        city: string
+        currentFunds: number
+        businessType: string
+    }
+
+    if (!companyName || !industry || !businessStage || !city || !currentFunds || !businessType) {
+        res.status(400).json({
+            error: 'companyName, industry, businessStage, city, currentFunds, and businessType are required.',
+        })
+        return
+    }
+
+    const LOANS_AGENT_ID       = process.env.BEDROCK_LOANS_AGENT_ID       ?? '5I7B8BCVX0'
+    const LOANS_AGENT_ALIAS_ID = process.env.BEDROCK_LOANS_AGENT_ALIAS_ID ?? 'BUJMARJWNU'
+
+    const inputText = [
+        `Company: ${companyName}`,
+        `Industry: ${industry}`,
+        `Stage: ${businessStage}`,
+        `Location: ${city}, Malaysia`,
+        `Business Type: ${businessType}`,
+        `Current Funds: RM ${Number(currentFunds).toLocaleString('en-MY')}`,
+    ].join('\n')
+
+    console.log('=== [loans-funding] inputText sent to Bedrock agent ===\n', inputText)
+
+    let lastRaw = ''
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        const sessionId = `loans-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+        try {
+            const raw = await invokeAgent(inputText, sessionId, LOANS_AGENT_ID, LOANS_AGENT_ALIAS_ID)
+            lastRaw = raw
+
+            console.log(
+                `[loans-funding] Attempt ${attempt}/${MAX_RETRIES} — response length: ${raw.length} chars`,
+            )
+
+            const jsonString = extractJsonString(raw)
+            JSON.parse(jsonString)
+
+            console.log(`[loans-funding] Attempt ${attempt} returned valid JSON`)
+            res.status(200).json({ content: raw })
+            return
+        } catch (err) {
+            if (err instanceof SyntaxError) {
+                console.warn(
+                    `[loans-funding] Attempt ${attempt}/${MAX_RETRIES} did NOT return valid JSON. ` +
+                    (attempt < MAX_RETRIES ? 'Retrying...' : 'No retries left.'),
+                )
+                continue
+            }
+
+            console.error(`[SMEwise] /api/bedrock/loans-funding error on attempt ${attempt}:`, err)
+            res.status(500).json({
+                error: 'Something went wrong while generating the loans & funding plan. Please try again.',
+            })
+            return
+        }
+    }
+
+    console.error(
+        `[loans-funding] All ${MAX_RETRIES} attempts failed to return valid JSON. Returning last raw response.`,
+    )
+    res.status(200).json({ content: lastRaw })
+})
+
+// ─── POST /api/bedrock/investor-funding ──────────────────────────────────────
+
+router.post('/investor-funding', async (req: Request, res: Response) => {
+    const {
+        companyName,
+        industry,
+        businessStage,
+        city,
+        mainGoal,
+        businessType,
+    } = req.body as {
+        companyName: string
+        industry: string
+        businessStage: string
+        city: string
+        mainGoal?: string
+        businessType: string
+    }
+
+    if (!companyName || !industry || !businessStage || !city || !businessType) {
+        res.status(400).json({
+            error: 'companyName, industry, businessStage, city, and businessType are required.',
+        })
+        return
+    }
+
+    const INVESTOR_AGENT_ID       = process.env.BEDROCK_INVESTOR_AGENT_ID       ?? 'K5UUZVS6JI'
+    const INVESTOR_AGENT_ALIAS_ID = process.env.BEDROCK_INVESTOR_AGENT_ALIAS_ID ?? 'J7IGIYKWQR'
+
+    const inputText = [
+        `Company: ${companyName}`,
+        `Industry: ${industry}`,
+        `Stage: ${businessStage}`,
+        `Location: ${city}, Malaysia`,
+        `Business Type: ${businessType}`,
+        `Goal: ${mainGoal?.trim() || 'Grow the business sustainably'}`,
+    ].join('\n')
+
+    console.log('=== [investor-funding] inputText sent to Bedrock agent ===\n', inputText)
+
+    let lastRaw = ''
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        const sessionId = `investor-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+        try {
+            const raw = await invokeAgent(inputText, sessionId, INVESTOR_AGENT_ID, INVESTOR_AGENT_ALIAS_ID)
+            lastRaw = raw
+
+            console.log(
+                `[investor-funding] Attempt ${attempt}/${MAX_RETRIES} — response length: ${raw.length} chars`,
+            )
+
+            if (raw.length === 0) {
+                console.warn(`[investor-funding] Attempt ${attempt}: empty response — agent may not be prepared or alias is wrong.`)
+                // Treat empty as a retryable failure (same as bad JSON)
+                continue
+            }
+
+            const jsonString = extractJsonString(raw)
+            JSON.parse(jsonString)
+
+            console.log(`[investor-funding] Attempt ${attempt} returned valid JSON`)
+            res.status(200).json({ content: raw })
+            return
+        } catch (err) {
+            if (err instanceof SyntaxError) {
+                console.warn(
+                    `[investor-funding] Attempt ${attempt}/${MAX_RETRIES} did NOT return valid JSON. ` +
+                    (attempt < MAX_RETRIES ? 'Retrying...' : 'No retries left.'),
+                )
+                continue
+            }
+
+            console.error(`[SMEwise] /api/bedrock/investor-funding error on attempt ${attempt}:`, err)
+            res.status(500).json({
+                error: 'Something went wrong while generating investor & funding suggestions. Please try again.',
+            })
+            return
+        }
+    }
+
+    console.error(
+        `[investor-funding] All ${MAX_RETRIES} attempts failed to return valid JSON. Returning last raw response.`,
     )
     res.status(200).json({ content: lastRaw })
 })
