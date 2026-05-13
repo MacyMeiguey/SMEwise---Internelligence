@@ -1,10 +1,8 @@
 /**
  * FundAllocationWidget — Financial Planning Section
- * Generates a fund allocation table across 6 categories using Claude streaming.
+ * Calls the dedicated AWS Bedrock Agent (RMJF0EXRHR) which returns a
+ * structured JSON budget allocation plan, then renders it as a rich table.
  * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7
- *
- * Props:
- *   profile — the submitted BusinessProfile
  */
 
 import { useState, useCallback, useEffect } from "react";
@@ -13,128 +11,232 @@ import { useWidgetState } from "../../hooks/useWidgetState";
 import WidgetCard from "../WidgetCard";
 import { API_BASE } from "../../lib/api";
 
-// ─── System prompt ────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT =
-  "You are SMEwise, an AI business advisor specialising in Malaysian SMEs. " +
-  "Always use Malaysian context: RM currency, SSM/LHDN/EPF/SOCSO regulations, " +
-  "Malaysian platforms (Shopee, Lazada, TikTok, WhatsApp Business, Google My Business), " +
-  "and local financing (TEKUN, Cradle, MDEC, MIDA, MBAN, MaGIC, pitchIN). " +
-  "Never use USD or reference non-Malaysian regulations. " +
-  "When including URLs, use the web_search tool to verify they are live before including them. " +
-  "Omit any URL you cannot verify.";
-
-// ─── SSE streaming helper ─────────────────────────────────────────────────────
-
-async function streamBedrock(
-  body: object,
-  onChunk: (delta: string) => void
-): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/bedrock/converse/stream`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const reader = res.body!.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-    for (const line of lines) {
-      if (!line.startsWith("data: ")) continue;
-      const data = line.slice(6);
-      if (data === "[DONE]") return;
-      try {
-        const parsed = JSON.parse(data);
-        if (parsed.delta) onChunk(parsed.delta);
-      } catch {
-        // ignore malformed SSE lines
-      }
-    }
-  }
+interface AllocationCategory {
+  category: string;
+  percentage: number;
+  amount: number;
+  expenses: string[];
+  rationale: string;
 }
 
-// ─── Prompt builder ───────────────────────────────────────────────────────────
+interface FundAllocationPlan {
+  company: string;
+  industry: string;
+  location: string;
+  currentFunds: number;
+  currency: string;
+  allocations: AllocationCategory[];
+  totalPercentage: number;
+  totalAmount: number;
+}
 
-function buildUserMessage(profile: BusinessProfile): string {
-  return (
-    `Create a fund allocation table for a Malaysian SME with RM ${profile.currentFunds.toLocaleString()} in available capital. ` +
-    `Include these 6 categories: Operations, Marketing, Inventory, Staffing, Technology, Contingency. ` +
-    `For each: percentage allocation, RM amount, key expense examples, and rationale. Maximum 200 words.`
-  );
+// ─── API call ─────────────────────────────────────────────────────────────────
+
+async function fetchFundAllocation(profile: BusinessProfile): Promise<FundAllocationPlan> {
+  const payload = {
+    companyName:   profile.companyName,
+    industry:      profile.industry,
+    businessStage: profile.businessStage,
+    city:          profile.city,
+    currentFunds:  profile.currentFunds,
+    businessType:  profile.businessType,
+  };
+
+  const res = await fetch(`${API_BASE}/api/bedrock/fund-allocation`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error ?? `HTTP ${res.status}`);
+  }
+
+  const data = (await res.json()) as { content: string };
+
+  // Strip markdown fences if the agent wrapped the JSON
+  let jsonStr = data.content.trim();
+  if (jsonStr.startsWith("```")) {
+    jsonStr = jsonStr.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/, "").trim();
+  }
+  const start = jsonStr.indexOf("{");
+  const end = jsonStr.lastIndexOf("}");
+  if (start !== -1 && end !== -1) jsonStr = jsonStr.slice(start, end + 1);
+
+  return JSON.parse(jsonStr) as FundAllocationPlan;
 }
 
 // ─── Table renderer ───────────────────────────────────────────────────────────
 
-function TableOutput({ content }: { content: string }) {
-  const lines = content
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
+// Colour band per category (index-based, cycles if more than 6)
+const CATEGORY_COLOURS = [
+  "bg-violet-500/20 text-violet-200 border-violet-500/30",
+  "bg-blue-500/20 text-blue-200 border-blue-500/30",
+  "bg-emerald-500/20 text-emerald-200 border-emerald-500/30",
+  "bg-amber-500/20 text-amber-200 border-amber-500/30",
+  "bg-rose-500/20 text-rose-200 border-rose-500/30",
+  "bg-cyan-500/20 text-cyan-200 border-cyan-500/30",
+];
 
-  const tableLines = lines.filter((l) => l.startsWith("|"));
+const BAR_COLOURS = [
+  "bg-violet-500",
+  "bg-blue-500",
+  "bg-emerald-500",
+  "bg-amber-500",
+  "bg-rose-500",
+  "bg-cyan-500",
+];
 
-  if (tableLines.length < 2) {
-    return (
-      <p className="text-sm text-neutral-800 leading-relaxed whitespace-pre-wrap">
-        {content}
-      </p>
-    );
-  }
-  const rows = tableLines.map((line) =>
-    line
-      .replace(/^\|/, "")
-      .replace(/\|$/, "")
-      .split("|")
-      .map((cell) => cell.trim())
-  );
+function fmt(n: number) {
+  return n.toLocaleString("en-MY");
+}
 
-  const headerRow = rows[0];
-  const separatorIndex = rows.findIndex((row) =>
-    row.every((cell) => /^[-:]+$/.test(cell))
-  );
-  const dataRows =
-    separatorIndex !== -1 ? rows.slice(separatorIndex + 1) : rows.slice(1);
-
+function AllocationTable({ plan }: { plan: FundAllocationPlan }) {
   return (
-    <div className="overflow-x-auto rounded-xl border-2 border-neutral-200">
-      <table className="w-full text-sm text-left text-neutral-800 border-collapse">
-        <thead>
-          <tr className="bg-primary-100 border-b-2 border-neutral-950">
-            {headerRow.map((header, i) => (
-              <th
-                key={i}
-                scope="col"
-                className="px-3 py-2 font-bold text-neutral-950 whitespace-nowrap"
-              >
-                {header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {dataRows.map((row, rowIdx) => (
-            <tr
-              key={rowIdx}
-              className={rowIdx % 2 === 0 ? "bg-white" : "bg-primary-50/50"}
-            >
-              {row.map((cell, cellIdx) => (
-                <td
-                  key={cellIdx}
-                  className="px-3 py-2 border-b border-neutral-200 align-top"
-                >
-                  {cell}
-                </td>
-              ))}
+    <div className="space-y-4">
+      {/* Summary header */}
+      <div className="flex flex-wrap gap-3 text-sm">
+        <span className="rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-neutral-300">
+          <span className="font-semibold text-white">{plan.company}</span>
+          <span className="mx-1.5 text-neutral-500">·</span>
+          {plan.industry}
+        </span>
+        <span className="rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-neutral-300">
+          {plan.location}
+        </span>
+        <span className="rounded-lg border border-primary-500/30 bg-primary-500/10 px-3 py-1.5 font-semibold text-primary-200">
+          {plan.currency} {fmt(plan.currentFunds)} total
+        </span>
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden sm:block overflow-x-auto rounded-xl border border-white/[0.08]">
+        <table className="w-full text-sm text-left border-collapse">
+          <thead>
+            <tr className="border-b border-white/[0.08] bg-white/[0.04]">
+              <th className="px-4 py-3 font-semibold text-neutral-300 whitespace-nowrap">Category</th>
+              <th className="px-4 py-3 font-semibold text-neutral-300 text-right whitespace-nowrap">%</th>
+              <th className="px-4 py-3 font-semibold text-neutral-300 text-right whitespace-nowrap">Amount (RM)</th>
+              <th className="px-4 py-3 font-semibold text-neutral-300 whitespace-nowrap">Key Expenses</th>
+              <th className="px-4 py-3 font-semibold text-neutral-300 whitespace-nowrap">Rationale</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {plan.allocations.map((row, i) => (
+              <tr
+                key={row.category}
+                className="border-b border-white/[0.05] hover:bg-white/[0.03] transition-colors"
+              >
+                {/* Category */}
+                <td className="px-4 py-3 align-top">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`inline-block h-2.5 w-2.5 rounded-full shrink-0 ${BAR_COLOURS[i % BAR_COLOURS.length]}`}
+                    />
+                    <span className="font-medium text-white whitespace-nowrap">{row.category}</span>
+                  </div>
+                </td>
+                {/* Percentage + bar */}
+                <td className="px-4 py-3 align-top text-right">
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="font-semibold text-white tabular-nums">{row.percentage}%</span>
+                    <div className="w-16 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${BAR_COLOURS[i % BAR_COLOURS.length]}`}
+                        style={{ width: `${row.percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                </td>
+                {/* Amount */}
+                <td className="px-4 py-3 align-top text-right">
+                  <span className="font-semibold text-primary-200 tabular-nums">
+                    RM {fmt(row.amount)}
+                  </span>
+                </td>
+                {/* Expenses */}
+                <td className="px-4 py-3 align-top">
+                  <ul className="space-y-0.5">
+                    {row.expenses.map((exp) => (
+                      <li key={exp} className="text-neutral-400 text-xs leading-relaxed">
+                        · {exp}
+                      </li>
+                    ))}
+                  </ul>
+                </td>
+                {/* Rationale */}
+                <td className="px-4 py-3 align-top">
+                  <p className="text-neutral-400 text-xs leading-relaxed max-w-[200px]">
+                    {row.rationale}
+                  </p>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-white/[0.10] bg-white/[0.04]">
+              <td className="px-4 py-3 font-bold text-white">Total</td>
+              <td className="px-4 py-3 font-bold text-white text-right tabular-nums">
+                {plan.totalPercentage}%
+              </td>
+              <td className="px-4 py-3 font-bold text-primary-200 text-right tabular-nums">
+                RM {fmt(plan.totalAmount)}
+              </td>
+              <td colSpan={2} />
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="sm:hidden space-y-3">
+        {plan.allocations.map((row, i) => (
+          <div
+            key={row.category}
+            className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-2"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-block h-2.5 w-2.5 rounded-full shrink-0 ${BAR_COLOURS[i % BAR_COLOURS.length]}`}
+                />
+                <span className="font-semibold text-white text-sm">{row.category}</span>
+              </div>
+              <span
+                className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${CATEGORY_COLOURS[i % CATEGORY_COLOURS.length]}`}
+              >
+                {row.percentage}%
+              </span>
+            </div>
+            {/* Progress bar */}
+            <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+              <div
+                className={`h-full rounded-full ${BAR_COLOURS[i % BAR_COLOURS.length]}`}
+                style={{ width: `${row.percentage}%` }}
+              />
+            </div>
+            <p className="text-primary-200 font-semibold text-sm tabular-nums">
+              RM {fmt(row.amount)}
+            </p>
+            <ul className="space-y-0.5">
+              {row.expenses.map((exp) => (
+                <li key={exp} className="text-neutral-400 text-xs">· {exp}</li>
+              ))}
+            </ul>
+            <p className="text-neutral-500 text-xs italic">{row.rationale}</p>
+          </div>
+        ))}
+        {/* Mobile total */}
+        <div className="rounded-xl border border-primary-500/30 bg-primary-500/10 px-4 py-3 flex justify-between items-center">
+          <span className="font-bold text-white text-sm">Total</span>
+          <span className="font-bold text-primary-200 tabular-nums text-sm">
+            RM {fmt(plan.totalAmount)} · {plan.totalPercentage}%
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -143,31 +245,40 @@ function TableOutput({ content }: { content: string }) {
 
 interface FundAllocationWidgetProps {
   profile: BusinessProfile;
+  onAllocationGenerated?: (plan: FundAllocationPlan) => void;
   onGenerateRef?: (fn: () => Promise<void>) => void;
 }
 
 export default function FundAllocationWidget({
   profile,
+  onAllocationGenerated,
   onGenerateRef,
 }: FundAllocationWidgetProps) {
   const { state, generate } = useWidgetState();
-  const [content, setContent] = useState<string>("");
+  const [plan, setPlan] = useState<FundAllocationPlan | null>(null);
+  const [parseError, setParseError] = useState<string | null>(null);
 
   const handleGenerate = useCallback(async () => {
-    setContent("");
-    await generate(async () => {
-      await streamBedrock(
-        {
-          systemPrompt: SYSTEM_PROMPT,
-          userMessage: buildUserMessage(profile),
-          maxTokens: 1024,
-        },
-        (delta) => setContent((prev) => prev + delta)
-      );
-    });
-  }, [profile, generate]);
+    setPlan(null);
+    setParseError(null);
 
-  // Register the generate handler with the parent (for Generate All)
+    await generate(async () => {
+      try {
+        const result = await fetchFundAllocation(profile);
+        setPlan(result);
+        onAllocationGenerated?.(result);
+      } catch (err) {
+        if (err instanceof SyntaxError) {
+          setParseError(
+            "The agent returned a response that couldn't be parsed. Try regenerating."
+          );
+          throw new Error("Failed to parse fund allocation JSON.");
+        }
+        throw err;
+      }
+    });
+  }, [profile, generate, onAllocationGenerated]);
+
   useEffect(() => {
     onGenerateRef?.(handleGenerate);
   }, [onGenerateRef, handleGenerate]);
@@ -177,11 +288,15 @@ export default function FundAllocationWidget({
       title="Fund Allocation Table"
       onGenerate={handleGenerate}
       state={state}
-      idleHint="Splits your stated capital across essentials, growth, and buffer — tuned to Malaysian cost norms."
+      idleHint="Splits your capital across 6 categories — tuned to Malaysian SME cost norms by your Bedrock advisor."
       idleButtonLabel="Build table"
       regenerateLabel="Rebuild table"
     >
-      {content && <TableOutput content={content} />}
+      {parseError ? (
+        <p className="text-sm text-red-400">{parseError}</p>
+      ) : plan ? (
+        <AllocationTable plan={plan} />
+      ) : null}
     </WidgetCard>
   );
 }

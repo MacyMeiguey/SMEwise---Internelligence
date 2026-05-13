@@ -11,6 +11,11 @@
  *
  *   If the agent does not return valid JSON, the request is retried up to
  *   5 times before returning an error.
+ *
+ * POST /api/bedrock/fund-allocation
+ *   Invokes the fund-allocation Bedrock agent (RMJF0EXRHR / RDAMSJUEK5).
+ *   Accepts BusinessProfile fields, returns a JSON budget allocation plan
+ *   matching the FundAllocationPlan schema.
  */
 
 import { Router, Request, Response } from 'express'
@@ -66,15 +71,17 @@ function extractJsonString(raw: string): string {
 }
 
 /**
- * Invoke the Bedrock agent and return the raw response string.
+ * Invoke a Bedrock agent and return the raw response string.
  */
-async function invokeAgent(inputText: string, sessionId: string): Promise<string> {
-    const AGENT_ID = process.env.BEDROCK_AGENT_ID ?? 'HOG3CDST5J'
-    const AGENT_ALIAS_ID = process.env.BEDROCK_AGENT_ALIAS_ID ?? 'UBOYDO9UHN'
-
+async function invokeAgent(
+    inputText: string,
+    sessionId: string,
+    agentId: string,
+    agentAliasId: string,
+): Promise<string> {
     const command = new InvokeAgentCommand({
-        agentId: AGENT_ID,
-        agentAliasId: AGENT_ALIAS_ID,
+        agentId,
+        agentAliasId,
         sessionId,
         inputText,
     })
@@ -153,7 +160,12 @@ router.post('/marketing', async (req: Request, res: Response) => {
         const sessionId = `marketing-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
         try {
-            const raw = await invokeAgent(inputText, sessionId)
+            const raw = await invokeAgent(
+                inputText,
+                sessionId,
+                'HOG3CDST5J',
+                'UBOYDO9UHN',
+            )
             lastRaw = raw
 
             console.log(`[Bedrock] Attempt ${attempt}/${MAX_RETRIES} — response length: ${raw.length} chars`)
@@ -190,6 +202,88 @@ router.post('/marketing', async (req: Request, res: Response) => {
     // can attempt to display whatever partial content was returned.
     console.error(
         `[Bedrock] All ${MAX_RETRIES} attempts failed to return valid JSON. Returning last raw response.`,
+    )
+    res.status(200).json({ content: lastRaw })
+})
+
+// ─── POST /api/bedrock/fund-allocation ───────────────────────────────────────
+
+router.post('/fund-allocation', async (req: Request, res: Response) => {
+    const {
+        companyName,
+        industry,
+        businessStage,
+        city,
+        currentFunds,
+        businessType,
+    } = req.body as {
+        companyName: string
+        industry: string
+        businessStage: string
+        city: string
+        currentFunds: number
+        businessType: string
+    }
+
+    if (!companyName || !industry || !city || !businessStage || !businessType || !currentFunds) {
+        res.status(400).json({
+            error: 'companyName, industry, city, businessStage, businessType, and currentFunds are required.',
+        })
+        return
+    }
+
+    const FUND_AGENT_ID = process.env.BEDROCK_FUND_AGENT_ID ?? 'RMJF0EXRHR'
+    const FUND_AGENT_ALIAS_ID = process.env.BEDROCK_FUND_AGENT_ALIAS_ID ?? 'RDAMSJUEK5'
+
+    const inputText = [
+        `Company: ${companyName}`,
+        `Industry: ${industry}`,
+        `Stage: ${businessStage}`,
+        `Location: ${city}, Malaysia`,
+        `Business Type: ${businessType}`,
+        `Current Funds: RM ${Number(currentFunds).toLocaleString('en-MY')}`,
+    ].join('\n')
+
+    console.log('=== [fund-allocation] inputText sent to Bedrock agent ===\n', inputText)
+
+    let lastRaw = ''
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        const sessionId = `fund-alloc-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+        try {
+            const raw = await invokeAgent(inputText, sessionId, FUND_AGENT_ID, FUND_AGENT_ALIAS_ID)
+            lastRaw = raw
+
+            console.log(
+                `[fund-allocation] Attempt ${attempt}/${MAX_RETRIES} — response length: ${raw.length} chars`,
+            )
+
+            const jsonString = extractJsonString(raw)
+            JSON.parse(jsonString) // validate
+
+            console.log(`[fund-allocation] Attempt ${attempt} returned valid JSON`)
+            res.status(200).json({ content: raw })
+            return
+        } catch (err) {
+            if (err instanceof SyntaxError) {
+                console.warn(
+                    `[fund-allocation] Attempt ${attempt}/${MAX_RETRIES} did NOT return valid JSON. ` +
+                    (attempt < MAX_RETRIES ? 'Retrying...' : 'No retries left.'),
+                )
+                continue
+            }
+
+            console.error(`[SMEwise] /api/bedrock/fund-allocation error on attempt ${attempt}:`, err)
+            res.status(500).json({
+                error: 'Something went wrong while generating the fund allocation plan. Please try again.',
+            })
+            return
+        }
+    }
+
+    console.error(
+        `[fund-allocation] All ${MAX_RETRIES} attempts failed to return valid JSON. Returning last raw response.`,
     )
     res.status(200).json({ content: lastRaw })
 })
