@@ -164,7 +164,7 @@ router.post('/marketing', async (req: Request, res: Response) => {
                 inputText,
                 sessionId,
                 'HOG3CDST5J',
-                'UBOYDO9UHN',
+                'VEYAO6VQCN',
             )
             lastRaw = raw
 
@@ -284,6 +284,126 @@ router.post('/fund-allocation', async (req: Request, res: Response) => {
 
     console.error(
         `[fund-allocation] All ${MAX_RETRIES} attempts failed to return valid JSON. Returning last raw response.`,
+    )
+    res.status(200).json({ content: lastRaw })
+})
+
+// ─── POST /api/bedrock/marketing-guidelines ───────────────────────────────────
+// Invokes the marketing guidelines agent with the marketing plan JSON as input.
+// Returns a structured JSON with feasibilityAudit, detailedRoadmap, and
+// resourceRequirements. Retries up to 5 times if the response is not valid JSON.
+
+router.post('/marketing-guidelines', async (req: Request, res: Response) => {
+    const { marketingPlanJson } = req.body as { marketingPlanJson: string }
+
+    if (!marketingPlanJson) {
+        res.status(400).json({ error: 'marketingPlanJson is required.' })
+        return
+    }
+
+    const GUIDELINES_AGENT_ID = process.env.BEDROCK_GUIDELINES_AGENT_ID ?? 'XHNLKLW8ZR'
+    const GUIDELINES_AGENT_ALIAS_ID = process.env.BEDROCK_GUIDELINES_AGENT_ALIAS_ID ?? '4LIB26P0JN'
+
+    console.log('=== [marketing-guidelines] Invoking agent with marketing plan ===')
+
+    let lastRaw = ''
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        const sessionId = `guidelines-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+        try {
+            const raw = await invokeAgent(marketingPlanJson, sessionId, GUIDELINES_AGENT_ID, GUIDELINES_AGENT_ALIAS_ID)
+            lastRaw = raw
+
+            console.log(
+                `[marketing-guidelines] Attempt ${attempt}/${MAX_RETRIES} — response length: ${raw.length} chars`,
+            )
+
+            const jsonString = extractJsonString(raw)
+            JSON.parse(jsonString) // validate
+
+            console.log(`[marketing-guidelines] Attempt ${attempt} returned valid JSON`)
+            res.status(200).json({ content: raw })
+            return
+        } catch (err) {
+            if (err instanceof SyntaxError) {
+                console.warn(
+                    `[marketing-guidelines] Attempt ${attempt}/${MAX_RETRIES} did NOT return valid JSON. ` +
+                    (attempt < MAX_RETRIES ? 'Retrying...' : 'No retries left.'),
+                )
+                continue
+            }
+
+            console.error(`[SMEwise] /api/bedrock/marketing-guidelines error on attempt ${attempt}:`, err)
+            res.status(500).json({
+                error: 'Something went wrong while generating the marketing guidelines. Please try again.',
+            })
+            return
+        }
+    }
+
+    console.error(
+        `[marketing-guidelines] All ${MAX_RETRIES} attempts failed to return valid JSON. Returning last raw response.`,
+    )
+    res.status(200).json({ content: lastRaw })
+})
+
+// ─── POST /api/bedrock/marketing-forecast ─────────────────────────────────────
+// Invokes the marketing forecast agent with the marketing plan JSON as input.
+// Returns a structured JSON with executiveSummary, timeSeriesData, phaseProjections,
+// and benchmarking. Retries up to 5 times if the response is not valid JSON.
+
+router.post('/marketing-forecast', async (req: Request, res: Response) => {
+    const { marketingPlanJson } = req.body as { marketingPlanJson: string }
+
+    if (!marketingPlanJson) {
+        res.status(400).json({ error: 'marketingPlanJson is required.' })
+        return
+    }
+
+    const FORECAST_AGENT_ID = process.env.BEDROCK_FORECAST_AGENT_ID ?? 'HSXW0AKDZF'
+    const FORECAST_AGENT_ALIAS_ID = process.env.BEDROCK_FORECAST_AGENT_ALIAS_ID ?? 'C3RZVX887O'
+
+    console.log('=== [marketing-forecast] Invoking agent with marketing plan ===')
+
+    let lastRaw = ''
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        const sessionId = `forecast-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+        try {
+            const raw = await invokeAgent(marketingPlanJson, sessionId, FORECAST_AGENT_ID, FORECAST_AGENT_ALIAS_ID)
+            lastRaw = raw
+
+            console.log(
+                `[marketing-forecast] Attempt ${attempt}/${MAX_RETRIES} — response length: ${raw.length} chars`,
+            )
+
+            const jsonString = extractJsonString(raw)
+            JSON.parse(jsonString) // validate
+
+            console.log(`[marketing-forecast] Attempt ${attempt} returned valid JSON`)
+            res.status(200).json({ content: raw })
+            return
+        } catch (err) {
+            if (err instanceof SyntaxError) {
+                console.warn(
+                    `[marketing-forecast] Attempt ${attempt}/${MAX_RETRIES} did NOT return valid JSON. ` +
+                    (attempt < MAX_RETRIES ? 'Retrying...' : 'No retries left.'),
+                )
+                continue
+            }
+
+            console.error(`[SMEwise] /api/bedrock/marketing-forecast error on attempt ${attempt}:`, err)
+            res.status(500).json({
+                error: 'Something went wrong while generating the marketing forecast. Please try again.',
+            })
+            return
+        }
+    }
+
+    console.error(
+        `[marketing-forecast] All ${MAX_RETRIES} attempts failed to return valid JSON. Returning last raw response.`,
     )
     res.status(200).json({ content: lastRaw })
 })

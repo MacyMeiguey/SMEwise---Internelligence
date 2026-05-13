@@ -18,19 +18,20 @@ async function askAgent() {
   const company_name = "Pixel Perfect";
 
   // 2. Multi-line string (Template Literal)
-  const input_text = `Company: ${company_name}
-    Industry: Camera
-    Stage: Idea Stage
-    Location: Kuala Lumpur, Malaysia
-    Target Customer: Those who are interested in photography and videography
-    Goal: Become profitability within 2 years
-    Business Type: Sdn Bhd
-    Fund Allocation: RM 10000 for marketing, RM 20000 for product development, RM 15000 for operations, RM 5000 for contingency`;
+  const input_text = `Company: Idk
+Industry: testing
+Stage: Just Launched
+Location: Kuala Lumpur, Malaysia
+Target Customer: Who willing to buy camera
+Goal: Become profitable in second year
+Business Type: Enterprise
+Current Funds: RM 21,000
+Fund Allocation: RM 18,900 allocated to marketing`;
 
   // 3. Prepare the command
   const command = new InvokeAgentCommand({
     agentId: "HOG3CDST5J",         // Your Agent ID
-    agentAliasId: "ZPRJAI1HFX",    // Your Agent Alias ID
+    agentAliasId: "VEYAO6VQCN",    // Your Agent Alias ID
     sessionId: "unique-session-id", 
     inputText: input_text,
   });

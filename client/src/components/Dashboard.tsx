@@ -21,7 +21,8 @@ import SmartPricingWidget from './widgets/SmartPricingWidget';
 import ProductVisualWidget from './widgets/ProductVisualWidget';
 
 import MarketingStrategyWidget from './widgets/MarketingStrategyWidget';
-import MarketingPosterWidget from './widgets/MarketingPosterWidget';
+import MarketingGuidelinesWidget from './widgets/MarketingGuidelinesWidget';
+import MarketingForecastWidget from './widgets/MarketingForecastWidget';
 
 import AnalyticsDashboardWidget from './widgets/AnalyticsDashboardWidget';
 import { DocumentGeneratorWidgetWithControls as DocumentGeneratorWidget } from './widgets/DocumentGeneratorWidget';
@@ -49,7 +50,11 @@ const DEFAULT_PRICING_INPUTS: PricingOptionalInputs = {
 
 export default function Dashboard({ profile, isUnlocked, activeSection }: DashboardProps) {
   const [pricingInputs, setPricingInputs] = useState<PricingOptionalInputs>(DEFAULT_PRICING_INPUTS);
-  const [marketingStrategy, setMarketingStrategy] = useState<string>('');
+  const [marketingPlanJson, setMarketingPlanJson] = useState<string | null>(null);
+  // Ref holds the latest plan JSON synchronously so handleGenerateAll can pass it
+  // to downstream widgets immediately after strategy completes — React state updates
+  // are async and would still be null when the next generate call fires.
+  const marketingPlanJsonRef = useRef<string | null>(null);
 
   const startupRegRef = useRef<(() => Promise<void>) | null>(null);
   const officeLocRef = useRef<(() => Promise<void>) | null>(null);
@@ -65,7 +70,8 @@ export default function Dashboard({ profile, isUnlocked, activeSection }: Dashbo
   const productVisualRef = useRef<(() => Promise<void>) | null>(null);
 
   const marketingStrategyRef = useRef<(() => Promise<void>) | null>(null);
-  const marketingPosterRef = useRef<(() => Promise<void>) | null>(null);
+  const marketingGuidelinesRef = useRef<((planJson?: string) => Promise<void>) | null>(null);
+  const marketingForecastRef = useRef<((planJson?: string) => Promise<void>) | null>(null);
 
   const analyticsRef = useRef<(() => Promise<void>) | null>(null);
   const documentRef = useRef<(() => Promise<void>) | null>(null);
@@ -91,8 +97,17 @@ export default function Dashboard({ profile, isUnlocked, activeSection }: Dashbo
         productVisualRef.current?.(),
       ]);
     } else if (section === 'Marketing') {
+      // Sequential: strategy first, then guidelines and forecast in parallel.
+      // Pass the plan JSON directly to downstream widgets so they don't depend
+      // on React state (which would still be stale at this point).
       await marketingStrategyRef.current?.();
-      await marketingPosterRef.current?.();
+      const planJson = marketingPlanJsonRef.current;
+      if (planJson) {
+        await Promise.all([
+          marketingGuidelinesRef.current?.(planJson),
+          marketingForecastRef.current?.(planJson),
+        ]);
+      }
     } else if (section === 'Owner Tools') {
       await Promise.all([analyticsRef.current?.(), documentRef.current?.()]);
     }
@@ -206,25 +221,37 @@ export default function Dashboard({ profile, isUnlocked, activeSection }: Dashbo
               )}
 
               {section === 'Marketing' && profile && (
-                <div className="grid grid-cols-1 xl:grid-cols-10 gap-4 lg:gap-5">
-                  <div className="xl:col-span-5 min-w-0">
-                    <MarketingStrategyWidget
-                      profile={profile}
-                      onStrategyGenerated={setMarketingStrategy}
-                      onGenerateRef={(fn) => {
-                        marketingStrategyRef.current = fn;
-                      }}
-                    />
+                <div className="flex flex-col gap-4 lg:gap-5">
+                  {/* Row 1: Strategy + Guidelines */}
+                  <div className="grid grid-cols-1 xl:grid-cols-10 items-stretch gap-4 lg:gap-5">
+                    <div className="xl:col-span-5 min-w-0 flex flex-col">
+                      <MarketingStrategyWidget
+                        profile={profile}
+                        onStrategyGenerated={(raw) => {
+                          marketingPlanJsonRef.current = raw;
+                          setMarketingPlanJson(raw);
+                        }}
+                        onGenerateRef={(fn) => {
+                          marketingStrategyRef.current = fn;
+                        }}
+                      />
+                    </div>
+                    <div className="xl:col-span-5 min-w-0">
+                      <MarketingGuidelinesWidget
+                        marketingPlanJson={marketingPlanJson}
+                        onGenerateRef={(fn) => {
+                          marketingGuidelinesRef.current = fn;
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div className="xl:col-span-5 min-w-0">
-                    <MarketingPosterWidget
-                      profile={profile}
-                      marketingStrategy={marketingStrategy}
-                      onGenerateRef={(fn) => {
-                        marketingPosterRef.current = fn;
-                      }}
-                    />
-                  </div>
+                  {/* Row 2: Forecast (full width) */}
+                  <MarketingForecastWidget
+                    marketingPlanJson={marketingPlanJson}
+                    onGenerateRef={(fn) => {
+                      marketingForecastRef.current = fn;
+                    }}
+                  />
                 </div>
               )}
 
