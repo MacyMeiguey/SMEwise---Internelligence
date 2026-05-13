@@ -95,11 +95,11 @@ const DEMO_PLAN: MarketingPlan = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const PHASE_COLORS = [
-  { bg: "#EAF3DE", border: "#639922", text: "#3B6D11", badge: "#C0DD97" },
-  { bg: "#E6F1FB", border: "#378ADD", text: "#185FA5", badge: "#B5D4F4" },
-  { bg: "#FAEEDA", border: "#BA7517", text: "#854F0B", badge: "#FAC775" },
-  { bg: "#FBEAF0", border: "#D4537E", text: "#993556", badge: "#F4C0D1" },
+const PHASE_STYLES = [
+  { bg: "bg-emerald-50 dark:bg-emerald-950/30", border: "border-emerald-300 dark:border-emerald-600/50", text: "text-emerald-800 dark:text-emerald-200", badge: "bg-emerald-200 dark:bg-emerald-800/60 text-emerald-900 dark:text-emerald-100", bar: "bg-emerald-500" },
+  { bg: "bg-blue-50 dark:bg-blue-950/30", border: "border-blue-300 dark:border-blue-600/50", text: "text-blue-800 dark:text-blue-200", badge: "bg-blue-200 dark:bg-blue-800/60 text-blue-900 dark:text-blue-100", bar: "bg-blue-500" },
+  { bg: "bg-amber-50 dark:bg-amber-950/30", border: "border-amber-300 dark:border-amber-600/50", text: "text-amber-800 dark:text-amber-200", badge: "bg-amber-200 dark:bg-amber-800/60 text-amber-900 dark:text-amber-100", bar: "bg-amber-500" },
+  { bg: "bg-rose-50 dark:bg-rose-950/30", border: "border-rose-300 dark:border-rose-600/50", text: "text-rose-800 dark:text-rose-200", badge: "bg-rose-200 dark:bg-rose-800/60 text-rose-900 dark:text-rose-100", bar: "bg-rose-500" },
 ];
 
 const fmt = (n: number, currency: string) =>
@@ -113,70 +113,40 @@ function PhaseRow({ phase, currency, isOpen, onToggle }: {
   isOpen: boolean;
   onToggle: () => void;
 }) {
-  const c = PHASE_COLORS[(phase.phaseNumber - 1) % PHASE_COLORS.length];
+  const s = PHASE_STYLES[(phase.phaseNumber - 1) % PHASE_STYLES.length];
 
   return (
-    <div style={{
-      border: `1px solid ${c.border}`,
-      borderRadius: 12,
-      overflow: "hidden",
-      background: "#fff",
-      transition: "box-shadow 0.15s",
-    }}>
+    <div className={`rounded-xl border ${s.border} overflow-hidden bg-white dark:bg-[#101018] transition-shadow duration-150`}>
       {/* Header row */}
       <button
         onClick={onToggle}
-        style={{
-          width: "100%",
-          display: "grid",
-          gridTemplateColumns: "40px 1fr auto auto",
-          alignItems: "center",
-          gap: 16,
-          padding: "14px 20px",
-          background: c.bg,
-          border: "none",
-          cursor: "pointer",
-          textAlign: "left",
-        }}
+        className={`w-full flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 ${s.bg} text-left cursor-pointer border-none`}
       >
         {/* Phase badge */}
-        <div style={{
-          width: 40, height: 40, borderRadius: "50%",
-          background: c.badge, display: "flex",
-          alignItems: "center", justifyContent: "center",
-          fontWeight: 700, fontSize: 14, color: c.text,
-          flexShrink: 0,
-        }}>
+        <div className={`w-9 h-9 rounded-full ${s.badge} flex items-center justify-center text-xs font-bold shrink-0`}>
           P{phase.phaseNumber}
         </div>
 
         {/* Name + timeline */}
-        <div>
-          <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a" }}>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold text-neutral-900 dark:text-white truncate">
             Phase {phase.phaseNumber}: {phase.name}
           </div>
-          <div style={{ fontSize: 12, color: c.text, marginTop: 2 }}>
+          <div className={`text-xs mt-0.5 ${s.text}`}>
             {phase.timeline}
           </div>
         </div>
 
         {/* Budget pill */}
-        <div style={{
-          background: c.badge, borderRadius: 20,
-          padding: "4px 14px", fontSize: 13,
-          fontWeight: 600, color: c.text, whiteSpace: "nowrap",
-        }}>
+        <div className={`hidden sm:inline-flex ${s.badge} rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap`}>
           {fmt(phase.budgetAmount, currency)}
-          <span style={{ fontWeight: 400, opacity: 0.75, marginLeft: 4 }}>
-            ({phase.budgetPercentage}%)
-          </span>
+          <span className="font-normal opacity-75 ml-1">({phase.budgetPercentage}%)</span>
         </div>
 
         {/* Chevron */}
         <svg
-          width="18" height="18" viewBox="0 0 24 24" fill="none"
-          stroke={c.text} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-          style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s", flexShrink: 0 }}
+          className={`w-4 h-4 shrink-0 text-neutral-500 dark:text-neutral-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
         >
           <polyline points="6 9 12 15 18 9" />
         </svg>
@@ -184,51 +154,50 @@ function PhaseRow({ phase, currency, isOpen, onToggle }: {
 
       {/* Expanded detail */}
       {isOpen && (
-        <div style={{ padding: "0 20px 20px" }}>
+        <div className="px-4 sm:px-5 pb-4 sm:pb-5">
+          {/* Budget pill (mobile) */}
+          <div className={`sm:hidden inline-flex ${s.badge} rounded-full px-3 py-1 text-xs font-semibold mt-3`}>
+            {fmt(phase.budgetAmount, currency)} ({phase.budgetPercentage}%)
+          </div>
+
           {/* Overview */}
-          <p style={{
-            fontSize: 13, color: "#555", margin: "16px 0 14px",
-            lineHeight: 1.6, borderLeft: `3px solid ${c.border}`,
-            paddingLeft: 12,
-          }}>
+          <p className={`text-sm text-neutral-600 dark:text-neutral-400 mt-3 mb-4 leading-relaxed border-l-[3px] ${s.border} pl-3`}>
             {phase.overview}
           </p>
 
           {/* Tactics table */}
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: c.bg }}>
-                <th style={th}>Channel</th>
-                <th style={th}>Action</th>
-                <th style={{ ...th, textAlign: "right" }}>Budget</th>
-              </tr>
-            </thead>
-            <tbody>
-              {phase.tactics.map((t, i) => (
-                <tr key={i} style={{ borderBottom: "1px solid #f0f0f0" }}>
-                  <td style={{ ...td, whiteSpace: "nowrap" }}>
-                    <span style={{
-                      background: c.badge, color: c.text,
-                      padding: "2px 8px", borderRadius: 4,
-                      fontSize: 11, fontWeight: 600,
-                    }}>
-                      {t.channel}
-                    </span>
-                  </td>
-                  <td style={{ ...td, color: "#333", lineHeight: 1.5 }}>{t.action}</td>
-                  <td style={{ ...td, textAlign: "right", fontWeight: 600, color: c.text, whiteSpace: "nowrap" }}>
-                    {fmt(t.amount, currency)}
+          <div className="overflow-x-auto -mx-4 sm:-mx-5 px-4 sm:px-5">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className={s.bg}>
+                  <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-neutral-600 dark:text-neutral-300">Channel</th>
+                  <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-neutral-600 dark:text-neutral-300">Action</th>
+                  <th className="px-3 py-2 text-right text-[11px] font-bold uppercase tracking-wide text-neutral-600 dark:text-neutral-300">Budget</th>
+                </tr>
+              </thead>
+              <tbody>
+                {phase.tactics.map((t, i) => (
+                  <tr key={i} className="border-b border-neutral-100 dark:border-white/[0.06]">
+                    <td className="px-3 py-2.5 align-top whitespace-nowrap">
+                      <span className={`${s.badge} px-2 py-0.5 rounded text-[11px] font-semibold`}>
+                        {t.channel}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 align-top text-neutral-700 dark:text-neutral-300 leading-snug">{t.action}</td>
+                    <td className={`px-3 py-2.5 align-top text-right font-semibold whitespace-nowrap ${s.text}`}>
+                      {fmt(t.amount, currency)}
+                    </td>
+                  </tr>
+                ))}
+                <tr className={s.bg}>
+                  <td colSpan={2} className="px-3 py-2.5 font-bold text-neutral-900 dark:text-white">Phase Total</td>
+                  <td className={`px-3 py-2.5 text-right font-bold whitespace-nowrap ${s.text}`}>
+                    {fmt(phase.budgetAmount, currency)}
                   </td>
                 </tr>
-              ))}
-              <tr style={{ background: c.bg }}>
-                <td colSpan={2} style={{ ...td, fontWeight: 700 }}>Phase Total</td>
-                <td style={{ ...td, textAlign: "right", fontWeight: 700, color: c.text, whiteSpace: "nowrap" }}>
-                  {fmt(phase.budgetAmount, currency)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
@@ -250,75 +219,68 @@ export default function MarketingPlan({ plan = DEMO_PLAN }: { plan?: MarketingPl
   const collapseAll = () => setOpenPhases(new Set());
 
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif", maxWidth: 820, margin: "0 auto", padding: "24px 16px" }}>
+    <div className="font-sans max-w-none">
 
       {/* Header card */}
-      <div style={{
-        background: "#fff", border: "1px solid #e5e7eb",
-        borderRadius: 14, padding: "20px 24px", marginBottom: 20,
-        display: "grid", gridTemplateColumns: "1fr auto",
-        alignItems: "start", gap: 16,
-      }}>
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, color: "#888", textTransform: "uppercase", marginBottom: 4 }}>
-            Long-Term Marketing Plan
+      <div className="rounded-xl border border-neutral-200 dark:border-white/[0.09] bg-white dark:bg-[#101018] px-4 sm:px-5 py-4 mb-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">
+              Long-Term Marketing Plan
+            </p>
+            <h3 className="text-lg font-bold text-neutral-900 dark:text-white leading-tight truncate">{plan.company}</h3>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+              {plan.industry} · {plan.location} · {plan.duration}
+            </p>
           </div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#111" }}>{plan.company}</h1>
-          <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>
-            {plan.industry} · {plan.location} · {plan.duration}
+          <div className="sm:text-right shrink-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-0.5">Total Budget</p>
+            <p className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white">{fmt(plan.totalBudget, plan.currency)}</p>
+            <p className="text-xs text-neutral-400 dark:text-neutral-500">{plan.phases.length} phases</p>
           </div>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 2 }}>Total Budget</div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: "#111" }}>{fmt(plan.totalBudget, plan.currency)}</div>
-          <div style={{ fontSize: 12, color: "#999" }}>{plan.phases.length} phases</div>
         </div>
       </div>
 
       {/* Budget bar */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: "flex", height: 8, borderRadius: 6, overflow: "hidden" }}>
+      <div className="mb-4">
+        <div className="flex h-2 rounded-full overflow-hidden bg-neutral-100 dark:bg-white/[0.06]">
           {plan.phases.map((p, i) => (
             <div
               key={i}
               title={`Phase ${p.phaseNumber}: ${p.budgetPercentage}%`}
-              style={{
-                width: `${p.budgetPercentage}%`,
-                background: PHASE_COLORS[i % PHASE_COLORS.length].border,
-                transition: "width 0.3s",
-              }}
+              className={`${PHASE_STYLES[i % PHASE_STYLES.length].bar} transition-all duration-300`}
+              style={{ width: `${p.budgetPercentage}%` }}
             />
           ))}
         </div>
-        <div style={{ display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap" }}>
+        <div className="flex gap-3 sm:gap-4 mt-2 flex-wrap">
           {plan.phases.map((p, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#555" }}>
-              <span style={{ width: 10, height: 10, borderRadius: 2, background: PHASE_COLORS[i % PHASE_COLORS.length].border, display: "inline-block" }} />
-              Phase {p.phaseNumber}: {p.name} ({p.budgetPercentage}%)
+            <div key={i} className="flex items-center gap-1.5 text-xs text-neutral-600 dark:text-neutral-400">
+              <span className={`w-2.5 h-2.5 rounded-sm ${PHASE_STYLES[i % PHASE_STYLES.length].bar} inline-block`} />
+              P{p.phaseNumber}: {p.name} ({p.budgetPercentage}%)
             </div>
           ))}
         </div>
       </div>
 
       {/* Controls */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, justifyContent: "flex-end" }}>
-        {[["Expand All", expandAll], ["Collapse All", collapseAll]].map(([label, fn]) => (
-          <button
-            key={label as string}
-            onClick={fn as () => void}
-            style={{
-              fontSize: 12, padding: "5px 12px", borderRadius: 6,
-              border: "1px solid #d1d5db", background: "#fff",
-              cursor: "pointer", color: "#444",
-            }}
-          >
-            {label as string}
-          </button>
-        ))}
+      <div className="flex gap-2 mb-3 justify-end">
+        <button
+          onClick={expandAll}
+          className="text-xs px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-white/[0.12] bg-white dark:bg-white/[0.04] text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-white/[0.08] transition-colors cursor-pointer"
+        >
+          Expand All
+        </button>
+        <button
+          onClick={collapseAll}
+          className="text-xs px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-white/[0.12] bg-white dark:bg-white/[0.04] text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-white/[0.08] transition-colors cursor-pointer"
+        >
+          Collapse All
+        </button>
       </div>
 
       {/* Phase rows */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className="flex flex-col gap-3">
         {plan.phases.map(phase => (
           <PhaseRow
             key={phase.phaseNumber}
@@ -331,29 +293,14 @@ export default function MarketingPlan({ plan = DEMO_PLAN }: { plan?: MarketingPl
       </div>
 
       {/* Footer */}
-      <div style={{
-        marginTop: 20, padding: "14px 20px",
-        background: "#f9fafb", borderRadius: 10,
-        display: "flex", justifyContent: "space-between",
-        fontSize: 13, color: "#555", flexWrap: "wrap", gap: 8,
-      }}>
-        <span>Total allocated across all phases</span>
-        <strong style={{ color: "#111" }}>
+      <div className="mt-4 px-4 sm:px-5 py-3 rounded-xl bg-neutral-50 dark:bg-white/[0.03] border border-neutral-200 dark:border-white/[0.08] flex flex-wrap items-center justify-between gap-2 text-sm">
+        <span className="text-neutral-600 dark:text-neutral-400">Total allocated across all phases</span>
+        <span className="font-bold text-neutral-900 dark:text-white">
           {fmt(plan.phases.reduce((s, p) => s + p.budgetAmount, 0), plan.currency)}
           {" / "}
           {fmt(plan.totalBudget, plan.currency)}
-        </strong>
+        </span>
       </div>
     </div>
   );
 }
-
-// ─── Table cell styles ────────────────────────────────────────────────────────
-const th: React.CSSProperties = {
-  padding: "8px 12px", textAlign: "left",
-  fontSize: 11, fontWeight: 700, textTransform: "uppercase",
-  letterSpacing: 0.5, color: "#555",
-};
-const td: React.CSSProperties = {
-  padding: "10px 12px", verticalAlign: "top",
-};

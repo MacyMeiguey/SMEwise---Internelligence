@@ -99,7 +99,7 @@ export default function Dashboard({ profile, isUnlocked, activeSection }: Dashbo
   }
 
   return (
-    <section aria-label="Dashboard" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-10">
+    <section aria-label="Dashboard" className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-10">
       {!isUnlocked && (
         <div
           role="status"
@@ -206,7 +206,7 @@ export default function Dashboard({ profile, isUnlocked, activeSection }: Dashbo
               )}
 
               {section === 'Marketing' && profile && (
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 lg:gap-5">
+                <div className="grid grid-cols-1 xl:grid-cols-10 gap-4 lg:gap-5">
                   <div className="xl:col-span-5 min-w-0">
                     <MarketingStrategyWidget
                       profile={profile}
@@ -216,7 +216,7 @@ export default function Dashboard({ profile, isUnlocked, activeSection }: Dashbo
                       }}
                     />
                   </div>
-                  <div className="xl:col-span-7 min-w-0">
+                  <div className="xl:col-span-5 min-w-0">
                     <MarketingPosterWidget
                       profile={profile}
                       marketingStrategy={marketingStrategy}
