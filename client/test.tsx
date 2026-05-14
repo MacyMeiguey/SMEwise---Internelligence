@@ -31,7 +31,7 @@ Fund Allocation: RM 18,900 allocated to marketing`;
   // 3. Prepare the command
   const command = new InvokeAgentCommand({
     agentId: "HOG3CDST5J",         // Your Agent ID
-    agentAliasId: "VEYAO6VQCN",    // Your Agent Alias ID
+    agentAliasId: "STD2XBFOTQ",    // Your Agent Alias ID
     sessionId: "unique-session-id", 
     inputText: input_text,
   });

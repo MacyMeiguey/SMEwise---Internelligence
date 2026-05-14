@@ -172,7 +172,7 @@ router.post('/marketing', async (req: Request, res: Response) => {
                 inputText,
                 sessionId,
                 'HOG3CDST5J',
-                'VEYAO6VQCN',
+                '5YJAUY5OSD',
             )
             lastRaw = raw
 
@@ -310,7 +310,7 @@ router.post('/marketing-guidelines', async (req: Request, res: Response) => {
     }
 
     const GUIDELINES_AGENT_ID = process.env.BEDROCK_GUIDELINES_AGENT_ID ?? 'XHNLKLW8ZR'
-    const GUIDELINES_AGENT_ALIAS_ID = process.env.BEDROCK_GUIDELINES_AGENT_ALIAS_ID ?? '4LIB26P0JN'
+    const GUIDELINES_AGENT_ALIAS_ID = process.env.BEDROCK_GUIDELINES_AGENT_ALIAS_ID ?? 'QZZPYAYXRR'
 
     console.log('=== [marketing-guidelines] Invoking agent with marketing plan ===')
 
@@ -370,7 +370,7 @@ router.post('/marketing-forecast', async (req: Request, res: Response) => {
     }
 
     const FORECAST_AGENT_ID = process.env.BEDROCK_FORECAST_AGENT_ID ?? 'HSXW0AKDZF'
-    const FORECAST_AGENT_ALIAS_ID = process.env.BEDROCK_FORECAST_AGENT_ALIAS_ID ?? 'C3RZVX887O'
+    const FORECAST_AGENT_ALIAS_ID = process.env.BEDROCK_FORECAST_AGENT_ALIAS_ID ?? 'QUI6ZWQMMZ'
 
     console.log('=== [marketing-forecast] Invoking agent with marketing plan ===')
 
@@ -526,7 +526,7 @@ router.post('/loans-funding', async (req: Request, res: Response) => {
         return
     }
 
-    const LOANS_AGENT_ID       = process.env.BEDROCK_LOANS_AGENT_ID       ?? '5I7B8BCVX0'
+    const LOANS_AGENT_ID = process.env.BEDROCK_LOANS_AGENT_ID ?? '5I7B8BCVX0'
     const LOANS_AGENT_ALIAS_ID = process.env.BEDROCK_LOANS_AGENT_ALIAS_ID ?? 'BUJMARJWNU'
 
     const inputText = [
@@ -608,7 +608,7 @@ router.post('/investor-funding', async (req: Request, res: Response) => {
         return
     }
 
-    const INVESTOR_AGENT_ID       = process.env.BEDROCK_INVESTOR_AGENT_ID       ?? 'K5UUZVS6JI'
+    const INVESTOR_AGENT_ID = process.env.BEDROCK_INVESTOR_AGENT_ID ?? 'K5UUZVS6JI'
     const INVESTOR_AGENT_ALIAS_ID = process.env.BEDROCK_INVESTOR_AGENT_ALIAS_ID ?? 'J7IGIYKWQR'
 
     const inputText = [
@@ -668,6 +668,79 @@ router.post('/investor-funding', async (req: Request, res: Response) => {
         `[investor-funding] All ${MAX_RETRIES} attempts failed to return valid JSON. Returning last raw response.`,
     )
     res.status(200).json({ content: lastRaw })
+})
+
+// ─── POST /api/bedrock/profile-verification ──────────────────────────────────
+// Invokes the profileVerificationAgent to validate the user's business profile.
+// The agent returns either "pass" (profile is valid) or a plain-text reason
+// explaining what is wrong.
+//
+// Agent ID:       EBDJERK2DV
+// Agent Alias ID: IDVDZBTZIK
+
+router.post('/profile-verification', async (req: Request, res: Response) => {
+    const {
+        companyName,
+        industry,
+        businessStage,
+        city,
+        targetCustomer,
+        mainGoal,
+        currentFunds,
+        businessType,
+    } = req.body as {
+        companyName: string
+        industry: string
+        businessStage: string
+        city: string
+        targetCustomer: string
+        mainGoal?: string
+        currentFunds: number
+        businessType: string
+    }
+
+    if (!companyName || !industry || !businessStage || !city || !targetCustomer || !businessType || currentFunds === undefined) {
+        res.status(400).json({
+            error: 'companyName, industry, businessStage, city, targetCustomer, businessType, and currentFunds are required.',
+        })
+        return
+    }
+
+    const PROFILE_AGENT_ID = process.env.BEDROCK_PROFILE_AGENT_ID ?? 'EBDJERK2DV'
+    const PROFILE_AGENT_ALIAS_ID = process.env.BEDROCK_PROFILE_AGENT_ALIAS_ID ?? 'IDVDZBTZIK'
+
+    const inputText = [
+        `Company: ${companyName}`,
+        `Industry: ${industry}`,
+        `Stage: ${businessStage}`,
+        `Location: ${city}`,
+        `Target Customer: ${targetCustomer}`,
+        mainGoal?.trim() ? `Goal: ${mainGoal.trim()}` : null,
+        `Business Type: ${businessType}`,
+        `Current Funds: RM ${Number(currentFunds).toLocaleString('en-MY')}`,
+    ]
+        .filter(Boolean)
+        .join('\n')
+
+    console.log('=== [profile-verification] inputText sent to Bedrock agent ===\n', inputText)
+
+    const sessionId = `profile-verify-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+    try {
+        const raw = await invokeAgent(inputText, sessionId, PROFILE_AGENT_ID, PROFILE_AGENT_ALIAS_ID)
+
+        console.log(`[profile-verification] Agent response: "${raw}"`)
+
+        // Normalise: trim whitespace so "pass\n" still matches
+        const result = raw.trim()
+
+        res.status(200).json({ result })
+    } catch (err) {
+        console.error('[SMEwise] /api/bedrock/profile-verification error:', err)
+        res.status(500).json({
+            error: 'Something went wrong while verifying your profile. Please try again.',
+        })
+    }
 })
 
 export default router

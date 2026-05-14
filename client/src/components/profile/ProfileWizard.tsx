@@ -67,6 +67,7 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
 
   const isEdit = Boolean(
     initialProfile &&
@@ -128,17 +129,57 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
     }
 
     setIsSubmitting(true);
-    onSubmit({
-      companyName: companyName.trim(),
-      industry: industry.trim(),
-      city: city.trim(),
-      businessStage: businessStage as BusinessStage,
-      businessType: businessType as BusinessType,
-      targetCustomer: targetCustomer.trim(),
-      mainGoal: mainGoal.trim(),
-      currentFunds,
-    });
-    setTimeout(() => setIsSubmitting(false), 1500);
+    setVerificationError(null);
+
+    try {
+      const apiBase = import.meta.env.VITE_API_URL ?? '';
+      const response = await fetch(`${apiBase}/api/bedrock/profile-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName: companyName.trim(),
+          industry: industry.trim(),
+          businessStage,
+          city: city.trim(),
+          targetCustomer: targetCustomer.trim(),
+          mainGoal: mainGoal.trim() || undefined,
+          currentFunds,
+          businessType,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error ?? 'Verification request failed.');
+      }
+
+      const { result } = await response.json() as { result: string };
+
+      if (result.toLowerCase() === 'pass') {
+        // Profile is valid — proceed
+        onSubmit({
+          companyName: companyName.trim(),
+          industry: industry.trim(),
+          city: city.trim(),
+          businessStage: businessStage as BusinessStage,
+          businessType: businessType as BusinessType,
+          targetCustomer: targetCustomer.trim(),
+          mainGoal: mainGoal.trim(),
+          currentFunds,
+        });
+      } else {
+        // Agent returned a reason — show it to the user
+        setVerificationError(result);
+      }
+    } catch (err) {
+      setVerificationError(
+        err instanceof Error
+          ? err.message
+          : 'Something went wrong while verifying your profile. Please try again.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const canProceedToStep2 =
@@ -498,6 +539,37 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
                   onEdit={() => setCurrentStep(2)}
                 />
               </ul>
+
+              {/* ── Verification error from the AI agent ── */}
+              {verificationError && (
+                <div
+                  role="alert"
+                  className="mt-5 flex gap-3 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3.5"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 shrink-0 text-red-400 mt-0.5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-red-300 mb-0.5">
+                      Please update your profile
+                    </p>
+                    <p className="text-sm text-red-200 leading-relaxed whitespace-pre-wrap">
+                      {verificationError}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="mt-8 flex flex-col-reverse sm:flex-row sm:justify-between gap-3">
                 <Button type="button" variant="ghost" className={btnGhostDark} onClick={() => setCurrentStep(2)}>
                   Back
@@ -512,7 +584,11 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
                     !isSubmitting ? <ChevronRight className="w-5 h-5" aria-hidden /> : undefined
                   }
                 >
-                  {isEdit ? 'Save & return to workspace' : 'Generate my business guidance'}
+                  {isSubmitting
+                    ? 'Verifying…'
+                    : isEdit
+                      ? 'Save & return to workspace'
+                      : 'Generate my business guidance'}
                 </Button>
               </div>
             </section>
@@ -624,7 +700,7 @@ function ReviewRow({
 }
 
 function inputClass(error?: string) {
-  return `w-full px-3.5 py-2.5 rounded-xl border text-sm transition-shadow duration-150 bg-white/[0.06] text-white placeholder:text-neutral-500 ${
+  return `w-full px-3.5 py-2.5 rounded-xl border text-sm transition-shadow duration-150 bg-white/[0.06] text-white placeholder:text-neutral-500 [&_option]:bg-[#1a1728] [&_option]:text-white ${
     error
       ? '!border-red-500/70 focus:!border-red-400 focus:ring-2 focus:ring-red-500/25'
       : 'border-white/[0.12] focus:border-primary-400 focus:ring-2 focus:ring-primary-500/25 hover:border-white/20'
