@@ -608,8 +608,8 @@ router.post('/investor-funding', async (req: Request, res: Response) => {
         return
     }
 
-    const INVESTOR_AGENT_ID = process.env.BEDROCK_INVESTOR_AGENT_ID ?? 'K5UUZVS6JI'
-    const INVESTOR_AGENT_ALIAS_ID = process.env.BEDROCK_INVESTOR_AGENT_ALIAS_ID ?? 'J7IGIYKWQR'
+    const INVESTOR_AGENT_ID       = process.env.BEDROCK_INVESTOR_AGENT_ID       ?? 'K5UUZVS6JI'
+    const INVESTOR_AGENT_ALIAS_ID = process.env.BEDROCK_INVESTOR_AGENT_ALIAS_ID ?? 'ZRJVGFTYSU'
 
     const inputText = [
         `Company: ${companyName}`,

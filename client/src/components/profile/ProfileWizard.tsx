@@ -10,12 +10,17 @@ import Button from '../shared/Button';
 import LogoWordmark from '../shared/LogoWordmark';
 import {
   Building2,
-  Target,
   CheckCircle2,
   ChevronRight,
   Wallet,
   ClipboardCheck,
   Pencil,
+  Briefcase,
+  MapPin,
+  TrendingUp,
+  Users,
+  Goal,
+  DollarSign,
 } from 'lucide-react';
 
 interface ProfileWizardProps {
@@ -45,7 +50,7 @@ const STEPS = [
 ] as const;
 
 const panelClass =
-  'rounded-2xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-md shadow-panel p-6 sm:p-8';
+  'rounded-2xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-md shadow-panel p-5 sm:p-6';
 const btnPrimaryDark =
   '!bg-primary-600 hover:!bg-primary-500 active:!bg-primary-700 !border-2 !border-primary-400/40 !text-white';
 const btnGhostDark =
@@ -84,13 +89,8 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
     setTargetCustomer(initialProfile.targetCustomer);
     setMainGoal(initialProfile.mainGoal ?? '');
     setCurrentFunds(initialProfile.currentFunds);
-    // Start on step 1 so owners can scan and edit every section — not only review
     setCurrentStep(1);
   }, [initialProfile]);
-
-  useEffect(() => {
-    topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [currentStep]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,96 +193,115 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
   return (
     <div
       ref={topRef}
-      className="relative min-h-[min(100vh,1200px)] border-b border-white/[0.06] bg-[#07070b] text-white [color-scheme:dark]"
+      className="relative min-h-screen border-b border-white/[0.06] bg-[#07070b] text-white [color-scheme:dark]"
     >
+      {/* Background gradient */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_85%_55%_at_50%_-15%,rgba(124,58,237,0.22),transparent_55%),radial-gradient(ellipse_50%_45%_at_100%_0%,rgba(196,181,253,0.08),transparent_50%)]"
       />
-      <div className="relative max-w-2xl mx-auto px-4 sm:px-6 py-10 sm:py-14 pb-28 sm:pb-14">
-        <header className="text-center mb-10 sm:mb-12">
-          <div className="flex justify-center mb-4">
-            <LogoWordmark size="lg" variant="light" />
-          </div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary-300 mb-2">
-            {isEdit ? 'Edit profile' : 'Get started'}
-          </p>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight text-balance">
-            {isEdit ? 'Update your business profile' : 'Tell us about your business'}
-          </h1>
-          <p className="mt-3 text-sm sm:text-base text-neutral-400 max-w-md mx-auto leading-relaxed">
-            {isEdit
-              ? 'Changes apply to your workspace, generators, and advisor immediately. Saved on this device only.'
-              : 'Rough answers are fine — you can refine anything later. About three minutes.'}
-          </p>
-        </header>
 
-        <div className="mb-8" role="navigation" aria-label="Form progress">
-          <div className="h-1.5 rounded-full bg-white/[0.08] overflow-hidden mb-6">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-primary-500 to-primary-400 transition-[width] duration-500 ease-out shadow-[0_0_12px_rgba(167,139,250,0.35)]"
-              style={{ width: `${((currentStep - 1) / 2) * 100}%` }}
-            />
-          </div>
-          <ol className="flex justify-between gap-2">
-            {STEPS.map(({ n, title, hint, icon: Icon }) => {
-              const done = currentStep > n;
-              const active = currentStep === n;
-              const canClick =
-                n === 1 ||
-                (n === 2 && canProceedToStep2) ||
-                (n === 3 && canProceedToStep3);
-              return (
-                <li key={n} className="flex-1 min-w-0">
-                  <button
-                    type="button"
-                    disabled={!canClick}
-                    onClick={() => canClick && setCurrentStep(n)}
-                    className={`w-full flex flex-col items-center text-center gap-1.5 rounded-xl px-2 py-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070b] ${
-                      active
-                        ? 'bg-white/[0.08] shadow-panel ring-1 ring-white/[0.12]'
-                        : done
-                          ? 'hover:bg-white/[0.05]'
-                          : 'opacity-55 hover:opacity-90'
-                    } ${!canClick ? 'cursor-not-allowed opacity-35' : ''}`}
-                    aria-current={active ? 'step' : undefined}
-                  >
-                    <span
-                      className={`flex h-9 w-9 items-center justify-center rounded-full border-2 text-sm font-bold ${
-                        done
-                          ? 'border-primary-400/50 bg-primary-500/20 text-primary-200'
-                          : active
-                            ? 'border-primary-300 bg-primary-600/30 text-white'
-                            : 'border-white/15 bg-white/[0.04] text-neutral-500'
-                      }`}
+      {/* ── Two-column layout on lg+, stacked on mobile ── */}
+      <div className="relative w-full px-6 sm:px-10 lg:px-16 xl:px-24 py-10 sm:py-14 pb-28 sm:pb-14 lg:flex lg:gap-20 xl:gap-28 lg:items-start">
+
+        {/* ── LEFT PANEL — logo, header, step nav ── */}
+        <aside className="lg:w-96 xl:w-[26rem] lg:shrink-0 lg:sticky lg:top-14">
+          {/* Logo + header */}
+          <header className="text-center lg:text-left mb-8 lg:mb-10">
+            <div className="flex justify-center lg:justify-start mb-4">
+              <LogoWordmark size="lg" variant="light" />
+            </div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary-300 mb-2">
+              {isEdit ? 'Edit profile' : 'Get started'}
+            </p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight text-balance">
+              {isEdit ? 'Update your business profile' : 'Tell us about your business'}
+            </h1>
+            <p className="mt-3 text-sm sm:text-base text-neutral-400 leading-relaxed">
+              {isEdit
+                ? 'Changes apply to your workspace, generators, and advisor immediately. Saved on this device only.'
+                : 'Rough answers are fine — you can refine anything later. About three minutes.'}
+            </p>
+          </header>
+
+          {/* Step nav */}
+          <div role="navigation" aria-label="Form progress">
+            {/* Progress bar */}
+            <div className="h-1.5 rounded-full bg-white/[0.08] overflow-hidden mb-6">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-primary-500 to-primary-400 transition-[width] duration-500 ease-out shadow-[0_0_12px_rgba(167,139,250,0.35)]"
+                style={{ width: `${((currentStep - 1) / 2) * 100}%` }}
+              />
+            </div>
+
+            {/* Step buttons — vertical on lg, horizontal on mobile */}
+            <ol className="flex lg:flex-col justify-between lg:justify-start gap-2 lg:gap-1">
+              {STEPS.map(({ n, title, hint, icon: Icon }) => {
+                const done = currentStep > n;
+                const active = currentStep === n;
+                const canClick =
+                  n === 1 ||
+                  (n === 2 && canProceedToStep2) ||
+                  (n === 3 && canProceedToStep3);
+                return (
+                  <li key={n} className="flex-1 lg:flex-none min-w-0">
+                    <button
+                      type="button"
+                      disabled={!canClick}
+                      onClick={() => canClick && setCurrentStep(n)}
+                      className={`w-full flex flex-col lg:flex-row lg:items-center lg:gap-3 items-center text-center lg:text-left gap-1.5 rounded-xl px-2 lg:px-3 py-2 lg:py-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070b] ${
+                        active
+                          ? 'bg-white/[0.08] shadow-panel ring-1 ring-white/[0.12]'
+                          : done
+                            ? 'hover:bg-white/[0.05]'
+                            : 'opacity-55 hover:opacity-90'
+                      } ${!canClick ? 'cursor-not-allowed opacity-35' : ''}`}
+                      aria-current={active ? 'step' : undefined}
                     >
-                      {done ? <CheckCircle2 className="h-4 w-4" aria-hidden /> : <Icon className="h-4 w-4" aria-hidden />}
-                    </span>
-                    <span className="text-[11px] sm:text-xs font-semibold text-neutral-100 leading-tight truncate w-full">
-                      {title}
-                    </span>
-                    <span className="text-[10px] text-neutral-500 leading-tight hidden sm:block">{hint}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-          {isEdit && canProceedToStep3 && currentStep !== 3 && (
-            <button
-              type="button"
-              onClick={goTryReview}
-              className="mt-4 w-full sm:w-auto mx-auto flex items-center justify-center gap-1.5 text-sm font-semibold text-primary-300 hover:text-primary-200 underline underline-offset-2 decoration-primary-500/50"
-            >
-              Jump to review <ChevronRight className="h-4 w-4" aria-hidden />
-            </button>
-          )}
-        </div>
+                      <span
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold ${
+                          done
+                            ? 'border-primary-400/50 bg-primary-500/20 text-primary-200'
+                            : active
+                              ? 'border-primary-300 bg-primary-600/30 text-white'
+                              : 'border-white/15 bg-white/[0.04] text-neutral-500'
+                        }`}
+                      >
+                        {done ? <CheckCircle2 className="h-4 w-4" aria-hidden /> : <Icon className="h-4 w-4" aria-hidden />}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[11px] sm:text-xs font-semibold text-neutral-100 leading-tight truncate">
+                          {title}
+                        </span>
+                        <span className="block text-[10px] text-neutral-500 leading-tight hidden sm:block lg:block">
+                          {hint}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
 
-        <p className="text-sm text-neutral-400 mb-6" aria-live="polite">
-          Step {currentStep} of 3 · {STEPS[currentStep - 1]?.title}
-        </p>
+            {isEdit && canProceedToStep3 && currentStep !== 3 && (
+              <button
+                type="button"
+                onClick={goTryReview}
+                className="mt-4 w-full flex items-center justify-center lg:justify-start gap-1.5 text-sm font-semibold text-primary-300 hover:text-primary-200 underline underline-offset-2 decoration-primary-500/50"
+              >
+                Jump to review <ChevronRight className="h-4 w-4" aria-hidden />
+              </button>
+            )}
+          </div>
+        </aside>
 
-        <form id={formId} onSubmit={handleSubmit} className="space-y-6">
+        {/* ── RIGHT PANEL — form ── */}
+        <div className="flex-1 min-w-0 mt-8 lg:mt-0">
+          <p className="text-sm text-neutral-400 mb-6" aria-live="polite">
+            Step {currentStep} of 3 · {STEPS[currentStep - 1]?.title}
+          </p>
+
+          <form id={formId} onSubmit={handleSubmit} className="space-y-6">
           {currentStep === 1 && (
             <section
               aria-labelledby={`${formId}-step1-title`}
@@ -372,7 +391,6 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
                     label="Business type"
                     required
                     error={errors.businessType}
-                    helper="SSM / structure"
                   >
                     <select
                       id={`${formId}-type`}
@@ -512,7 +530,7 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
               <h2 id={`${formId}-step3-title`} className="text-lg font-bold text-white">
                 Review
               </h2>
-              <p className="text-sm text-neutral-400 mt-1 mb-6">
+              <p className="text-sm text-neutral-400 mt-1 mb-4">
                 {isEdit ? 'Tap edit on any row to change it.' : 'Double-check once — you can edit anytime later.'}
               </p>
               <ul className="rounded-xl border border-white/[0.08] divide-y divide-white/[0.06] bg-white/[0.03] overflow-hidden">
@@ -522,23 +540,49 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
                   onEdit={() => setCurrentStep(1)}
                   icon={<Building2 className="h-4 w-4" />}
                 />
-                <ReviewRow label="Industry" value={industry} onEdit={() => setCurrentStep(1)} />
-                <ReviewRow label="Location" value={city} onEdit={() => setCurrentStep(1)} />
-                <ReviewRow label="Stage" value={businessStage} onEdit={() => setCurrentStep(1)} />
-                <ReviewRow label="Type" value={businessType} onEdit={() => setCurrentStep(1)} />
+                <ReviewRow
+                  label="Industry"
+                  value={industry}
+                  onEdit={() => setCurrentStep(1)}
+                  icon={<Briefcase className="h-4 w-4" />}
+                />
+                <ReviewRow
+                  label="Location"
+                  value={city}
+                  onEdit={() => setCurrentStep(1)}
+                  icon={<MapPin className="h-4 w-4" />}
+                />
+                <ReviewRow
+                  label="Stage"
+                  value={businessStage}
+                  onEdit={() => setCurrentStep(1)}
+                  icon={<TrendingUp className="h-4 w-4" />}
+                />
+                <ReviewRow
+                  label="Type"
+                  value={businessType}
+                  onEdit={() => setCurrentStep(1)}
+                  icon={<ClipboardCheck className="h-4 w-4" />}
+                />
                 <ReviewRow
                   label="Target customer"
                   value={targetCustomer}
                   onEdit={() => setCurrentStep(2)}
-                  icon={<Target className="h-4 w-4" />}
+                  icon={<Users className="h-4 w-4" />}
                 />
                 {mainGoal ? (
-                  <ReviewRow label="Goal" value={mainGoal} onEdit={() => setCurrentStep(2)} />
+                  <ReviewRow
+                    label="Goal"
+                    value={mainGoal}
+                    onEdit={() => setCurrentStep(2)}
+                    icon={<Goal className="h-4 w-4" />}
+                  />
                 ) : null}
                 <ReviewRow
                   label="Funds"
                   value={`RM ${currentFunds.toLocaleString('en-MY')}`}
                   onEdit={() => setCurrentStep(2)}
+                  icon={<DollarSign className="h-4 w-4" />}
                 />
               </ul>
 
@@ -572,7 +616,7 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
                 </div>
               )}
 
-              <div className="mt-8 flex flex-col-reverse sm:flex-row sm:justify-between gap-3">
+              <div className="mt-5 flex flex-col-reverse sm:flex-row sm:justify-between gap-3">
                 <Button type="button" variant="ghost" className={btnGhostDark} onClick={() => setCurrentStep(2)}>
                   Back
                 </Button>
@@ -596,7 +640,8 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
             </section>
           )}
         </form>
-      </div>
+        </div>{/* end right panel */}
+      </div>{/* end two-column wrapper */}
 
       {/* Mobile sticky action — only when step has primary forward action */}
       {currentStep < 3 && (
@@ -683,11 +728,13 @@ function ReviewRow({
   onEdit: () => void;
 }) {
   return (
-    <li className="flex items-start gap-3 px-4 py-3.5 bg-white/[0.02]">
-      {icon && <span className="mt-0.5 text-primary-300 shrink-0">{icon}</span>}
-      <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">{label}</p>
-        <p className="text-sm font-medium text-neutral-100 mt-0.5 break-words">{value || '—'}</p>
+    <li className="flex items-center gap-3 px-4 py-2.5 bg-white/[0.02]">
+      {icon && <span className="text-primary-300 shrink-0">{icon}</span>}
+      <div className="flex-1 min-w-0 flex items-center gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 shrink-0 w-24">
+          {label}
+        </p>
+        <p className="text-sm font-medium text-neutral-100 truncate">{value || '—'}</p>
       </div>
       <button
         type="button"
