@@ -316,10 +316,11 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
                       value={businessStage}
                       onChange={(e) => setBusinessStage(e.target.value as BusinessStage)}
                       className={inputClass(errors.businessStage)}
+                      style={{ backgroundColor: '#1a1a2e', colorScheme: 'dark' }}
                     >
-                      <option value="">Select stage…</option>
+                      <option value="" style={{ background: '#1a1a2e', color: '#e5e5e5' }}>Select stage…</option>
                       {BUSINESS_STAGE_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt}>
+                        <option key={opt} value={opt} style={{ background: '#1a1a2e', color: '#ffffff' }}>
                           {opt}
                         </option>
                       ))}
@@ -337,10 +338,11 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
                       value={businessType}
                       onChange={(e) => setBusinessType(e.target.value as BusinessType)}
                       className={inputClass(errors.businessType)}
+                      style={{ backgroundColor: '#1a1a2e', colorScheme: 'dark' }}
                     >
-                      <option value="">Select type…</option>
+                      <option value="" style={{ background: '#1a1a2e', color: '#e5e5e5' }}>Select type…</option>
                       {BUSINESS_TYPE_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt}>
+                        <option key={opt} value={opt} style={{ background: '#1a1a2e', color: '#ffffff' }}>
                           {opt}
                         </option>
                       ))}
@@ -624,7 +626,7 @@ function ReviewRow({
 }
 
 function inputClass(error?: string) {
-  return `w-full px-3.5 py-2.5 rounded-xl border text-sm transition-shadow duration-150 bg-white/[0.06] text-white placeholder:text-neutral-500 ${
+  return `w-full px-3.5 py-2.5 rounded-xl border text-sm transition-shadow duration-150 bg-white/[0.06] text-white placeholder:text-neutral-500 [&_option]:bg-[#1a1a2e] [&_option]:text-white ${
     error
       ? '!border-red-500/70 focus:!border-red-400 focus:ring-2 focus:ring-red-500/25'
       : 'border-white/[0.12] focus:border-primary-400 focus:ring-2 focus:ring-primary-500/25 hover:border-white/20'
