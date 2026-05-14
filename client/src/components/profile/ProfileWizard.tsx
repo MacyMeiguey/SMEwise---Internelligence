@@ -357,10 +357,11 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
                       value={businessStage}
                       onChange={(e) => setBusinessStage(e.target.value as BusinessStage)}
                       className={inputClass(errors.businessStage)}
+                      style={{ backgroundColor: '#1a1a2e', colorScheme: 'dark' }}
                     >
-                      <option value="">Select stage…</option>
+                      <option value="" style={{ background: '#1a1a2e', color: '#e5e5e5' }}>Select stage…</option>
                       {BUSINESS_STAGE_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt}>
+                        <option key={opt} value={opt} style={{ background: '#1a1a2e', color: '#ffffff' }}>
                           {opt}
                         </option>
                       ))}
@@ -378,10 +379,11 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
                       value={businessType}
                       onChange={(e) => setBusinessType(e.target.value as BusinessType)}
                       className={inputClass(errors.businessType)}
+                      style={{ backgroundColor: '#1a1a2e', colorScheme: 'dark' }}
                     >
-                      <option value="">Select type…</option>
+                      <option value="" style={{ background: '#1a1a2e', color: '#e5e5e5' }}>Select type…</option>
                       {BUSINESS_TYPE_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt}>
+                        <option key={opt} value={opt} style={{ background: '#1a1a2e', color: '#ffffff' }}>
                           {opt}
                         </option>
                       ))}
