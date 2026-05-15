@@ -1023,4 +1023,222 @@ router.post('/profile-verification', async (req: Request, res: Response) => {
     }
 })
 
+// ─── POST /api/bedrock/competitor-pricing ────────────────────────────────────
+//
+// Invokes the competitor pricing analysis Bedrock agent.
+// Agent IDs: U1JHBRBYCD / AU3DKNFIFF (competitor analysis)
+//
+// Request body:
+//   companyName, industry, city, targetCustomer, businessType,
+//   monthlyRevenue (optional), products (optional array of { name, cost })
+//
+// Returns: { content: string }  — raw JSON from the agent
+
+router.post('/competitor-pricing', async (req: Request, res: Response) => {
+    const {
+        companyName,
+        industry,
+        city,
+        targetCustomer,
+        businessType,
+        monthlyRevenue,
+        products,
+    } = req.body as {
+        companyName: string
+        industry: string
+        city: string
+        targetCustomer: string
+        businessType: string
+        monthlyRevenue?: string
+        products?: Array<{ name: string; cost: string }>
+    }
+
+    if (!companyName || !industry || !city) {
+        res.status(400).json({ error: 'companyName, industry, and city are required.' })
+        return
+    }
+
+    const COMPETITOR_AGENT_ID       = process.env.BEDROCK_COMPETITOR_AGENT_ID       ?? 'U1JHBRBYCD'
+    const COMPETITOR_AGENT_ALIAS_ID = process.env.BEDROCK_COMPETITOR_AGENT_ALIAS_ID ?? 'AU3DKNFIFF'
+
+    // Build the same input format that works in the test script
+    const productLines = products && products.length > 0
+        ? [
+            '',
+            'Products/Services:',
+            ...products.map(p => p.name),
+            '',
+            'Cost Per Product:',
+            ...products.map(p => `${p.name}: ${p.cost}`),
+          ]
+        : []
+
+    const inputText = [
+        `Company: ${companyName}`,
+        `Industry: ${industry}`,
+        `Location: ${city}, Malaysia`,
+        `Target Customer: ${targetCustomer || 'General public'}`,
+        monthlyRevenue ? `Monthly Revenue: ${monthlyRevenue}` : null,
+        `Business Type: ${businessType}`,
+        ...productLines,
+    ]
+        .filter((l) => l !== null)
+        .join('\n')
+
+    console.log('=== [competitor-pricing] inputText sent to Bedrock agent ===\n', inputText)
+
+    let lastRaw = ''
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        const sessionId = `competitor-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+        try {
+            const raw = await invokeAgent(inputText, sessionId, COMPETITOR_AGENT_ID, COMPETITOR_AGENT_ALIAS_ID)
+            lastRaw = raw
+
+            console.log(
+                `[competitor-pricing] Attempt ${attempt}/${MAX_RETRIES} — response length: ${raw.length} chars`,
+            )
+
+            const jsonString = extractJsonString(raw)
+            JSON.parse(jsonString) // validate
+
+            console.log(`[competitor-pricing] Attempt ${attempt} returned valid JSON`)
+            res.status(200).json({ content: raw })
+            return
+        } catch (err) {
+            if (err instanceof SyntaxError) {
+                console.warn(
+                    `[competitor-pricing] Attempt ${attempt}/${MAX_RETRIES} did NOT return valid JSON. ` +
+                    (attempt < MAX_RETRIES ? 'Retrying...' : 'No retries left.'),
+                )
+                continue
+            }
+
+            console.error(`[SMEwise] /api/bedrock/competitor-pricing error on attempt ${attempt}:`, err)
+            res.status(500).json({
+                error: 'Something went wrong while generating the competitor pricing analysis. Please try again.',
+            })
+            return
+        }
+    }
+
+    console.error(
+        `[competitor-pricing] All ${MAX_RETRIES} attempts failed to return valid JSON. Returning last raw response.`,
+    )
+    res.status(200).json({ content: lastRaw })
+})
+
+// ─── POST /api/bedrock/smart-pricing ─────────────────────────────────────────
+//
+// Invokes the smart pricing suggestions Bedrock agent.
+// Agent IDs: MBTQYPGAAU / EZE9HANHTU
+//
+// The smart pricing agent requires competitor analysis JSON as part of its input.
+// Request body:
+//   companyName, industry, city, targetCustomer, businessType, mainGoal (opt),
+//   monthlyRevenue (opt), products (opt array of { name, cost }),
+//   competitorJson (opt — stringified competitor analysis result)
+
+router.post('/smart-pricing', async (req: Request, res: Response) => {
+    const {
+        companyName,
+        industry,
+        city,
+        targetCustomer,
+        businessType,
+        mainGoal,
+        monthlyRevenue,
+        products,
+        competitorJson,
+    } = req.body as {
+        companyName: string
+        industry: string
+        city: string
+        targetCustomer: string
+        businessType: string
+        mainGoal?: string
+        monthlyRevenue?: string
+        products?: Array<{ name: string; cost: string }>
+        competitorJson?: string
+    }
+
+    if (!companyName || !industry || !city) {
+        res.status(400).json({ error: 'companyName, industry, and city are required.' })
+        return
+    }
+
+    const SMART_AGENT_ID       = process.env.BEDROCK_SMART_PRICING_AGENT_ID       ?? 'MBTQYPGAAU'
+    const SMART_AGENT_ALIAS_ID = process.env.BEDROCK_SMART_PRICING_AGENT_ALIAS_ID ?? 'JFUKABLUCL'
+
+    const productLines = products && products.length > 0
+        ? [
+            '',
+            'Products/Services:',
+            ...products.map(p => p.name),
+            '',
+            'Cost Per Product:',
+            ...products.map(p => `${p.name}: ${p.cost}`),
+          ]
+        : []
+
+    const inputLines: string[] = [
+        `Company: ${companyName}`,
+        `Industry: ${industry}`,
+        `Location: ${city}, Malaysia`,
+        `Target Customer: ${targetCustomer || 'General public'}`,
+        ...(monthlyRevenue ? [`Monthly Revenue: ${monthlyRevenue}`] : []),
+        ...(mainGoal ? [`Business Goal: ${mainGoal}`] : []),
+        `Business Type: ${businessType}`,
+        ...productLines,
+    ]
+
+    // Append competitor analysis JSON — the smart pricing agent uses it as
+    // market intelligence per its instruction schema
+    if (competitorJson) {
+        inputLines.push('', 'Competitor Analysis Result:', competitorJson)
+    }
+
+    const inputText = inputLines.join('\n')
+
+    console.log('=== [smart-pricing] inputText sent to Bedrock agent ===\n', inputText)
+
+    let lastRaw = ''
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        const sessionId = `smart-pricing-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+        try {
+            const raw = await invokeAgent(inputText, sessionId, SMART_AGENT_ID, SMART_AGENT_ALIAS_ID)
+            lastRaw = raw
+
+            console.log(`[smart-pricing] Attempt ${attempt}/${MAX_RETRIES} — response length: ${raw.length} chars`)
+
+            const jsonString = extractJsonString(raw)
+            JSON.parse(jsonString)
+
+            console.log(`[smart-pricing] Attempt ${attempt} returned valid JSON`)
+            res.status(200).json({ content: raw })
+            return
+        } catch (err) {
+            if (err instanceof SyntaxError) {
+                console.warn(
+                    `[smart-pricing] Attempt ${attempt}/${MAX_RETRIES} did NOT return valid JSON. ` +
+                    (attempt < MAX_RETRIES ? 'Retrying...' : 'No retries left.'),
+                )
+                continue
+            }
+
+            console.error(`[SMEwise] /api/bedrock/smart-pricing error on attempt ${attempt}:`, err)
+            res.status(500).json({
+                error: 'Something went wrong while generating smart pricing suggestions. Please try again.',
+            })
+            return
+        }
+    }
+
+    console.error(`[smart-pricing] All ${MAX_RETRIES} attempts failed. Returning last raw response.`)
+    res.status(200).json({ content: lastRaw })
+})
+
 export default router
