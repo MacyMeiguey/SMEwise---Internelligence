@@ -283,11 +283,13 @@ function LoansPlanView({ plan }: { plan: LoansFundingPlan }) {
 interface LoansFundingWidgetProps {
   profile: BusinessProfile;
   onGenerateRef?: (fn: () => Promise<void>) => void;
+  hideGenerateButton?: boolean;
 }
 
 export default function LoansFundingWidget({
   profile,
   onGenerateRef,
+  hideGenerateButton = false,
 }: LoansFundingWidgetProps) {
   const { state, generate }         = useWidgetState();
   const [plan, setPlan]             = useState<LoansFundingPlan | null>(null);
@@ -340,6 +342,7 @@ export default function LoansFundingWidget({
         idleHint="Government schemes, commercial banks, best-fit recommendation, requirements and timeline — all in one place."
         idleButtonLabel="Map funding"
         regenerateLabel="Remap funding"
+        hideGenerateButton={hideGenerateButton}
       >
         {parseError ? (
           <p className="text-sm text-red-400">{parseError}</p>

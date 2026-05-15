@@ -51,11 +51,13 @@ interface MarketingForecastWidgetProps {
   /** Raw JSON string from the marketing strategy agent. Null means not yet generated. */
   marketingPlanJson: string | null;
   onGenerateRef?: (fn: (planJsonOverride?: string) => Promise<void>) => void;
+  hideGenerateButton?: boolean;
 }
 
 export default function MarketingForecastWidget({
   marketingPlanJson,
   onGenerateRef,
+  hideGenerateButton = false,
 }: MarketingForecastWidgetProps) {
   const { state, generate } = useWidgetState();
   const [forecast, setForecast] = useState<MarketingForecastData | null>(null);
@@ -120,7 +122,7 @@ export default function MarketingForecastWidget({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {!isLoading && (
+          {!isLoading && !hideGenerateButton && (
             <button
               type="button"
               onClick={() => handleGenerate()}
@@ -180,7 +182,7 @@ export default function MarketingForecastWidget({
         {status === "success" && (
           <div className="flex flex-col gap-3">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Result</p>
-            <div className="rounded-xl border border-neutral-200 bg-neutral-50 max-h-[min(80vh,48rem)] overflow-y-auto overscroll-contain dark:border-white/[0.08] dark:bg-black/40">
+            <div className="rounded-xl border border-neutral-200 bg-neutral-50 dark:border-white/[0.08] dark:bg-black/40">
               <div className="p-4 text-sm text-neutral-800 leading-relaxed dark:text-neutral-200">
                 {parseError ? (
                   <p className="text-red-600 dark:text-red-400">{parseError}</p>
@@ -189,14 +191,16 @@ export default function MarketingForecastWidget({
                 ) : null}
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => handleGenerate()}
-              disabled={isDisabled}
-              className="self-start rounded-lg px-3 py-1.5 text-sm font-semibold text-primary-600 transition-colors hover:bg-neutral-100 hover:text-primary-500 dark:text-primary-300 dark:hover:bg-white/[0.06] dark:hover:text-primary-200"
-            >
-              Regenerate
-            </button>
+            {!hideGenerateButton && (
+              <button
+                type="button"
+                onClick={() => handleGenerate()}
+                disabled={isDisabled}
+                className="self-start rounded-lg px-3 py-1.5 text-sm font-semibold text-primary-600 transition-colors hover:bg-neutral-100 hover:text-primary-500 dark:text-primary-300 dark:hover:bg-white/[0.06] dark:hover:text-primary-200"
+              >
+                Regenerate
+              </button>
+            )}
           </div>
         )}
       </div>

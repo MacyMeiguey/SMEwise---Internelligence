@@ -555,9 +555,10 @@ function OfficeLocationResult({ plan }: { plan: OfficeLocationPlan }) {
 interface OfficeLocationWidgetProps {
   profile: BusinessProfile;
   onGenerateRef?: (fn: () => Promise<void>) => void;
+  hideGenerateButton?: boolean;
 }
 
-export default function OfficeLocationWidget({ profile, onGenerateRef }: OfficeLocationWidgetProps) {
+export default function OfficeLocationWidget({ profile, onGenerateRef, hideGenerateButton = false }: OfficeLocationWidgetProps) {
   const { state, generate } = useWidgetState();
   const [plan, setPlan] = useState<OfficeLocationPlan | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -592,6 +593,7 @@ export default function OfficeLocationWidget({ profile, onGenerateRef }: OfficeL
       idleHint="Weighs your city, industry, and budget into a ranked workspace shortlist — with real RM costs, permit notes, and negotiation tips."
       idleButtonLabel="Suggest sites"
       regenerateLabel="Rerun search"
+      hideGenerateButton={hideGenerateButton}
     >
       {parseError ? (
         <p className="text-sm text-red-400">{parseError}</p>

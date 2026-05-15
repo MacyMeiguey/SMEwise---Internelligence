@@ -9,7 +9,7 @@
  *   onGenerateRef        — callback to register the generate handler for Generate All
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { BusinessProfile } from "../../types";
 import { useWidgetState } from "../../hooks/useWidgetState";
 import MarketingPlan, { type MarketingPlan as MarketingPlanData } from "./MarketingPlan";
@@ -178,13 +178,15 @@ function BudgetSliderPanel({ maxFunds, value, onChange, onClose, onClear }: Budg
 interface MarketingStrategyWidgetProps {
   profile: BusinessProfile;
   onStrategyGenerated?: (strategy: string) => void;
-  onGenerateRef?: (fn: () => Promise<void>) => void;
+  onGenerateRef?: (fn: (fundAllocationOverride?: string) => Promise<void>) => void;
+  hideGenerateButton?: boolean;
 }
 
 export default function MarketingStrategyWidget({
   profile,
   onStrategyGenerated,
   onGenerateRef,
+  hideGenerateButton = false,
 }: MarketingStrategyWidgetProps) {
   const { state, generate } = useWidgetState();
   const [plan, setPlan] = useState<MarketingPlanData | null>(null);
@@ -198,12 +200,19 @@ export default function MarketingStrategyWidget({
   const { status, errorMessage } = state;
   const isLoading = status === "loading";
 
-  const handleGenerate = useCallback(async () => {
+  const handleGenerate = useCallback(async (fundAllocationOverride?: string) => {
     setPlan(null);
     setParseError(null);
 
     await generate(async () => {
-      const raw = await fetchMarketingPlan(profile, manualBudget ?? undefined);
+      // If a fundAllocation override is supplied (auto-generate flow), inject
+      // it into the profile copy passed to the API so the agent gets the
+      // freshly-allocated breakdown synchronously.
+      const profileForRequest: BusinessProfile = fundAllocationOverride
+        ? { ...profile, fundAllocation: fundAllocationOverride }
+        : profile;
+
+      const raw = await fetchMarketingPlan(profileForRequest, manualBudget ?? undefined);
 
       onStrategyGenerated?.(raw);
 
@@ -221,9 +230,16 @@ export default function MarketingStrategyWidget({
     });
   }, [profile, manualBudget, generate, onStrategyGenerated]);
 
+  // Keep ref pointing to latest handleGenerate so the registered Generate-All
+  // callback never goes stale (fund allocation may resolve after first mount).
+  const handleGenerateRef = useRef<(fundAllocationOverride?: string) => Promise<void>>();
+  handleGenerateRef.current = handleGenerate;
+
   useEffect(() => {
-    onGenerateRef?.(handleGenerate);
-  }, [onGenerateRef, handleGenerate]);
+    onGenerateRef?.((fundAllocationOverride?: string) =>
+      handleGenerateRef.current!(fundAllocationOverride)
+    );
+  }, [onGenerateRef]);
 
   return (
     <article
@@ -238,7 +254,7 @@ export default function MarketingStrategyWidget({
 
         <div className="flex items-center gap-2 shrink-0">
           {/* Set Marketing Budget button — always visible when not loading */}
-          {!isLoading && (
+          {!isLoading && !hideGenerateButton && (
             <button
               type="button"
               onClick={() => setShowBudgetSlider((prev) => !prev)}
@@ -257,10 +273,10 @@ export default function MarketingStrategyWidget({
           )}
 
           {/* Generate / Rewrite button */}
-          {!isLoading && (
+          {!isLoading && !hideGenerateButton && (
             <button
               type="button"
-              onClick={handleGenerate}
+              onClick={() => handleGenerate()}
               className="inline-flex items-center justify-center rounded-lg bg-primary-600 hover:bg-primary-500 text-white text-xs font-semibold py-2 px-4 min-h-[38px] min-w-[5rem] shrink-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#101018]"
               aria-label={status === "idle" ? "Write strategy" : "Rewrite plan"}
             >
@@ -323,7 +339,7 @@ export default function MarketingStrategyWidget({
             </p>
             <button
               type="button"
-              onClick={handleGenerate}
+              onClick={() => handleGenerate()}
               className="self-start rounded-lg px-3 py-1.5 text-sm font-semibold text-primary-600 transition-colors hover:bg-neutral-100 hover:text-primary-500 dark:text-primary-300 dark:hover:bg-white/[0.06] dark:hover:text-primary-200"
             >
               Try again
@@ -335,7 +351,7 @@ export default function MarketingStrategyWidget({
         {status === "success" && (
           <div className="flex flex-col gap-3">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Result</p>
-            <div className="rounded-xl border border-neutral-200 bg-neutral-50 max-h-[min(70vh,28rem)] overflow-y-auto overscroll-contain dark:border-white/[0.08] dark:bg-black/40">
+            <div className="rounded-xl border border-neutral-200 bg-neutral-50 max-h-[min(70vh,41rem)] overflow-y-auto overscroll-contain dark:border-white/[0.08] dark:bg-black/40">
               <div className="p-4 text-sm text-neutral-800 leading-relaxed dark:text-neutral-200">
                 {parseError ? (
                   <p className="text-red-600 dark:text-red-400">{parseError}</p>
@@ -344,13 +360,15 @@ export default function MarketingStrategyWidget({
                 ) : null}
               </div>
             </div>
-            <button
-              type="button"
-              onClick={handleGenerate}
-              className="self-start shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold text-primary-600 transition-colors hover:bg-neutral-100 hover:text-primary-500 dark:text-primary-300 dark:hover:bg-white/[0.06] dark:hover:text-primary-200"
-            >
-              Rewrite plan
-            </button>
+            {!hideGenerateButton && (
+              <button
+                type="button"
+                onClick={() => handleGenerate()}
+                className="self-start shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold text-primary-600 transition-colors hover:bg-neutral-100 hover:text-primary-500 dark:text-primary-300 dark:hover:bg-white/[0.06] dark:hover:text-primary-200"
+              >
+                Rewrite plan
+              </button>
+            )}
           </div>
         )}
       </div>

@@ -247,12 +247,14 @@ interface FundAllocationWidgetProps {
   profile: BusinessProfile;
   onAllocationGenerated?: (plan: FundAllocationPlan) => void;
   onGenerateRef?: (fn: () => Promise<void>) => void;
+  hideGenerateButton?: boolean;
 }
 
 export default function FundAllocationWidget({
   profile,
   onAllocationGenerated,
   onGenerateRef,
+  hideGenerateButton = false,
 }: FundAllocationWidgetProps) {
   const { state, generate } = useWidgetState();
   const [plan, setPlan] = useState<FundAllocationPlan | null>(null);
@@ -291,6 +293,7 @@ export default function FundAllocationWidget({
       idleHint="Splits your capital across 6 categories — tuned to Malaysian SME cost norms by your Bedrock advisor."
       idleButtonLabel="Build table"
       regenerateLabel="Rebuild table"
+      hideGenerateButton={hideGenerateButton}
     >
       {parseError ? (
         <p className="text-sm text-red-400">{parseError}</p>

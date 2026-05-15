@@ -483,11 +483,13 @@ function IdlePlaceholder() {
 interface StartupRegistrationWidgetProps {
   profile: BusinessProfile
   onGenerateRef?: (fn: () => Promise<void>) => void
+  hideGenerateButton?: boolean
 }
 
 export default function StartupRegistrationWidget({
   profile,
   onGenerateRef,
+  hideGenerateButton = false,
 }: StartupRegistrationWidgetProps) {
   const [guide, setGuide] = useState<StartupGuide | null>(null)
   const { state, generate } = useWidgetState()
@@ -510,6 +512,7 @@ export default function StartupRegistrationWidget({
       onGenerate={handleGenerate}
       state={state}
       idleContent={<IdlePlaceholder />}
+      hideGenerateButton={hideGenerateButton}
     >
       {guide && <StartupGuideOutput guide={guide} />}
     </WidgetCard>

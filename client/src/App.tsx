@@ -154,6 +154,22 @@ function AppContent() {
     goWorkspace('overview');
   };
 
+  /**
+   * Persists the human-readable fund allocation summary onto the active profile
+   * (and into localStorage). Marketing Strategy and Revenue Projection both use
+   * this value as input, so keeping it on the profile lets future runs pick up
+   * the allocation without re-running Fund Allocation first.
+   */
+  const handleFundAllocationSummary = (summary: string) => {
+    setProfile((prev) => {
+      if (!prev) return prev;
+      if (prev.fundAllocation === summary) return prev;
+      const next = { ...prev, fundAllocation: summary };
+      saveProfile(next);
+      return next;
+    });
+  };
+
   const handleViewDetails = (sectionTitle: string) => {
     const entry = Object.entries(TAB_TO_SECTION).find(([, v]) => v === sectionTitle);
     if (entry) goWorkspace(entry[0] as WorkspaceTab);
@@ -360,16 +376,28 @@ function AppContent() {
             />
           )}
 
-          {activeTab !== 'overview' && (
-            <div className="py-6 sm:py-8 min-h-[60vh]">
-              <Dashboard
-                profile={profile}
-                isUnlocked={true}
-                activeSection={TAB_TO_SECTION[activeTab]}
-                onSectionNavigate={() => {}}
-              />
-            </div>
-          )}
+          {/*
+            Dashboard stays mounted for every workspace tab so the
+            auto-generate pipeline (Operations / Financial / Marketing) keeps
+            running in the background while the user explores the overview.
+            We hide it visually on the overview tab; the Insights view above
+            takes the foreground there.
+          */}
+          <div
+            className={activeTab === 'overview' ? 'hidden' : 'py-6 sm:py-8 min-h-[60vh]'}
+            aria-hidden={activeTab === 'overview'}
+          >
+            <Dashboard
+              profile={profile}
+              isUnlocked={true}
+              activeSection={
+                activeTab === 'overview' ? undefined : TAB_TO_SECTION[activeTab]
+              }
+              onSectionNavigate={() => {}}
+              autoGenerate={true}
+              onFundAllocationSummary={handleFundAllocationSummary}
+            />
+          </div>
 
           <AIAssistantPanel
             profile={profile}

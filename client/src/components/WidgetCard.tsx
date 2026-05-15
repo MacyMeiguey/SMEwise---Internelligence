@@ -87,6 +87,12 @@ export interface WidgetCardProps {
   regenerateLabel?: string;
   /** Disable the generate/regenerate button (e.g. waiting for a prerequisite). */
   generateDisabled?: boolean;
+  /**
+   * When true, hides the idle generate button and the post-success regenerate button.
+   * The error-state retry button remains so users can recover from failures.
+   * Used by auto-generate mode where the workspace runs widgets without user input.
+   */
+  hideGenerateButton?: boolean;
 }
 
 export default function WidgetCard({
@@ -99,6 +105,7 @@ export default function WidgetCard({
   idleButtonLabel = 'Generate',
   regenerateLabel = 'Regenerate',
   generateDisabled = false,
+  hideGenerateButton = false,
 }: WidgetCardProps) {
   const { status, errorMessage } = state;
   const isLoading = status === 'loading';
@@ -111,7 +118,7 @@ export default function WidgetCard({
       <header className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50/80 px-4 sm:px-5 py-3 min-h-[3rem] dark:border-white/[0.08] dark:bg-white/[0.03]">
         <h3 className="text-sm font-semibold text-neutral-900 tracking-tight pr-2 leading-snug dark:text-white">{title}</h3>
 
-        {!isLoading && (
+        {!isLoading && !hideGenerateButton && (
           <button
             type="button"
             onClick={onGenerate}
@@ -144,7 +151,7 @@ export default function WidgetCard({
                 {children}
               </div>
             </div>
-            <RegenerateButton onClick={onGenerate} label={regenerateLabel} />
+            {!hideGenerateButton && <RegenerateButton onClick={onGenerate} label={regenerateLabel} />}
           </div>
         )}
 

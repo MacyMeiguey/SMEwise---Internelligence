@@ -20,7 +20,7 @@
  *   - Period detail cards (financials + explanation + suggestion)
  */
 
-import { useState, useCallback, useEffect, Component, type ReactNode } from "react";
+import { useState, useCallback, useEffect, useRef, Component, type ReactNode } from "react";
 import type { BusinessProfile } from "../../types";
 import { useWidgetState } from "../../hooks/useWidgetState";
 import WidgetCard from "../WidgetCard";
@@ -354,7 +354,8 @@ interface RevenueProjectionWidgetProps {
   profile: BusinessProfile;
   budgetAllocation?: string;
   onPlanGenerated?: (plan: RevenueProjectionPlan) => void;
-  onGenerateRef?: (fn: () => Promise<void>) => void;
+  onGenerateRef?: (fn: (budgetAllocationOverride?: string) => Promise<void>) => void;
+  hideGenerateButton?: boolean;
 }
 
 export default function RevenueProjectionWidget({
@@ -362,17 +363,19 @@ export default function RevenueProjectionWidget({
   budgetAllocation,
   onPlanGenerated,
   onGenerateRef,
+  hideGenerateButton = false,
 }: RevenueProjectionWidgetProps) {
   const { state, generate }         = useWidgetState();
   const [plan, setPlan]             = useState<RevenueProjectionPlan | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
 
-  const handleGenerate = useCallback(async () => {
+  const handleGenerate = useCallback(async (budgetAllocationOverride?: string) => {
     setPlan(null);
     setParseError(null);
+    const allocationToUse = budgetAllocationOverride ?? budgetAllocation;
     await generate(async () => {
       try {
-        const result = await fetchRevenueProjection(profile, budgetAllocation);
+        const result = await fetchRevenueProjection(profile, allocationToUse);
         setPlan(result);
         onPlanGenerated?.(result);
       } catch (err) {
@@ -385,7 +388,16 @@ export default function RevenueProjectionWidget({
     });
   }, [profile, budgetAllocation, generate, onPlanGenerated]);
 
-  useEffect(() => { onGenerateRef?.(handleGenerate); }, [onGenerateRef, handleGenerate]);
+  // Keep the registered Generate-All handler always pointing at the latest
+  // handleGenerate so it picks up the freshest budgetAllocation prop.
+  const handleGenerateRef = useRef<(budgetAllocationOverride?: string) => Promise<void>>();
+  handleGenerateRef.current = handleGenerate;
+
+  useEffect(() => {
+    onGenerateRef?.((budgetAllocationOverride?: string) =>
+      handleGenerateRef.current!(budgetAllocationOverride)
+    );
+  }, [onGenerateRef]);
 
   const isWaiting = !budgetAllocation;
   const periods   = plan?.financialProjection ?? [];
@@ -403,6 +415,7 @@ export default function RevenueProjectionWidget({
       idleButtonLabel="Plot revenue"
       regenerateLabel="Redraw chart"
       generateDisabled={isWaiting}
+      hideGenerateButton={hideGenerateButton}
     >
       {isWaiting && state.status === "idle" ? (
         <div className="flex items-center gap-2 text-sm text-amber-400/80">

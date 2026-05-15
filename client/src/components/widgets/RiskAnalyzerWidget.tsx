@@ -325,9 +325,10 @@ function RiskResult({ plan }: { plan: RiskPlan }) {
 interface RiskAnalyzerWidgetProps {
   profile: BusinessProfile;
   onGenerateRef?: (fn: () => Promise<void>) => void;
+  hideGenerateButton?: boolean;
 }
 
-export default function RiskAnalyzerWidget({ profile, onGenerateRef }: RiskAnalyzerWidgetProps) {
+export default function RiskAnalyzerWidget({ profile, onGenerateRef, hideGenerateButton = false }: RiskAnalyzerWidgetProps) {
   const { state, generate } = useWidgetState();
   const [plan, setPlan] = useState<RiskPlan | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -362,6 +363,7 @@ export default function RiskAnalyzerWidget({ profile, onGenerateRef }: RiskAnaly
       idleHint="Flags your top regulatory and operational risks — with severity ratings, consequences, and step-by-step fixes."
       idleButtonLabel="Scan risks"
       regenerateLabel="Scan again"
+      hideGenerateButton={hideGenerateButton}
     >
       {parseError ? (
         <p className="text-sm text-red-400">{parseError}</p>

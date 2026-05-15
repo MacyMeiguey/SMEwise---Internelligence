@@ -2,7 +2,7 @@
  * Dashboard — renders the five guidance sections with bento-style layouts.
  */
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { BusinessProfile, PricingOptionalInputs } from '../types';
 import SectionPanel from './SectionPanel';
 
@@ -32,6 +32,19 @@ interface DashboardProps {
   isUnlocked: boolean;
   activeSection?: string;
   onSectionNavigate?: (sectionTitle: string) => void;
+  /**
+   * When true, the Operations / Financial Planning / Marketing sections render
+   * in compact mode (no description band, no manual generate buttons) and
+   * every widget in those sections is auto-generated on mount, respecting the
+   * prerequisite chain (Fund Allocation → Revenue, Marketing Strategy …).
+   */
+  autoGenerate?: boolean;
+  /**
+   * Called once Fund Allocation succeeds with the human-readable summary,
+   * so the host (App) can persist it into the BusinessProfile and reuse it
+   * for future Marketing Strategy calls.
+   */
+  onFundAllocationSummary?: (summary: string) => void;
 }
 
 const SECTIONS = [
@@ -48,18 +61,25 @@ const DEFAULT_PRICING_INPUTS: PricingOptionalInputs = {
   costPerProduct: null,
 };
 
-export default function Dashboard({ profile, isUnlocked, activeSection }: DashboardProps) {
+export default function Dashboard({
+  profile,
+  isUnlocked,
+  activeSection,
+  autoGenerate = false,
+  onFundAllocationSummary,
+}: DashboardProps) {
   const [pricingInputs, setPricingInputs] = useState<PricingOptionalInputs>(DEFAULT_PRICING_INPUTS);
   const [marketingPlanJson, setMarketingPlanJson] = useState<string | null>(null);
   const [budgetAllocation, setBudgetAllocation] = useState<string | undefined>(undefined);
   const marketingPlanJsonRef = useRef<string | null>(null);
+  const budgetAllocationRef = useRef<string | undefined>(undefined);
 
   const startupRegRef = useRef<(() => Promise<void>) | null>(null);
   const officeLocRef = useRef<(() => Promise<void>) | null>(null);
   const riskRef = useRef<(() => Promise<void>) | null>(null);
 
   const fundAllocRef = useRef<(() => Promise<void>) | null>(null);
-  const revenueRef = useRef<(() => Promise<void>) | null>(null);
+  const revenueRef = useRef<((budgetAllocationOverride?: string) => Promise<void>) | null>(null);
   const loansRef = useRef<(() => Promise<void>) | null>(null);
   const investorFundingRef = useRef<(() => Promise<void>) | null>(null);
 
@@ -67,12 +87,73 @@ export default function Dashboard({ profile, isUnlocked, activeSection }: Dashbo
   const smartPricingRef = useRef<(() => Promise<void>) | null>(null);
   const productVisualRef = useRef<(() => Promise<void>) | null>(null);
 
-  const marketingStrategyRef = useRef<(() => Promise<void>) | null>(null);
+  const marketingStrategyRef = useRef<((fundAllocationOverride?: string) => Promise<void>) | null>(null);
   const marketingGuidelinesRef = useRef<((planJson?: string) => Promise<void>) | null>(null);
   const marketingForecastRef = useRef<((planJson?: string) => Promise<void>) | null>(null);
 
   const analyticsRef = useRef<(() => Promise<void>) | null>(null);
   const documentRef = useRef<(() => Promise<void>) | null>(null);
+
+  // ── Auto-generate pipeline ─────────────────────────────────────────────────
+  // When autoGenerate is true, kick off every Operations / Financial / Marketing
+  // widget on first profile mount. Pricing & Owner Tools are left manual.
+  // Dependency rules:
+  //   • Operations: 3 widgets in parallel (no deps)
+  //   • Financial: Fund Allocation → (Revenue + Loans + Investor) in parallel
+  //   • Marketing: needs Fund Allocation result → Strategy → (Guidelines + Forecast)
+  //
+  // Notes:
+  //   - We guard with a ref so React StrictMode's dev-only double-mount doesn't
+  //     fire the pipeline twice. The first mount flips the ref to true; the
+  //     second mount is short-circuited.
+  //   - We deliberately do NOT cancel in-flight work on cleanup. Cancelling
+  //     would defeat StrictMode (cleanup fires between the two dev mounts and
+  //     would abort the only kickoff). The widgets themselves just call into
+  //     fetch and update local state on resolve, so a stray result is harmless.
+  const autoGenStartedRef = useRef(false);
+
+  useEffect(() => {
+    if (!autoGenerate || !profile || !isUnlocked) return;
+    if (autoGenStartedRef.current) return;
+    autoGenStartedRef.current = true;
+
+    const start = async () => {
+      // Yield once to the macrotask queue so every child widget's onGenerateRef
+      // useEffect has had a chance to register its handler before we read it.
+      // setTimeout(0) is more reliable than rAF here because rAF can be paused
+      // when the tab is backgrounded or the section is initially `display:none`.
+      await new Promise((r) => setTimeout(r, 0));
+
+      // ── Operations ── three independent widgets, run in parallel.
+      const opsPromise = Promise.allSettled([
+        startupRegRef.current?.(),
+        officeLocRef.current?.(),
+        riskRef.current?.(),
+      ]);
+
+      // ── Financial Planning ── Fund Allocation must finish first.
+      const finPromise = (async () => {
+        await fundAllocRef.current?.();
+        // Snapshot the fresh allocation; React state may not have flushed yet.
+        const allocSummary = budgetAllocationRef.current;
+        await Promise.allSettled([
+          revenueRef.current?.(allocSummary),
+          loansRef.current?.(),
+          investorFundingRef.current?.(),
+          // Marketing Strategy depends on Fund Allocation too (uses the
+          // breakdown as one of its inputs). We only kick off Strategy
+          // here — Guidelines and Forecast are fanned out from the
+          // `onStrategyGenerated` callback below, so they also fire after
+          // a manual retry of Strategy if the first attempt failed.
+          marketingStrategyRef.current?.(allocSummary),
+        ]);
+      })();
+
+      await Promise.allSettled([opsPromise, finPromise]);
+    };
+
+    void start();
+  }, [autoGenerate, profile, isUnlocked]);
 
   async function handleGenerateAll(section: string) {
     if (section === 'Operations') {
@@ -125,159 +206,194 @@ export default function Dashboard({ profile, isUnlocked, activeSection }: Dashbo
       )}
 
       <div className="flex flex-col gap-10 lg:gap-12">
-        {SECTIONS.map((section, index) => (
-          <div key={section} className={activeSection && activeSection !== section ? 'hidden' : ''}>
-            <SectionPanel
-              title={section}
-              isLocked={!isUnlocked}
-              onGenerateAll={() => handleGenerateAll(section)}
-              index={index}
-            >
-              {section === 'Operations' && profile && (
-                <div className="grid grid-cols-1 gap-4 lg:gap-5">
-                  <StartupRegistrationWidget
-                    profile={profile}
-                    onGenerateRef={(fn) => {
-                      startupRegRef.current = fn;
-                    }}
-                  />
-                  <OfficeLocationWidget
-                    profile={profile}
-                    onGenerateRef={(fn) => {
-                      officeLocRef.current = fn;
-                    }}
-                  />
-                  <RiskAnalyzerWidget
-                    profile={profile}
-                    onGenerateRef={(fn) => {
-                      riskRef.current = fn;
-                    }}
-                  />
-                </div>
-              )}
+        {SECTIONS.map((section, index) => {
+          // The three sections we auto-generate render in compact mode (no
+          // hero band, no manual run-all button, no per-widget generate).
+          const isAutoSection =
+            autoGenerate &&
+            (section === 'Operations' ||
+              section === 'Financial Planning' ||
+              section === 'Marketing');
 
-              {section === 'Financial Planning' && profile && (
-                <div className="flex flex-col gap-4 lg:gap-5">
-                  {/* Row 1 — Fund Allocation full width */}
-                  <FundAllocationWidget
-                    profile={profile}
-                    onAllocationGenerated={(plan: FundAllocationPlan) => {
-                      const summary = plan.allocations
-                        .map((a) => `${a.category}: ${a.percentage}% (RM ${a.amount.toLocaleString('en-MY')})`)
-                        .join(', ');
-                      setBudgetAllocation(summary);
-                    }}
-                    onGenerateRef={(fn) => { fundAllocRef.current = fn; }}
-                  />
-
-                  {/* Row 2 — Revenue Projection full width */}
-                  <RevenueProjectionWidget
-                    profile={profile}
-                    budgetAllocation={budgetAllocation}
-                    onGenerateRef={(fn) => { revenueRef.current = fn; }}
-                  />
-
-                  {/* Row 3 — Loans & Funding + Investor & Funding side by side */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
-                    <LoansFundingWidget
+          return (
+            <div key={section} className={activeSection && activeSection !== section ? 'hidden' : ''}>
+              <SectionPanel
+                title={section}
+                isLocked={!isUnlocked}
+                onGenerateAll={() => handleGenerateAll(section)}
+                index={index}
+                compact={isAutoSection}
+              >
+                {section === 'Operations' && profile && (
+                  <div className="grid grid-cols-1 gap-4 lg:gap-5">
+                    <StartupRegistrationWidget
                       profile={profile}
-                      onGenerateRef={(fn) => { loansRef.current = fn; }}
+                      onGenerateRef={(fn) => {
+                        startupRegRef.current = fn;
+                      }}
+                      hideGenerateButton={isAutoSection}
                     />
-                    <InvestorFundingWidget
+                    <OfficeLocationWidget
                       profile={profile}
-                      onGenerateRef={(fn) => { investorFundingRef.current = fn; }}
+                      onGenerateRef={(fn) => {
+                        officeLocRef.current = fn;
+                      }}
+                      hideGenerateButton={isAutoSection}
+                    />
+                    <RiskAnalyzerWidget
+                      profile={profile}
+                      onGenerateRef={(fn) => {
+                        riskRef.current = fn;
+                      }}
+                      hideGenerateButton={isAutoSection}
                     />
                   </div>
-                </div>
-              )}
+                )}
 
-              {section === 'Pricing Strategy' && profile && (
-                <div className="flex flex-col gap-4 lg:gap-5">
-                  <PricingOptionalInputsComponent value={pricingInputs} onChange={setPricingInputs} />
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
-                    <CompetitorPricingWidget
+                {section === 'Financial Planning' && profile && (
+                  <div className="flex flex-col gap-4 lg:gap-5">
+                    {/* Row 1 — Fund Allocation full width */}
+                    <FundAllocationWidget
+                      profile={profile}
+                      onAllocationGenerated={(plan: FundAllocationPlan) => {
+                        const summary = plan.allocations
+                          .map((a) => `${a.category}: ${a.percentage}% (RM ${a.amount.toLocaleString('en-MY')})`)
+                          .join(', ');
+                        budgetAllocationRef.current = summary;
+                        setBudgetAllocation(summary);
+                        // Bubble up so the host can persist it onto the profile.
+                        onFundAllocationSummary?.(summary);
+                      }}
+                      onGenerateRef={(fn) => { fundAllocRef.current = fn; }}
+                      hideGenerateButton={isAutoSection}
+                    />
+
+                    {/* Row 2 — Revenue Projection full width */}
+                    <RevenueProjectionWidget
+                      profile={profile}
+                      budgetAllocation={budgetAllocation}
+                      onGenerateRef={(fn) => { revenueRef.current = fn; }}
+                      hideGenerateButton={isAutoSection}
+                    />
+
+                    {/* Row 3 — Loans & Funding + Investor & Funding side by side */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
+                      <LoansFundingWidget
+                        profile={profile}
+                        onGenerateRef={(fn) => { loansRef.current = fn; }}
+                        hideGenerateButton={isAutoSection}
+                      />
+                      <InvestorFundingWidget
+                        profile={profile}
+                        onGenerateRef={(fn) => { investorFundingRef.current = fn; }}
+                        hideGenerateButton={isAutoSection}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {section === 'Pricing Strategy' && profile && (
+                  <div className="flex flex-col gap-4 lg:gap-5">
+                    <PricingOptionalInputsComponent value={pricingInputs} onChange={setPricingInputs} />
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
+                      <CompetitorPricingWidget
+                        profile={profile}
+                        pricingInputs={pricingInputs}
+                        onGenerateRef={(fn) => {
+                          competitorPricingRef.current = fn;
+                        }}
+                      />
+                      <SmartPricingWidget
+                        profile={profile}
+                        pricingInputs={pricingInputs}
+                        onGenerateRef={(fn) => {
+                          smartPricingRef.current = fn;
+                        }}
+                      />
+                    </div>
+                    <ProductVisualWidget
                       profile={profile}
                       pricingInputs={pricingInputs}
                       onGenerateRef={(fn) => {
-                        competitorPricingRef.current = fn;
+                        productVisualRef.current = fn;
                       }}
                     />
-                    <SmartPricingWidget
-                      profile={profile}
-                      pricingInputs={pricingInputs}
+                  </div>
+                )}
+
+                {section === 'Marketing' && profile && (
+                  <div className="flex flex-col gap-4 lg:gap-5">
+                    {/* Row 1: Strategy + Guidelines */}
+                    <div className="grid grid-cols-1 xl:grid-cols-10 items-stretch gap-4 lg:gap-5">
+                      <div className="xl:col-span-5 min-w-0 flex flex-col">
+                        <MarketingStrategyWidget
+                          profile={profile}
+                          onStrategyGenerated={(raw) => {
+                            marketingPlanJsonRef.current = raw;
+                            setMarketingPlanJson(raw);
+                            // In auto-gen mode, fan out Guidelines + Forecast
+                            // every time Strategy produces a plan. Putting the
+                            // fan-out here (rather than inline in the auto-gen
+                            // pipeline) means a manual retry of Strategy after
+                            // a first-attempt failure also re-triggers the two
+                            // downstream widgets — they'd otherwise stay idle
+                            // because the original pipeline already bailed.
+                            if (isAutoSection) {
+                              void marketingGuidelinesRef.current?.(raw);
+                              void marketingForecastRef.current?.(raw);
+                            }
+                          }}
+                          onGenerateRef={(fn) => {
+                            marketingStrategyRef.current = fn;
+                          }}
+                          hideGenerateButton={isAutoSection}
+                        />
+                      </div>
+                      <div className="xl:col-span-5 min-w-0">
+                        <MarketingGuidelinesWidget
+                          marketingPlanJson={marketingPlanJson}
+                          onGenerateRef={(fn) => {
+                            marketingGuidelinesRef.current = fn;
+                          }}
+                          hideGenerateButton={isAutoSection}
+                        />
+                      </div>
+                    </div>
+                    {/* Row 2: Forecast (full width) */}
+                    <MarketingForecastWidget
+                      marketingPlanJson={marketingPlanJson}
                       onGenerateRef={(fn) => {
-                        smartPricingRef.current = fn;
+                        marketingForecastRef.current = fn;
+                      }}
+                      hideGenerateButton={isAutoSection}
+                    />
+                  </div>
+                )}
+
+                {section === 'Owner Tools' && profile && (
+                  <div className="flex flex-col gap-4 lg:gap-5">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
+                      <div className="lg:col-span-2 min-w-0">
+                        <AnalyticsDashboardWidget
+                          profile={profile}
+                          onGenerateRef={(fn) => {
+                            analyticsRef.current = fn;
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <DocumentGeneratorWidget
+                      profile={profile}
+                      onGenerateRef={(fn) => {
+                        documentRef.current = fn;
                       }}
                     />
                   </div>
-                  <ProductVisualWidget
-                    profile={profile}
-                    pricingInputs={pricingInputs}
-                    onGenerateRef={(fn) => {
-                      productVisualRef.current = fn;
-                    }}
-                  />
-                </div>
-              )}
-
-              {section === 'Marketing' && profile && (
-                <div className="flex flex-col gap-4 lg:gap-5">
-                  {/* Row 1: Strategy + Guidelines */}
-                  <div className="grid grid-cols-1 xl:grid-cols-10 items-stretch gap-4 lg:gap-5">
-                    <div className="xl:col-span-5 min-w-0 flex flex-col">
-                      <MarketingStrategyWidget
-                        profile={profile}
-                        onStrategyGenerated={(raw) => {
-                          marketingPlanJsonRef.current = raw;
-                          setMarketingPlanJson(raw);
-                        }}
-                        onGenerateRef={(fn) => {
-                          marketingStrategyRef.current = fn;
-                        }}
-                      />
-                    </div>
-                    <div className="xl:col-span-5 min-w-0">
-                      <MarketingGuidelinesWidget
-                        marketingPlanJson={marketingPlanJson}
-                        onGenerateRef={(fn) => {
-                          marketingGuidelinesRef.current = fn;
-                        }}
-                      />
-                    </div>
-                  </div>
-                  {/* Row 2: Forecast (full width) */}
-                  <MarketingForecastWidget
-                    marketingPlanJson={marketingPlanJson}
-                    onGenerateRef={(fn) => {
-                      marketingForecastRef.current = fn;
-                    }}
-                  />
-                </div>
-              )}
-
-              {section === 'Owner Tools' && profile && (
-                <div className="flex flex-col gap-4 lg:gap-5">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
-                    <div className="lg:col-span-2 min-w-0">
-                      <AnalyticsDashboardWidget
-                        profile={profile}
-                        onGenerateRef={(fn) => {
-                          analyticsRef.current = fn;
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <DocumentGeneratorWidget
-                    profile={profile}
-                    onGenerateRef={(fn) => {
-                      documentRef.current = fn;
-                    }}
-                  />
-                </div>
-              )}
-            </SectionPanel>
-          </div>
-        ))}
+                )}
+              </SectionPanel>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

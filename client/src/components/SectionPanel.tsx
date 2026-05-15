@@ -13,6 +13,12 @@ interface SectionPanelProps {
   children?: React.ReactNode;
   onGenerateAll?: () => void;
   index?: number;
+  /**
+   * When true, renders only the section title + content, hiding the hero band
+   * (icon, tagline, highlights, hero art and Run-all button). Used by the
+   * auto-generate workspace mode where every widget runs without user action.
+   */
+  compact?: boolean;
 }
 
 export default function SectionPanel({
@@ -21,11 +27,53 @@ export default function SectionPanel({
   children,
   onGenerateAll,
   index = 0,
+  compact = false,
 }: SectionPanelProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const id = title.replace(/\s+/g, '-').toLowerCase();
   const meta = getSectionMeta(title);
   const { Icon, tagline, glow, highlights, runAllLabel, runAllHint, heroArt } = meta;
+
+  // ── Compact variant ──
+  // Used when the dashboard auto-generates every widget. We strip the hero band
+  // (description, highlights, run-all button, hero art) and just keep the
+  // section title + content, which keeps the visual rhythm without the
+  // marketing copy or the manual generate trigger.
+  if (compact) {
+    return (
+      <section
+        id={`section-${id}`}
+        className={`
+          scroll-mt-28 sm:scroll-mt-32 motion-safe:animate-fade-up
+          rounded-2xl overflow-hidden border border-neutral-200 bg-white shadow-md
+          dark:border-white/[0.08] dark:bg-[#0a0a10] dark:shadow-panel
+          transition-shadow duration-300
+          ${isLocked ? 'opacity-45 pointer-events-none select-none' : ''}
+        `}
+        style={{ animationDelay: `${index * 70}ms` }}
+        aria-disabled={isLocked}
+      >
+        <div className="flex items-center gap-3 px-4 sm:px-6 lg:px-7 py-4">
+          <div className="shrink-0 rounded-xl border border-primary-300/50 bg-primary-50 p-2.5 text-primary-700 shadow-sm dark:border-primary-400/25 dark:bg-primary-500/10 dark:text-primary-200 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+            <Icon className="h-5 w-5" aria-hidden />
+          </div>
+          <h2 className="text-lg font-semibold leading-snug tracking-tight text-neutral-900 sm:text-xl dark:text-white">
+            {title}
+          </h2>
+        </div>
+
+        <div className="border-t border-neutral-200 bg-neutral-50 dark:border-white/[0.04] dark:bg-[#07070b]">
+          {children ? (
+            <div className="p-4 sm:p-5 lg:p-6">{children}</div>
+          ) : (
+            <div className="m-4 sm:m-5 rounded-xl border border-dashed border-neutral-300 bg-neutral-100/60 px-4 py-12 text-center text-sm text-neutral-500 dark:border-white/[0.12] dark:bg-white/[0.02]">
+              Nothing here yet.
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section

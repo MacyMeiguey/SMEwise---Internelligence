@@ -276,11 +276,13 @@ function InvestorFundingView({ plan }: { plan: InvestorFundingPlan }) {
 interface InvestorFundingWidgetProps {
   profile: BusinessProfile;
   onGenerateRef?: (fn: () => Promise<void>) => void;
+  hideGenerateButton?: boolean;
 }
 
 export default function InvestorFundingWidget({
   profile,
   onGenerateRef,
+  hideGenerateButton = false,
 }: InvestorFundingWidgetProps) {
   const { state, generate }         = useWidgetState();
   const [plan, setPlan]             = useState<InvestorFundingPlan | null>(null);
@@ -316,6 +318,7 @@ export default function InvestorFundingWidget({
       idleHint="Government grants, angel investors, VCs, accelerators and crowdfunding — matched to your stage and industry."
       idleButtonLabel="Find investors"
       regenerateLabel="Refresh suggestions"
+      hideGenerateButton={hideGenerateButton}
     >
       {parseError ? (
         <p className="text-sm text-red-400">{parseError}</p>
