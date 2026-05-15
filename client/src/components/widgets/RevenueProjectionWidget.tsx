@@ -1,28 +1,43 @@
 /**
  * RevenueProjectionWidget — Revenue Projection Section
- * Calls the dedicated AWS Bedrock Agent (B2WJZPIFMU) which returns a
- * structured JSON 12-month financial projection, then renders:
- *   - Summary strip (company, industry, capital)
- *   - Grouped bar chart (min/max revenue per period)
  *
- * The supporting detail panels (assumptions, KPIs, milestones, risks,
- * action steps) live in FinancialReturnWidget.
+ * Confirmed agent schema:
+ * {
+ *   company, industry, currentFunds, currency,
+ *   assumptions: { industryGrowthRate, marketCondition, monthlyBurnEstimate, mainCostDrivers[] },
+ *   financialProjection: [{
+ *     period, averageMonthlyRevenue, projectedPeriodRevenue,
+ *     projectedPeriodCost, netProfitLoss, status, explanation, suggestion
+ *   }],
+ *   breakEvenMonth, estimatedYearEndProfitMargin,
+ *   milestones: [{ month, achievement }],
+ *   risks[], actionSteps[]
+ * }
  *
- * Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6
+ * Renders:
+ *   - Summary strip
+ *   - Grouped bar chart (Revenue vs Cost, colour-coded P&L dot)
+ *   - Period detail cards (financials + explanation + suggestion)
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, Component, type ReactNode } from "react";
 import type { BusinessProfile } from "../../types";
 import { useWidgetState } from "../../hooks/useWidgetState";
 import WidgetCard from "../WidgetCard";
 import { API_BASE } from "../../lib/api";
+import { TrendingUp, TrendingDown } from "lucide-react";
 
-// ─── Types (exported so FinancialReturnWidget can reuse them) ─────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface RevenuePeriodEntry {
+export interface FinancialPeriod {
   period: string;
-  minRevenue: number;
-  maxRevenue: number;
+  averageMonthlyRevenue: number;
+  projectedPeriodRevenue: number;
+  projectedPeriodCost: number;
+  netProfitLoss: number;
+  status: string;          // "Profit" | "Loss"
+  explanation: string;
+  suggestion: string;
 }
 
 export interface RevenueProjectionMilestone {
@@ -37,35 +52,36 @@ export interface RevenueProjectionPlan {
   currency: string;
   assumptions: {
     industryGrowthRate: string;
-    seasonality: string;
-    requiredInvestment: number;
+    marketCondition: string;
+    monthlyBurnEstimate: number;
+    mainCostDrivers: string[];
   };
-  revenueProjection: RevenuePeriodEntry[];
+  financialProjection: FinancialPeriod[];
   breakEvenMonth: number;
-  profitMargin: number;
+  estimatedYearEndProfitMargin: number;
   milestones: RevenueProjectionMilestone[];
   risks: string[];
   actionSteps: string[];
 }
 
-// ─── API call (exported so FinancialReturnWidget can share it) ────────────────
+// ─── API ──────────────────────────────────────────────────────────────────────
 
 export async function fetchRevenueProjection(
   profile: BusinessProfile,
+  budgetAllocation?: string,
 ): Promise<RevenueProjectionPlan> {
-  const payload = {
-    companyName:   profile.companyName,
-    industry:      profile.industry,
-    businessStage: profile.businessStage,
-    currentFunds:  profile.currentFunds,
-    mainGoal:      profile.mainGoal || undefined,
-    businessType:  profile.businessType,
-  };
-
   const res = await fetch(`${API_BASE}/api/bedrock/revenue-projection`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      companyName:      profile.companyName,
+      industry:         profile.industry,
+      businessStage:    profile.businessStage,
+      currentFunds:     profile.currentFunds,
+      mainGoal:         profile.mainGoal?.trim() || "Grow the business sustainably",
+      businessType:     profile.businessType,
+      budgetAllocation: budgetAllocation || "Not yet allocated",
+    }),
   });
 
   if (!res.ok) {
@@ -74,140 +90,260 @@ export async function fetchRevenueProjection(
   }
 
   const data = (await res.json()) as { content: string };
-
   let jsonStr = data.content.trim();
-  if (jsonStr.startsWith("```")) {
+  if (jsonStr.startsWith("```"))
     jsonStr = jsonStr.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/, "").trim();
-  }
-  const start = jsonStr.indexOf("{");
-  const end   = jsonStr.lastIndexOf("}");
-  if (start !== -1 && end !== -1) jsonStr = jsonStr.slice(start, end + 1);
-
+  const s = jsonStr.indexOf("{"), e = jsonStr.lastIndexOf("}");
+  if (s !== -1 && e !== -1) jsonStr = jsonStr.slice(s, e + 1);
   return JSON.parse(jsonStr) as RevenueProjectionPlan;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmt(n: number) {
-  return n.toLocaleString("en-MY");
+export function fmt(n: unknown): string {
+  const num = Number(n);
+  return isFinite(num) ? num.toLocaleString("en-MY") : "—";
+}
+
+function safeNum(n: unknown): number {
+  const v = Number(n);
+  return isFinite(v) ? v : 0;
+}
+
+// ─── Error boundary ───────────────────────────────────────────────────────────
+
+class SafeBoundary extends Component<
+  { children: ReactNode },
+  { err: string | null }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { err: null };
+  }
+  static getDerivedStateFromError(e: unknown) {
+    return { err: e instanceof Error ? e.message : String(e) };
+  }
+  render() {
+    if (this.state.err)
+      return <p className="text-sm text-red-400">Render error: {this.state.err}. Try regenerating.</p>;
+    return this.props.children;
+  }
 }
 
 // ─── Bar Chart ────────────────────────────────────────────────────────────────
 
-const PERIOD_COLOURS = [
-  { min: "#6d28d9", max: "#a78bfa" }, // violet  — Months 1-3
-  { min: "#0369a1", max: "#38bdf8" }, // blue    — Months 4-6
-  { min: "#065f46", max: "#34d399" }, // emerald — Months 7-9
-  { min: "#92400e", max: "#fbbf24" }, // amber   — Months 10-12
-];
+const REV_COLOUR  = "#fb923c";  // orange-400
+const COST_COLOUR = "#faceaaff";  // violet-900 (dark purple)
 
-const PERIOD_LABELS = ["Months 1–3", "Months 4–6", "Months 7–9", "Months 10–12"];
+const PHASE_LABELS = ["Months 1–3", "Months 4–6", "Months 7–9", "Months 10–12"];
 
-export function RevenueChart({ data }: { data: RevenuePeriodEntry[] }) {
-  const allValues = data.flatMap((d) => [d.minRevenue, d.maxRevenue]);
-  const maxVal    = Math.max(...allValues);
-  const ceiling   = Math.ceil(maxVal / 10000) * 10000;
+function RevenueChart({ periods }: { periods: FinancialPeriod[] }) {
+  if (!periods.length)
+    return <p className="text-sm text-neutral-500">No data to display.</p>;
 
-  const CHART_H  = 200;
-  const BAR_W    = 28;
-  const GAP      = 8;
-  const GROUP_GAP = 24;
-  const LABEL_H  = 40;
-  const Y_AXIS_W = 64;
+  const allVals = periods.flatMap(p => [
+    safeNum(p.projectedPeriodRevenue),
+    safeNum(p.projectedPeriodCost),
+  ]);
+  const maxVal  = Math.max(...allVals, 1);
+  const ceiling = Math.ceil(maxVal / 10000) * 10000 || 10000;
 
-  const groupW = BAR_W * 2 + GAP;
-  const totalW = Y_AXIS_W + data.length * (groupW + GROUP_GAP) - GROUP_GAP + 16;
+  // Slightly larger, centred in container
+  const TOP_PAD = 28;
+  const CH      = 200;
+  const BW      = 30;
+  const GAP     = 8;
+  const GG      = 36;
+  const LH      = 42;
+  const YW      = 64;
 
-  const barH = (v: number) => (v / ceiling) * CHART_H;
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(f * ceiling));
+  const gW     = BW * 2 + GAP;
+  const tW     = YW + periods.length * (gW + GG) - GG + 12;
+  const totalH = TOP_PAD + CH + LH + 6;
+
+  const bH    = (v: number) => Math.min(Math.max((safeNum(v) / ceiling) * CH, 0), CH);
+  const ticks = [0, 0.5, 1].map(f => Math.round(f * ceiling));
 
   return (
-    <div className="w-full overflow-x-auto">
-      <svg
-        viewBox={`0 0 ${totalW} ${CHART_H + LABEL_H + 24}`}
-        className="w-full min-w-[320px]"
-        aria-label="Revenue projection bar chart"
-        role="img"
-      >
-        {/* Y-axis grid lines + labels */}
-        {ticks.map((tick) => {
-          const y = CHART_H - barH(tick);
-          return (
-            <g key={tick}>
-              <line x1={Y_AXIS_W} y1={y} x2={totalW} y2={y}
-                stroke="rgba(255,255,255,0.07)" strokeWidth={1} />
-              <text x={Y_AXIS_W - 6} y={y + 4} textAnchor="end"
-                fontSize={9} fill="rgba(255,255,255,0.4)">
-                {tick >= 1_000_000
-                  ? `${(tick / 1_000_000).toFixed(1)}M`
-                  : tick >= 1_000
-                  ? `${(tick / 1_000).toFixed(0)}k`
-                  : tick}
-              </text>
-            </g>
-          );
-        })}
+    <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
+      <div className="flex justify-center overflow-x-auto">
+        <svg
+          viewBox={`0 0 ${tW} ${totalH}`}
+          style={{ width: `${tW}px`, height: `${totalH}px`, maxWidth: "100%" }}
+          aria-label="Revenue vs cost projection chart"
+          role="img"
+        >
+          {/* Grid + Y labels */}
+          {ticks.map(tick => {
+            const y = TOP_PAD + CH - bH(tick);
+            return (
+              <g key={tick}>
+                <line x1={YW} y1={y} x2={tW} y2={y}
+                  stroke="rgba(255,255,255,0.07)" strokeWidth={1} />
+                <text x={YW - 5} y={y + 3.5} textAnchor="end" fontSize={9} fill="rgba(255,255,255,0.4)">
+                  {tick >= 1e6
+                    ? `${(tick / 1e6).toFixed(1)}M`
+                    : tick >= 1000
+                    ? `${(tick / 1000).toFixed(0)}k`
+                    : tick}
+                </text>
+              </g>
+            );
+          })}
 
-        {/* Bars */}
-        {data.map((entry, i) => {
-          const colours = PERIOD_COLOURS[i % PERIOD_COLOURS.length];
-          const x    = Y_AXIS_W + i * (groupW + GROUP_GAP);
-          const minH = barH(entry.minRevenue);
-          const maxH = barH(entry.maxRevenue);
-          return (
-            <g key={entry.period}>
-              <rect x={x} y={CHART_H - minH} width={BAR_W} height={minH}
-                rx={4} fill={colours.min} opacity={0.85} />
-              <rect x={x + BAR_W + GAP} y={CHART_H - maxH} width={BAR_W} height={maxH}
-                rx={4} fill={colours.max} opacity={0.85} />
-              <text x={x + groupW / 2} y={CHART_H + 16}
-                textAnchor="middle" fontSize={9} fill="rgba(255,255,255,0.55)">
-                {PERIOD_LABELS[i] ?? entry.period}
-              </text>
-              <text x={x + BAR_W / 2} y={CHART_H - minH - 4}
-                textAnchor="middle" fontSize={8} fill={colours.min}>
-                {entry.minRevenue >= 1000
-                  ? `${(entry.minRevenue / 1000).toFixed(0)}k`
-                  : entry.minRevenue}
-              </text>
-              <text x={x + BAR_W + GAP + BAR_W / 2} y={CHART_H - maxH - 4}
-                textAnchor="middle" fontSize={8} fill={colours.max}>
-                {entry.maxRevenue >= 1000
-                  ? `${(entry.maxRevenue / 1000).toFixed(0)}k`
-                  : entry.maxRevenue}
-              </text>
-            </g>
-          );
-        })}
+          {/* Bars */}
+          {periods.map((p, i) => {
+            const x      = YW + i * (gW + GG);
+            const rH     = bH(p.projectedPeriodRevenue);
+            const cH     = bH(p.projectedPeriodCost);
+            const rev    = safeNum(p.projectedPeriodRevenue);
+            const cst    = safeNum(p.projectedPeriodCost);
+            const profit = p.status?.toLowerCase() === "profit";
+            const baseY  = TOP_PAD + CH;
 
-        {/* Axes */}
-        <line x1={Y_AXIS_W} y1={0} x2={Y_AXIS_W} y2={CHART_H}
-          stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
-        <line x1={Y_AXIS_W} y1={CHART_H} x2={totalW} y2={CHART_H}
-          stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
-      </svg>
+            return (
+              <g key={p.period}>
+                <rect x={x} y={baseY - rH} width={BW} height={rH}
+                  rx={3} fill={REV_COLOUR} opacity={0.9} />
+                <rect x={x + BW + GAP} y={baseY - cH} width={BW} height={cH}
+                  rx={3} fill={COST_COLOUR} opacity={0.9} />
+
+                {/* P&L dot */}
+                <circle cx={x + gW / 2} cy={baseY - Math.max(rH, cH) - 8} r={4}
+                  fill={profit ? "#34d399" : "#f87171"} />
+
+                {/* Period label */}
+                <text x={x + gW / 2} y={baseY + 13}
+                  textAnchor="middle" fontSize={7.5} fill="rgba(255,255,255,0.5)">
+                  {PHASE_LABELS[i] ?? p.period}
+                </text>
+
+                {/* Value labels */}
+                <text x={x + BW / 2} y={baseY - rH - 3}
+                  textAnchor="middle" fontSize={7} fill={REV_COLOUR}>
+                  {rev >= 1000 ? `${(rev / 1000).toFixed(0)}k` : rev}
+                </text>
+                <text x={x + BW + GAP + BW / 2} y={baseY - cH - 3}
+                  textAnchor="middle" fontSize={7} fill={COST_COLOUR}>
+                  {cst >= 1000 ? `${(cst / 1000).toFixed(0)}k` : cst}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Axes */}
+          <line x1={YW} y1={TOP_PAD} x2={YW} y2={TOP_PAD + CH}
+            stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
+          <line x1={YW} y1={TOP_PAD + CH} x2={tW} y2={TOP_PAD + CH}
+            stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
+        </svg>
+      </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2 px-1">
-        {data.map((entry, i) => {
-          const colours = PERIOD_COLOURS[i % PERIOD_COLOURS.length];
-          return (
-            <div key={entry.period} className="flex items-center gap-2 text-xs text-neutral-400">
-              <span className="flex items-center gap-1">
-                <span className="inline-block h-2.5 w-2.5 rounded-sm"
-                  style={{ background: colours.min }} />
-                Min
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="inline-block h-2.5 w-2.5 rounded-sm"
-                  style={{ background: colours.max }} />
-                Max
-              </span>
-              <span className="text-neutral-500">{PERIOD_LABELS[i] ?? entry.period}</span>
-            </div>
-          );
-        })}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 px-1 text-[11px] text-neutral-400">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2 w-2 rounded-sm" style={{ background: REV_COLOUR }} />
+          Revenue
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2 w-2 rounded-sm" style={{ background: COST_COLOUR }} />
+          Cost
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+          Profit
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2 w-2 rounded-full bg-red-400" />
+          Loss
+        </span>
       </div>
+    </div>
+  );
+}
+
+// ─── Period cards ─────────────────────────────────────────────────────────────
+
+const CARD_BORDERS = [
+  "border-violet-500/25",
+  "border-blue-500/25",
+  "border-emerald-500/25",
+  "border-amber-500/25",
+];
+
+function PeriodCards({ periods }: { periods: FinancialPeriod[] }) {
+  return (
+    <div className="grid sm:grid-cols-2 gap-3 mt-5">
+      {periods.map((p, i) => {
+        const profit = p.status?.toLowerCase() === "profit";
+        const net    = safeNum(p.netProfitLoss);
+
+        return (
+          <div key={p.period}
+            className={`rounded-xl border ${CARD_BORDERS[i % CARD_BORDERS.length]} bg-white/[0.03] p-4 space-y-3`}>
+
+            {/* Header */}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-bold text-neutral-200">
+                {PHASE_LABELS[i] ?? p.period}
+              </span>
+              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold border ${
+                profit
+                  ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-300"
+                  : "bg-rose-500/15 border-rose-500/30 text-rose-300"
+              }`}>
+                {profit
+                  ? <TrendingUp className="h-3 w-3" aria-hidden />
+                  : <TrendingDown className="h-3 w-3" aria-hidden />}
+                {p.status}
+              </span>
+            </div>
+
+            {/* Financials grid */}
+            <div className="grid grid-cols-2 gap-1.5">
+              <div className="rounded-lg bg-white/[0.04] px-3 py-2">
+                <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Revenue</p>
+                <p className="text-sm font-semibold text-neutral-100 tabular-nums mt-0.5">
+                  RM {fmt(p.projectedPeriodRevenue)}
+                </p>
+              </div>
+              <div className="rounded-lg bg-white/[0.04] px-3 py-2">
+                <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Cost</p>
+                <p className="text-sm font-semibold text-neutral-100 tabular-nums mt-0.5">
+                  RM {fmt(p.projectedPeriodCost)}
+                </p>
+              </div>
+              <div className="rounded-lg bg-white/[0.04] px-3 py-2">
+                <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Avg / month</p>
+                <p className="text-sm font-semibold text-neutral-100 tabular-nums mt-0.5">
+                  RM {fmt(p.averageMonthlyRevenue)}
+                </p>
+              </div>
+              <div className={`rounded-lg px-3 py-2 ${profit ? "bg-emerald-500/10" : "bg-rose-500/10"}`}>
+                <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Net P&L</p>
+                <p className={`text-sm font-bold tabular-nums mt-0.5 ${profit ? "text-emerald-300" : "text-rose-300"}`}>
+                  {net >= 0 ? "+" : ""}RM {fmt(net)}
+                </p>
+              </div>
+            </div>
+
+            {/* Explanation */}
+            {p.explanation && (
+              <p className="text-xs text-neutral-400 leading-relaxed">{p.explanation}</p>
+            )}
+
+            {/* Suggestion */}
+            {p.suggestion && (
+              <div className="rounded-lg border border-primary-500/20 bg-primary-500/[0.06] px-3 py-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-primary-400 mb-1">
+                  Suggestion
+                </p>
+                <p className="text-xs text-neutral-300 leading-relaxed">{p.suggestion}</p>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -216,58 +352,69 @@ export function RevenueChart({ data }: { data: RevenuePeriodEntry[] }) {
 
 interface RevenueProjectionWidgetProps {
   profile: BusinessProfile;
-  /** Fires after a successful generate so FinancialReturnWidget can reuse the data */
+  budgetAllocation?: string;
   onPlanGenerated?: (plan: RevenueProjectionPlan) => void;
   onGenerateRef?: (fn: () => Promise<void>) => void;
 }
 
 export default function RevenueProjectionWidget({
   profile,
+  budgetAllocation,
   onPlanGenerated,
   onGenerateRef,
 }: RevenueProjectionWidgetProps) {
-  const { state, generate } = useWidgetState();
-  const [plan, setPlan]         = useState<RevenueProjectionPlan | null>(null);
+  const { state, generate }         = useWidgetState();
+  const [plan, setPlan]             = useState<RevenueProjectionPlan | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
 
   const handleGenerate = useCallback(async () => {
     setPlan(null);
     setParseError(null);
-
     await generate(async () => {
       try {
-        const result = await fetchRevenueProjection(profile);
+        const result = await fetchRevenueProjection(profile, budgetAllocation);
         setPlan(result);
         onPlanGenerated?.(result);
       } catch (err) {
         if (err instanceof SyntaxError) {
-          setParseError("The agent returned a response that couldn't be parsed. Try regenerating.");
-          throw new Error("Failed to parse revenue projection JSON.");
+          setParseError("Response couldn't be parsed. Try regenerating.");
+          throw new Error("JSON parse failed.");
         }
         throw err;
       }
     });
-  }, [profile, generate, onPlanGenerated]);
+  }, [profile, budgetAllocation, generate, onPlanGenerated]);
 
-  useEffect(() => {
-    onGenerateRef?.(handleGenerate);
-  }, [onGenerateRef, handleGenerate]);
+  useEffect(() => { onGenerateRef?.(handleGenerate); }, [onGenerateRef, handleGenerate]);
+
+  const isWaiting = !budgetAllocation;
+  const periods   = plan?.financialProjection ?? [];
 
   return (
     <WidgetCard
       title="Revenue Projection"
       onGenerate={handleGenerate}
       state={state}
-      idleHint="12-month revenue range chart across four phases — tuned to your industry and capital."
+      idleHint={
+        isWaiting
+          ? "Generate Fund Allocation first — this projection uses your budget as its cost structure."
+          : "12-month revenue vs cost chart with period-by-period P&L breakdown."
+      }
       idleButtonLabel="Plot revenue"
       regenerateLabel="Redraw chart"
+      generateDisabled={isWaiting}
     >
-      {parseError ? (
+      {isWaiting && state.status === "idle" ? (
+        <div className="flex items-center gap-2 text-sm text-amber-400/80">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
+          Complete Fund Allocation first to unlock this widget.
+        </div>
+      ) : parseError ? (
         <p className="text-sm text-red-400">{parseError}</p>
-      ) : plan ? (
+      ) : plan && periods.length > 0 ? (
         <div>
           {/* Summary strip */}
-          <div className="flex flex-wrap gap-2 mb-4 text-sm">
+          <div className="flex flex-wrap gap-2 mb-5 text-sm">
             <span className="rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-neutral-300">
               <span className="font-semibold text-white">{plan.company}</span>
               <span className="mx-1.5 text-neutral-500">·</span>
@@ -276,10 +423,20 @@ export default function RevenueProjectionWidget({
             <span className="rounded-lg border border-primary-500/30 bg-primary-500/10 px-3 py-1.5 font-semibold text-primary-200">
               RM {fmt(plan.currentFunds)} capital
             </span>
+            {plan.breakEvenMonth && (
+              <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-emerald-200 text-xs font-semibold">
+                Break-even: Month {plan.breakEvenMonth}
+              </span>
+            )}
           </div>
 
-          {/* Chart only */}
-          <RevenueChart data={plan.revenueProjection} />
+          <SafeBoundary>
+            <RevenueChart periods={periods} />
+          </SafeBoundary>
+
+          <SafeBoundary>
+            <PeriodCards periods={periods} />
+          </SafeBoundary>
         </div>
       ) : null}
     </WidgetCard>

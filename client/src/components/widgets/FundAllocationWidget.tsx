@@ -11,9 +11,9 @@ import { useWidgetState } from "../../hooks/useWidgetState";
 import WidgetCard from "../WidgetCard";
 import { API_BASE } from "../../lib/api";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types (exported so Dashboard can pass allocation to Revenue widget) ──────
 
-interface AllocationCategory {
+export interface AllocationCategory {
   category: string;
   percentage: number;
   amount: number;
@@ -21,7 +21,7 @@ interface AllocationCategory {
   rationale: string;
 }
 
-interface FundAllocationPlan {
+export interface FundAllocationPlan {
   company: string;
   industry: string;
   location: string;
@@ -162,7 +162,7 @@ function AllocationTable({ plan }: { plan: FundAllocationPlan }) {
                   <ul className="space-y-0.5">
                     {row.expenses.map((exp) => (
                       <li key={exp} className="text-neutral-400 text-xs leading-relaxed">
-                        · {exp}
+                        {exp}
                       </li>
                     ))}
                   </ul>

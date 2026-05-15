@@ -10,9 +10,8 @@ import StartupRegistrationWidget from './widgets/StartupRegistrationWidget';
 import OfficeLocationWidget from './widgets/OfficeLocationWidget';
 import RiskAnalyzerWidget from './widgets/RiskAnalyzerWidget';
 
-import FundAllocationWidget from './widgets/FundAllocationWidget';
+import FundAllocationWidget, { type FundAllocationPlan } from './widgets/FundAllocationWidget';
 import RevenueProjectionWidget from './widgets/RevenueProjectionWidget';
-import FinancialReturnWidget from './widgets/FinancialReturnWidget';
 import LoansFundingWidget from './widgets/LoansFundingWidget';
 import InvestorFundingWidget from './widgets/InvestorFundingWidget';
 
@@ -52,9 +51,7 @@ const DEFAULT_PRICING_INPUTS: PricingOptionalInputs = {
 export default function Dashboard({ profile, isUnlocked, activeSection }: DashboardProps) {
   const [pricingInputs, setPricingInputs] = useState<PricingOptionalInputs>(DEFAULT_PRICING_INPUTS);
   const [marketingPlanJson, setMarketingPlanJson] = useState<string | null>(null);
-  // Ref holds the latest plan JSON synchronously so handleGenerateAll can pass it
-  // to downstream widgets immediately after strategy completes — React state updates
-  // are async and would still be null when the next generate call fires.
+  const [budgetAllocation, setBudgetAllocation] = useState<string | undefined>(undefined);
   const marketingPlanJsonRef = useRef<string | null>(null);
 
   const startupRegRef = useRef<(() => Promise<void>) | null>(null);
@@ -63,7 +60,6 @@ export default function Dashboard({ profile, isUnlocked, activeSection }: Dashbo
 
   const fundAllocRef = useRef<(() => Promise<void>) | null>(null);
   const revenueRef = useRef<(() => Promise<void>) | null>(null);
-  const financialReturnRef = useRef<(() => Promise<void>) | null>(null);
   const loansRef = useRef<(() => Promise<void>) | null>(null);
   const investorFundingRef = useRef<(() => Promise<void>) | null>(null);
 
@@ -86,10 +82,11 @@ export default function Dashboard({ profile, isUnlocked, activeSection }: Dashbo
         riskRef.current?.(),
       ]);
     } else if (section === 'Financial Planning') {
+      // Fund allocation must complete first — it provides the budget string
+      // that Revenue Projection and Financial Return depend on.
+      await fundAllocRef.current?.();
       await Promise.all([
-        fundAllocRef.current?.(),
         revenueRef.current?.(),
-        financialReturnRef.current?.(),
         loansRef.current?.(),
         investorFundingRef.current?.(),
       ]);
@@ -160,37 +157,35 @@ export default function Dashboard({ profile, isUnlocked, activeSection }: Dashbo
               )}
 
               {section === 'Financial Planning' && profile && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
+                <div className="flex flex-col gap-4 lg:gap-5">
+                  {/* Row 1 — Fund Allocation full width */}
                   <FundAllocationWidget
                     profile={profile}
-                    onGenerateRef={(fn) => {
-                      fundAllocRef.current = fn;
+                    onAllocationGenerated={(plan: FundAllocationPlan) => {
+                      const summary = plan.allocations
+                        .map((a) => `${a.category}: ${a.percentage}% (RM ${a.amount.toLocaleString('en-MY')})`)
+                        .join(', ');
+                      setBudgetAllocation(summary);
                     }}
+                    onGenerateRef={(fn) => { fundAllocRef.current = fn; }}
                   />
+
+                  {/* Row 2 — Revenue Projection full width */}
                   <RevenueProjectionWidget
                     profile={profile}
-                    onGenerateRef={(fn) => {
-                      revenueRef.current = fn;
-                    }}
+                    budgetAllocation={budgetAllocation}
+                    onGenerateRef={(fn) => { revenueRef.current = fn; }}
                   />
-                  <FinancialReturnWidget
-                    profile={profile}
-                    onGenerateRef={(fn) => {
-                      financialReturnRef.current = fn;
-                    }}
-                  />
-                  <LoansFundingWidget
-                    profile={profile}
-                    onGenerateRef={(fn) => {
-                      loansRef.current = fn;
-                    }}
-                  />
-                  <div className="lg:col-span-2">
+
+                  {/* Row 3 — Loans & Funding + Investor & Funding side by side */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
+                    <LoansFundingWidget
+                      profile={profile}
+                      onGenerateRef={(fn) => { loansRef.current = fn; }}
+                    />
                     <InvestorFundingWidget
                       profile={profile}
-                      onGenerateRef={(fn) => {
-                        investorFundingRef.current = fn;
-                      }}
+                      onGenerateRef={(fn) => { investorFundingRef.current = fn; }}
                     />
                   </div>
                 </div>

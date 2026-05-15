@@ -85,6 +85,8 @@ export interface WidgetCardProps {
   idleButtonLabel?: string;
   /** Label for the post-success refresh action (default: Regenerate). */
   regenerateLabel?: string;
+  /** Disable the generate/regenerate button (e.g. waiting for a prerequisite). */
+  generateDisabled?: boolean;
 }
 
 export default function WidgetCard({
@@ -96,6 +98,7 @@ export default function WidgetCard({
   idleHint,
   idleButtonLabel = 'Generate',
   regenerateLabel = 'Regenerate',
+  generateDisabled = false,
 }: WidgetCardProps) {
   const { status, errorMessage } = state;
   const isLoading = status === 'loading';
@@ -108,11 +111,12 @@ export default function WidgetCard({
       <header className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50/80 px-4 sm:px-5 py-3 min-h-[3rem] dark:border-white/[0.08] dark:bg-white/[0.03]">
         <h3 className="text-sm font-semibold text-neutral-900 tracking-tight pr-2 leading-snug dark:text-white">{title}</h3>
 
-        {status !== 'loading' && (
+        {!isLoading && (
           <button
             type="button"
             onClick={onGenerate}
-            className="inline-flex items-center justify-center rounded-lg bg-primary-600 hover:bg-primary-500 text-white text-xs font-semibold py-2 px-4 min-h-[38px] min-w-[5rem] shrink-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#101018]"
+            disabled={generateDisabled}
+            className="inline-flex items-center justify-center rounded-lg bg-primary-600 hover:bg-primary-500 text-white text-xs font-semibold py-2 px-4 min-h-[38px] min-w-[5rem] shrink-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#101018] disabled:opacity-40 disabled:cursor-not-allowed"
             aria-label={status === 'idle' ? `${idleButtonLabel} — ${title}` : `${regenerateLabel} — ${title}`}
           >
             {status === 'idle' ? idleButtonLabel : regenerateLabel}

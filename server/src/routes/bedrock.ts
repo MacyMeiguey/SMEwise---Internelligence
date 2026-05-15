@@ -705,6 +705,7 @@ router.post('/revenue-projection', async (req: Request, res: Response) => {
         currentFunds,
         mainGoal,
         businessType,
+        budgetAllocation,
     } = req.body as {
         companyName: string
         industry: string
@@ -712,6 +713,7 @@ router.post('/revenue-projection', async (req: Request, res: Response) => {
         currentFunds: number
         mainGoal?: string
         businessType: string
+        budgetAllocation?: string
     }
 
     if (!companyName || !industry || !businessStage || !currentFunds || !businessType) {
@@ -722,7 +724,7 @@ router.post('/revenue-projection', async (req: Request, res: Response) => {
     }
 
     const REVENUE_AGENT_ID = process.env.BEDROCK_REVENUE_AGENT_ID ?? 'B2WJZPIFMU'
-    const REVENUE_AGENT_ALIAS_ID = process.env.BEDROCK_REVENUE_AGENT_ALIAS_ID ?? 'ZWVMV74XKS'
+    const REVENUE_AGENT_ALIAS_ID = process.env.BEDROCK_REVENUE_AGENT_ALIAS_ID ?? 'ZXGWJBOBUT'
 
     const inputText = [
         `Company: ${companyName}`,
@@ -730,10 +732,9 @@ router.post('/revenue-projection', async (req: Request, res: Response) => {
         `Stage: ${businessStage}`,
         `Business Type: ${businessType}`,
         `Current Funds: RM ${Number(currentFunds).toLocaleString('en-MY')}`,
-        mainGoal ? `Business Goal: ${mainGoal}` : null,
-    ]
-        .filter(Boolean)
-        .join('\n')
+        `Business Goal: ${mainGoal?.trim() || 'Grow the business sustainably'}`,
+        `Budget Allocation: ${budgetAllocation?.trim() || 'Not yet allocated'}`,
+    ].join('\n')
 
     console.log('=== [revenue-projection] inputText sent to Bedrock agent ===\n', inputText)
 
