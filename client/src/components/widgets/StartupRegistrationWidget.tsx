@@ -8,6 +8,7 @@ import { useState, useCallback, useEffect } from 'react'
 import type { BusinessProfile } from '../../types'
 import { useWidgetState } from '../../hooks/useWidgetState'
 import WidgetCard from '../WidgetCard'
+import { API_BASE } from '../../lib/api'
 
 // ─── JSON schema types ────────────────────────────────────────────────────────
 
@@ -78,7 +79,7 @@ interface StartupGuide {
 // ─── API call ─────────────────────────────────────────────────────────────────
 
 async function fetchStartupGuide(profile: BusinessProfile): Promise<StartupGuide> {
-  const res = await fetch('http://localhost:3001/api/bedrock/startup', {
+  const res = await fetch(`${API_BASE}/api/bedrock/startup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

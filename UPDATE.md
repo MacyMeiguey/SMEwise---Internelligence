@@ -30,6 +30,36 @@ The invalidation takes 1–2 minutes to propagate globally. Until then, some use
 
 ---
 
+## Adding or Upgrading a Server Dependency
+
+The repo uses npm workspaces (root `package.json` lists `client` and `server`), but the `server/Dockerfile` runs `npm ci` against a standalone `server/package-lock.json`. Both lockfiles need to stay in sync, otherwise the Docker build will fail with `npm error code EUSAGE — npm ci can only install packages when your package.json and package-lock.json or npm-shrinkwrap.json are in sync`.
+
+When adding or upgrading any package in `server/package.json`, run from inside `server/`:
+
+```bash
+# Add a new dependency
+npm install --workspaces=false <package-name>
+
+# Upgrade an existing dependency
+npm install --workspaces=false <package-name>@<version>
+
+# Or, after editing server/package.json by hand, refresh the lockfile only
+npm install --workspaces=false --package-lock-only
+```
+
+The `--workspaces=false` flag stops npm from walking up to the root and using the workspaces lockfile — it forces npm to write a standalone `server/package-lock.json` based purely on `server/package.json`.
+
+Then commit both files together:
+
+```bash
+git add server/package.json server/package-lock.json
+git commit -m "deps: bump <package>"
+```
+
+After that, the standard backend deploy steps below will succeed.
+
+---
+
 ## Updating the Backend (Express Server)
 
 When you modify any file in `server/src/`:
