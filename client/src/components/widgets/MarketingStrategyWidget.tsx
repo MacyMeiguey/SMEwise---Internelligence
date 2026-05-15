@@ -175,6 +175,10 @@ function BudgetSliderPanel({ maxFunds, value, onChange, onClose, onClear }: Budg
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+import { checkCache, writeCache, hashInputs } from '../../utils/widgetCache';
+
+const CACHE_KEY = 'marketing-strategy';
+
 interface MarketingStrategyWidgetProps {
   profile: BusinessProfile;
   onStrategyGenerated?: (strategy: string) => void;
@@ -188,7 +192,7 @@ export default function MarketingStrategyWidget({
   onGenerateRef,
   hideGenerateButton = false,
 }: MarketingStrategyWidgetProps) {
-  const { state, generate } = useWidgetState();
+  const { state, generate, restoreSuccess } = useWidgetState();
   const [plan, setPlan] = useState<MarketingPlanData | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
 
@@ -200,7 +204,46 @@ export default function MarketingStrategyWidget({
   const { status, errorMessage } = state;
   const isLoading = status === "loading";
 
+  const makeCacheInputs = (fundAlloc: string | undefined) => ({
+    companyName: profile.companyName,
+    industry: profile.industry,
+    businessStage: profile.businessStage,
+    city: profile.city,
+    targetCustomer: profile.targetCustomer,
+    mainGoal: profile.mainGoal,
+    currentFunds: profile.currentFunds,
+    businessType: profile.businessType,
+    fundAllocation: fundAlloc ?? profile.fundAllocation ?? '',
+    manualBudget: manualBudget ?? '',
+  });
+
+  // Restore from cache on mount. The raw string is stored alongside the parsed
+  // plan so we can re-fire onStrategyGenerated to unblock downstream widgets.
+  useEffect(() => {
+    const cached = checkCache<MarketingPlanData>(CACHE_KEY, makeCacheInputs(profile.fundAllocation));
+    if (cached) {
+      setPlan(cached.result);
+      restoreSuccess();
+      if (cached.rawString) {
+        onStrategyGenerated?.(cached.rawString);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleGenerate = useCallback(async (fundAllocationOverride?: string) => {
+    const effectiveAlloc = fundAllocationOverride ?? profile.fundAllocation;
+    const cached = checkCache<MarketingPlanData>(CACHE_KEY, makeCacheInputs(effectiveAlloc));
+    if (cached) {
+      setPlan(cached.result);
+      setParseError(null);
+      restoreSuccess();
+      if (cached.rawString) {
+        onStrategyGenerated?.(cached.rawString);
+      }
+      return;
+    }
+
     setPlan(null);
     setParseError(null);
 
@@ -220,6 +263,12 @@ export default function MarketingStrategyWidget({
         const jsonStr = extractJson(raw);
         const parsed = JSON.parse(jsonStr) as MarketingPlanData;
         setPlan(parsed);
+        writeCache(
+          CACHE_KEY,
+          hashInputs(makeCacheInputs(fundAllocationOverride ?? profile.fundAllocation)),
+          parsed,
+          raw,
+        );
       } catch {
         setParseError(
           "The agent returned a response that couldn't be parsed as a marketing plan. " +
@@ -228,6 +277,7 @@ export default function MarketingStrategyWidget({
         throw new Error("Failed to parse marketing plan JSON from agent response.");
       }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, manualBudget, generate, onStrategyGenerated]);
 
   // Keep ref pointing to latest handleGenerate so the registered Generate-All

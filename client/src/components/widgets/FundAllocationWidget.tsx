@@ -243,6 +243,12 @@ function AllocationTable({ plan }: { plan: FundAllocationPlan }) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
+import { checkCache, writeCache, hashInputs } from '../../utils/widgetCache';
+
+const CACHE_KEY = 'fund-allocation';
+
 interface FundAllocationWidgetProps {
   profile: BusinessProfile;
   onAllocationGenerated?: (plan: FundAllocationPlan) => void;
@@ -256,11 +262,42 @@ export default function FundAllocationWidget({
   onGenerateRef,
   hideGenerateButton = false,
 }: FundAllocationWidgetProps) {
-  const { state, generate } = useWidgetState();
+  const { state, generate, restoreSuccess } = useWidgetState();
   const [plan, setPlan] = useState<FundAllocationPlan | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
 
+  const cacheInputs = {
+    companyName: profile.companyName,
+    industry: profile.industry,
+    businessStage: profile.businessStage,
+    city: profile.city,
+    businessType: profile.businessType,
+    currentFunds: profile.currentFunds,
+  };
+
+  // Restore from cache on mount — also fire onAllocationGenerated so the
+  // Dashboard can unblock Revenue Projection and Marketing Strategy.
+  useEffect(() => {
+    const cached = checkCache<FundAllocationPlan>(CACHE_KEY, cacheInputs);
+    if (cached) {
+      setPlan(cached.result);
+      restoreSuccess();
+      onAllocationGenerated?.(cached.result);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleGenerate = useCallback(async () => {
+    // If the cache is still valid for the current inputs, restore from it and
+    // return immediately — no API call needed.
+    const cached = checkCache<FundAllocationPlan>(CACHE_KEY, cacheInputs);
+    if (cached) {
+      setPlan(cached.result);
+      restoreSuccess();
+      onAllocationGenerated?.(cached.result);
+      return;
+    }
+
     setPlan(null);
     setParseError(null);
 
@@ -269,6 +306,7 @@ export default function FundAllocationWidget({
         const result = await fetchFundAllocation(profile);
         setPlan(result);
         onAllocationGenerated?.(result);
+        writeCache(CACHE_KEY, hashInputs(cacheInputs), result);
       } catch (err) {
         if (err instanceof SyntaxError) {
           setParseError(
@@ -279,6 +317,7 @@ export default function FundAllocationWidget({
         throw err;
       }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, generate, onAllocationGenerated]);
 
   useEffect(() => {

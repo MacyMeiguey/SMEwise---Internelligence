@@ -480,6 +480,10 @@ function IdlePlaceholder() {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+import { checkCache, writeCache, hashInputs } from '../../utils/widgetCache'
+
+const CACHE_KEY = 'startup-registration'
+
 interface StartupRegistrationWidgetProps {
   profile: BusinessProfile
   onGenerateRef?: (fn: () => Promise<void>) => void
@@ -492,14 +496,41 @@ export default function StartupRegistrationWidget({
   hideGenerateButton = false,
 }: StartupRegistrationWidgetProps) {
   const [guide, setGuide] = useState<StartupGuide | null>(null)
-  const { state, generate } = useWidgetState()
+  const { state, generate, restoreSuccess } = useWidgetState()
+
+  const cacheInputs = {
+    companyName: profile.companyName,
+    industry: profile.industry,
+    businessStage: profile.businessStage,
+    city: profile.city,
+    businessType: profile.businessType,
+    currentFunds: profile.currentFunds,
+  }
+
+  // Restore from cache on mount if inputs haven't changed.
+  useEffect(() => {
+    const cached = checkCache<StartupGuide>(CACHE_KEY, cacheInputs)
+    if (cached) {
+      setGuide(cached.result)
+      restoreSuccess()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleGenerate = useCallback(async () => {
+    const cached = checkCache<StartupGuide>(CACHE_KEY, cacheInputs)
+    if (cached) {
+      setGuide(cached.result)
+      restoreSuccess()
+      return
+    }
     setGuide(null)
     await generate(async () => {
       const data = await fetchStartupGuide(profile)
       setGuide(data)
+      writeCache(CACHE_KEY, hashInputs(cacheInputs), data)
     })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, generate])
 
   useEffect(() => {

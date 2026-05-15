@@ -48,6 +48,10 @@ function extractJson(raw: string): string {
 
 // â”€â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+import { checkCache, writeCache, hashInputs } from '../../utils/widgetCache';
+
+const CACHE_KEY = 'marketing-guidelines';
+
 interface MarketingGuidelinesWidgetProps {
   /** Raw JSON string from the marketing strategy agent. Null means not yet generated. */
   marketingPlanJson: string | null;
@@ -60,7 +64,7 @@ export default function MarketingGuidelinesWidget({
   onGenerateRef,
   hideGenerateButton = false,
 }: MarketingGuidelinesWidgetProps) {
-  const { state, generate } = useWidgetState();
+  const { state, generate, restoreSuccess } = useWidgetState();
   const [guidelines, setGuidelines] = useState<MarketingGuidelinesData | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
 
@@ -68,9 +72,32 @@ export default function MarketingGuidelinesWidget({
   const isLoading = status === "loading";
   const isDisabled = !marketingPlanJson;
 
+  // Cache key is the hash of the marketing plan JSON itself — if the plan
+  // changes (strategy regenerated), guidelines automatically invalidate.
+  const makeCacheInputs = (planJson: string) => ({ marketingPlanJson: planJson });
+
+  useEffect(() => {
+    if (!marketingPlanJson) return;
+    const cached = checkCache<MarketingGuidelinesData>(CACHE_KEY, makeCacheInputs(marketingPlanJson));
+    if (cached) {
+      setGuidelines(cached.result);
+      restoreSuccess();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [marketingPlanJson]);
+
   const handleGenerate = useCallback(async (planJsonOverride?: string) => {
     const jsonToUse = planJsonOverride ?? marketingPlanJson;
     if (!jsonToUse) return;
+
+    const cached = checkCache<MarketingGuidelinesData>(CACHE_KEY, makeCacheInputs(jsonToUse));
+    if (cached) {
+      setGuidelines(cached.result);
+      setParseError(null);
+      restoreSuccess();
+      return;
+    }
+
     setGuidelines(null);
     setParseError(null);
 
@@ -81,6 +108,7 @@ export default function MarketingGuidelinesWidget({
         const jsonStr = extractJson(raw);
         const parsed = JSON.parse(jsonStr) as MarketingGuidelinesData;
         setGuidelines(parsed);
+        writeCache(CACHE_KEY, hashInputs(makeCacheInputs(jsonToUse)), parsed);
       } catch {
         setParseError(
           "The agent returned a response that couldn't be parsed as marketing guidelines. " +
@@ -89,6 +117,7 @@ export default function MarketingGuidelinesWidget({
         throw new Error("Failed to parse marketing guidelines JSON from agent response.");
       }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [marketingPlanJson, generate]);
 
   const handleGenerateRef = useRef<(planJsonOverride?: string) => Promise<void>>();

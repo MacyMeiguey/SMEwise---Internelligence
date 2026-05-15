@@ -552,6 +552,10 @@ function OfficeLocationResult({ plan }: { plan: OfficeLocationPlan }) {
 
 // ─── Widget ───────────────────────────────────────────────────────────────────
 
+import { checkCache, writeCache, hashInputs } from '../../utils/widgetCache';
+
+const CACHE_KEY = 'office-location';
+
 interface OfficeLocationWidgetProps {
   profile: BusinessProfile;
   onGenerateRef?: (fn: () => Promise<void>) => void;
@@ -559,11 +563,36 @@ interface OfficeLocationWidgetProps {
 }
 
 export default function OfficeLocationWidget({ profile, onGenerateRef, hideGenerateButton = false }: OfficeLocationWidgetProps) {
-  const { state, generate } = useWidgetState();
+  const { state, generate, restoreSuccess } = useWidgetState();
   const [plan, setPlan] = useState<OfficeLocationPlan | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
 
+  const cacheInputs = {
+    companyName: profile.companyName,
+    industry: profile.industry,
+    businessStage: profile.businessStage,
+    city: profile.city,
+    businessType: profile.businessType,
+    currentFunds: profile.currentFunds,
+  };
+
+  useEffect(() => {
+    const cached = checkCache<OfficeLocationPlan>(CACHE_KEY, cacheInputs);
+    if (cached) {
+      setPlan(cached.result);
+      restoreSuccess();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleGenerate = useCallback(async () => {
+    const cached = checkCache<OfficeLocationPlan>(CACHE_KEY, cacheInputs);
+    if (cached) {
+      setPlan(cached.result);
+      setParseError(null);
+      restoreSuccess();
+      return;
+    }
     setPlan(null);
     setParseError(null);
 
@@ -571,6 +600,7 @@ export default function OfficeLocationWidget({ profile, onGenerateRef, hideGener
       try {
         const result = await fetchOfficeLocation(profile);
         setPlan(result);
+        writeCache(CACHE_KEY, hashInputs(cacheInputs), result);
       } catch (err) {
         if (err instanceof SyntaxError) {
           setParseError("The agent returned a response that couldn't be parsed. Try regenerating.");
@@ -579,6 +609,7 @@ export default function OfficeLocationWidget({ profile, onGenerateRef, hideGener
         throw err;
       }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, generate]);
 
   useEffect(() => {

@@ -7,6 +7,8 @@
  *  - `generate(fn: () => Promise<void>): Promise<void>` — wraps an async API call,
  *    managing transitions: idle/success → loading → success | error
  *  - `reset(): void` — resets back to idle
+ *  - `restoreSuccess(): void` — immediately transitions to success without an API call
+ *    (used by the widget cache layer to hydrate from localStorage on mount)
  */
 
 import { useState, useCallback } from "react";
@@ -55,6 +57,8 @@ export interface UseWidgetStateReturn {
   state: WidgetState;
   generate: (fn: () => Promise<void>) => Promise<void>;
   reset: () => void;
+  /** Immediately mark the widget as successfully loaded (cache restore). */
+  restoreSuccess: () => void;
 }
 
 export function useWidgetState(): UseWidgetStateReturn {
@@ -93,5 +97,9 @@ export function useWidgetState(): UseWidgetStateReturn {
     setState(INITIAL_STATE);
   }, []);
 
-  return { state, generate, reset };
+  const restoreSuccess = useCallback(() => {
+    setState({ status: "success", content: null, imageBase64: null, errorMessage: null });
+  }, []);
+
+  return { state, generate, reset, restoreSuccess };
 }

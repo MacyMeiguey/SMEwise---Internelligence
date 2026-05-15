@@ -322,6 +322,10 @@ function RiskResult({ plan }: { plan: RiskPlan }) {
 
 // ─── Widget ───────────────────────────────────────────────────────────────────
 
+import { checkCache, writeCache, hashInputs } from '../../utils/widgetCache';
+
+const CACHE_KEY = 'risk-analyzer';
+
 interface RiskAnalyzerWidgetProps {
   profile: BusinessProfile;
   onGenerateRef?: (fn: () => Promise<void>) => void;
@@ -329,11 +333,36 @@ interface RiskAnalyzerWidgetProps {
 }
 
 export default function RiskAnalyzerWidget({ profile, onGenerateRef, hideGenerateButton = false }: RiskAnalyzerWidgetProps) {
-  const { state, generate } = useWidgetState();
+  const { state, generate, restoreSuccess } = useWidgetState();
   const [plan, setPlan] = useState<RiskPlan | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
 
+  const cacheInputs = {
+    companyName: profile.companyName,
+    industry: profile.industry,
+    businessStage: profile.businessStage,
+    city: profile.city,
+    businessType: profile.businessType,
+    currentFunds: profile.currentFunds,
+  };
+
+  useEffect(() => {
+    const cached = checkCache<RiskPlan>(CACHE_KEY, cacheInputs);
+    if (cached) {
+      setPlan(cached.result);
+      restoreSuccess();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleGenerate = useCallback(async () => {
+    const cached = checkCache<RiskPlan>(CACHE_KEY, cacheInputs);
+    if (cached) {
+      setPlan(cached.result);
+      setParseError(null);
+      restoreSuccess();
+      return;
+    }
     setPlan(null);
     setParseError(null);
 
@@ -341,6 +370,7 @@ export default function RiskAnalyzerWidget({ profile, onGenerateRef, hideGenerat
       try {
         const result = await fetchRiskAnalysis(profile);
         setPlan(result);
+        writeCache(CACHE_KEY, hashInputs(cacheInputs), result);
       } catch (err) {
         if (err instanceof SyntaxError) {
           setParseError("The agent returned a response that couldn't be parsed. Try regenerating.");
@@ -349,6 +379,7 @@ export default function RiskAnalyzerWidget({ profile, onGenerateRef, hideGenerat
         throw err;
       }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, generate]);
 
   useEffect(() => {

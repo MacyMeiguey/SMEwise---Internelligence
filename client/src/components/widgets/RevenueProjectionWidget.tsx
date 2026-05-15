@@ -350,6 +350,10 @@ function PeriodCards({ periods }: { periods: FinancialPeriod[] }) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+import { checkCache, writeCache, hashInputs } from '../../utils/widgetCache';
+
+const CACHE_KEY = 'revenue-projection';
+
 interface RevenueProjectionWidgetProps {
   profile: BusinessProfile;
   budgetAllocation?: string;
@@ -365,19 +369,53 @@ export default function RevenueProjectionWidget({
   onGenerateRef,
   hideGenerateButton = false,
 }: RevenueProjectionWidgetProps) {
-  const { state, generate }         = useWidgetState();
+  const { state, generate, restoreSuccess } = useWidgetState();
   const [plan, setPlan]             = useState<RevenueProjectionPlan | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
 
+  // Cache key includes budgetAllocation so a new fund allocation invalidates
+  // the cached revenue projection automatically.
+  const makeCacheInputs = (alloc: string | undefined) => ({
+    companyName: profile.companyName,
+    industry: profile.industry,
+    businessStage: profile.businessStage,
+    currentFunds: profile.currentFunds,
+    mainGoal: profile.mainGoal,
+    businessType: profile.businessType,
+    budgetAllocation: alloc ?? '',
+  });
+
+  // Restore from cache on mount. We use the budgetAllocation prop value at
+  // mount time; if it's undefined the cache key won't match a valid entry
+  // (since a real entry would have been written with the actual allocation).
+  useEffect(() => {
+    const cached = checkCache<RevenueProjectionPlan>(CACHE_KEY, makeCacheInputs(budgetAllocation));
+    if (cached) {
+      setPlan(cached.result);
+      restoreSuccess();
+      onPlanGenerated?.(cached.result);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleGenerate = useCallback(async (budgetAllocationOverride?: string) => {
+    const allocationToUse = budgetAllocationOverride ?? budgetAllocation;
+    const cached = checkCache<RevenueProjectionPlan>(CACHE_KEY, makeCacheInputs(allocationToUse));
+    if (cached) {
+      setPlan(cached.result);
+      setParseError(null);
+      restoreSuccess();
+      onPlanGenerated?.(cached.result);
+      return;
+    }
     setPlan(null);
     setParseError(null);
-    const allocationToUse = budgetAllocationOverride ?? budgetAllocation;
     await generate(async () => {
       try {
         const result = await fetchRevenueProjection(profile, allocationToUse);
         setPlan(result);
         onPlanGenerated?.(result);
+        writeCache(CACHE_KEY, hashInputs(makeCacheInputs(allocationToUse)), result);
       } catch (err) {
         if (err instanceof SyntaxError) {
           setParseError("Response couldn't be parsed. Try regenerating.");
@@ -386,6 +424,7 @@ export default function RevenueProjectionWidget({
         throw err;
       }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, budgetAllocation, generate, onPlanGenerated]);
 
   // Keep the registered Generate-All handler always pointing at the latest

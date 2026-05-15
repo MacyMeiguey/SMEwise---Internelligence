@@ -54,12 +54,23 @@ interface MarketingForecastWidgetProps {
   hideGenerateButton?: boolean;
 }
 
+import { checkCache, writeCache, hashInputs } from '../../utils/widgetCache';
+
+const CACHE_KEY = 'marketing-forecast';
+
+interface MarketingForecastWidgetProps {
+  /** Raw JSON string from the marketing strategy agent. Null means not yet generated. */
+  marketingPlanJson: string | null;
+  onGenerateRef?: (fn: (planJsonOverride?: string) => Promise<void>) => void;
+  hideGenerateButton?: boolean;
+}
+
 export default function MarketingForecastWidget({
   marketingPlanJson,
   onGenerateRef,
   hideGenerateButton = false,
 }: MarketingForecastWidgetProps) {
-  const { state, generate } = useWidgetState();
+  const { state, generate, restoreSuccess } = useWidgetState();
   const [forecast, setForecast] = useState<MarketingForecastData | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
 
@@ -69,9 +80,30 @@ export default function MarketingForecastWidget({
 
   const handleGenerateRef = useRef<(planJsonOverride?: string) => Promise<void>>();
 
+  const makeCacheInputs = (planJson: string) => ({ marketingPlanJson: planJson });
+
+  useEffect(() => {
+    if (!marketingPlanJson) return;
+    const cached = checkCache<MarketingForecastData>(CACHE_KEY, makeCacheInputs(marketingPlanJson));
+    if (cached) {
+      setForecast(cached.result);
+      restoreSuccess();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [marketingPlanJson]);
+
   const handleGenerate = useCallback(async (planJsonOverride?: string) => {
     const jsonToUse = planJsonOverride ?? marketingPlanJson;
     if (!jsonToUse) return;
+
+    const cached = checkCache<MarketingForecastData>(CACHE_KEY, makeCacheInputs(jsonToUse));
+    if (cached) {
+      setForecast(cached.result);
+      setParseError(null);
+      restoreSuccess();
+      return;
+    }
+
     setForecast(null);
     setParseError(null);
 
@@ -82,6 +114,7 @@ export default function MarketingForecastWidget({
         const jsonStr = extractJson(raw);
         const parsed = JSON.parse(jsonStr) as MarketingForecastData;
         setForecast(parsed);
+        writeCache(CACHE_KEY, hashInputs(makeCacheInputs(jsonToUse)), parsed);
       } catch {
         setParseError(
           "The agent returned a response that couldn't be parsed as a forecast. Try regenerating."
@@ -89,6 +122,7 @@ export default function MarketingForecastWidget({
         throw new Error("Failed to parse marketing forecast JSON from agent response.");
       }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [marketingPlanJson, generate]);
 
   // Keep the ref always pointing to the latest handleGenerate so the registered

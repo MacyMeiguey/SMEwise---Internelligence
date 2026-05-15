@@ -280,6 +280,10 @@ function LoansPlanView({ plan }: { plan: LoansFundingPlan }) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+import { checkCache, writeCache, hashInputs } from '../../utils/widgetCache';
+
+const CACHE_KEY = 'loans-funding';
+
 interface LoansFundingWidgetProps {
   profile: BusinessProfile;
   onGenerateRef?: (fn: () => Promise<void>) => void;
@@ -291,11 +295,36 @@ export default function LoansFundingWidget({
   onGenerateRef,
   hideGenerateButton = false,
 }: LoansFundingWidgetProps) {
-  const { state, generate }         = useWidgetState();
+  const { state, generate, restoreSuccess } = useWidgetState();
   const [plan, setPlan]             = useState<LoansFundingPlan | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
 
+  const cacheInputs = {
+    companyName: profile.companyName,
+    industry: profile.industry,
+    businessStage: profile.businessStage,
+    city: profile.city,
+    businessType: profile.businessType,
+    currentFunds: profile.currentFunds,
+  };
+
+  useEffect(() => {
+    const cached = checkCache<LoansFundingPlan>(CACHE_KEY, cacheInputs);
+    if (cached) {
+      setPlan(cached.result);
+      restoreSuccess();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleGenerate = useCallback(async () => {
+    const cached = checkCache<LoansFundingPlan>(CACHE_KEY, cacheInputs);
+    if (cached) {
+      setPlan(cached.result);
+      setParseError(null);
+      restoreSuccess();
+      return;
+    }
     setPlan(null);
     setParseError(null);
 
@@ -303,6 +332,7 @@ export default function LoansFundingWidget({
       try {
         const result = await fetchLoansFunding(profile);
         setPlan(result);
+        writeCache(CACHE_KEY, hashInputs(cacheInputs), result);
       } catch (err) {
         if (err instanceof SyntaxError) {
           setParseError(
@@ -313,6 +343,7 @@ export default function LoansFundingWidget({
         throw err;
       }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, generate]);
 
   useEffect(() => {
