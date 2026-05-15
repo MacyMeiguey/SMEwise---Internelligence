@@ -39,13 +39,13 @@ if (missingVars.length > 0) {
 // browsers send same-origin requests and CORS is effectively unused. Keeping
 // it permissive-to-configured-origins still lets tools like curl / Postman
 // hit the API directly.
-const devOrigin = 'http://localhost:5173'
+const devOrigins = ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175']
 const configuredOrigins = (process.env.CORS_ORIGIN ?? '')
   .split(',')
   .map((o) => o.trim())
   .filter(Boolean)
 
-const allowedOrigins = IS_PROD ? configuredOrigins : [devOrigin]
+const allowedOrigins = IS_PROD ? configuredOrigins : devOrigins
 
 app.use(
   cors({

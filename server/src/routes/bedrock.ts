@@ -1,6 +1,8 @@
 /**
  * Bedrock Agent proxy routes
  *
+ * POST /api/bedrock/marketing   — marketing plan agent
+ * POST /api/bedrock/startup     — startup registration agent
  * POST /api/bedrock/marketing
  *   Invokes the marketing-plan Bedrock agent with a prompt built from the
  *   submitted BusinessProfile, collects the streamed response chunks, and
@@ -28,9 +30,6 @@ const router = Router()
 
 const client = new BedrockAgentRuntimeClient({
     region: process.env.AWS_REGION ?? 'ap-southeast-1',
-    // In production (App Runner / ECS / EC2) credentials come from the
-    // attached IAM role via the default credential provider chain.
-    // In local dev we fall back to env vars loaded from .env.
     ...(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
         ? {
             credentials: {
@@ -214,6 +213,118 @@ router.post('/marketing', async (req: Request, res: Response) => {
     res.status(200).json({ content: lastRaw })
 })
 
+
+ //Invoke a Bedrock agent by explicit agent ID + alias ID.
+async function invokeAgentById(
+    inputText: string,
+    sessionId: string,
+    agentId: string,
+    agentAliasId: string,
+): Promise<string> {
+    const command = new InvokeAgentCommand({
+        agentId,
+        agentAliasId,
+        sessionId,
+        inputText,
+    })
+
+    const agentResponse = await client.send(command)
+
+    let raw = ''
+    for await (const chunk of agentResponse.completion ?? []) {
+        if (chunk.chunk?.bytes) {
+            raw += new TextDecoder().decode(chunk.chunk.bytes)
+        }
+    }
+
+    return raw
+}
+
+// ─── POST /api/bedrock/startup ────────────────────────────────────────────────
+// Invokes the startup registration Bedrock agent and returns parsed JSON.
+
+router.post('/startup', async (req: Request, res: Response) => {
+    const {
+        companyName,
+        industry,
+        businessStage,
+        city,
+        businessType,
+        currentFunds,
+    } = req.body as {
+        companyName: string
+        industry: string
+        businessStage: string
+        city: string
+        businessType: string
+        currentFunds?: number
+    }
+
+    if (!companyName || !industry || !city || !businessStage || !businessType) {
+        res.status(400).json({
+            error: 'companyName, industry, city, businessStage, and businessType are required.',
+        })
+        return
+    }
+
+    const AGENT_ID = process.env.BEDROCK_STARTUP_AGENT_ID ?? 'A4YPNQR3RX'
+    const AGENT_ALIAS_ID = process.env.BEDROCK_STARTUP_AGENT_ALIAS_ID ?? 'IW25PK2WCB'
+
+    if (!AGENT_ID) {
+        res.status(500).json({ error: 'Startup agent is not configured. Set BEDROCK_STARTUP_AGENT_ID in .env.' })
+        return
+    }
+
+    const inputText = [
+        `Company: ${companyName}`,
+        `Industry: ${industry}`,
+        `Business Stage: ${businessStage}`,
+        `Location: ${city}, Malaysia`,
+        `Business Type: ${businessType}`,
+        currentFunds ? `Current Funds: RM ${Number(currentFunds).toLocaleString('en-MY')}` : null,
+    ].filter(Boolean).join('\n')
+
+    console.log('=== [startup] inputText sent to Bedrock agent ===\n', inputText)
+
+    let lastRaw = ''
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        const sessionId = `startup-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+        try {
+            const raw = await invokeAgentById(inputText, sessionId, AGENT_ID, AGENT_ALIAS_ID)
+            lastRaw = raw
+
+            console.log(`[Bedrock/startup] Attempt ${attempt}/${MAX_RETRIES} — ${raw.length} chars`)
+
+            const jsonString = extractJsonString(raw)
+            JSON.parse(jsonString) // validate
+
+            console.log(`[Bedrock/startup] Attempt ${attempt} returned valid JSON`)
+            console.log(`[Bedrock/startup] Raw response preview:`, raw.slice(0, 500))
+            res.status(200).json({ content: raw })
+            return
+        } catch (err) {
+            if (err instanceof SyntaxError) {
+                console.warn(
+                    `[Bedrock/startup] Attempt ${attempt}/${MAX_RETRIES} invalid JSON.` +
+                    (attempt < MAX_RETRIES ? ' Retrying...' : ' No retries left.'),
+                )
+                continue
+            }
+
+            console.error(`[Bedrock/startup] Error on attempt ${attempt}:`, err)
+            res.status(500).json({
+                error: 'Something went wrong while generating the startup guide. Please try again.',
+            })
+            return
+        }
+    }
+
+    console.error(`[Bedrock/startup] All ${MAX_RETRIES} attempts failed. Returning last raw response.`)
+    res.status(200).json({ content: lastRaw })
+})
+
 // ─── POST /api/bedrock/fund-allocation ───────────────────────────────────────
 
 router.post('/fund-allocation', async (req: Request, res: Response) => {
@@ -293,6 +404,174 @@ router.post('/fund-allocation', async (req: Request, res: Response) => {
     console.error(
         `[fund-allocation] All ${MAX_RETRIES} attempts failed to return valid JSON. Returning last raw response.`,
     )
+    res.status(200).json({ content: lastRaw })
+})
+
+// ─── POST /api/bedrock/office-location ───────────────────────────────────────
+// Invokes the office & location finder Bedrock agent.
+// Returns a structured JSON workspace recommendation guide for Malaysian SMEs.
+
+router.post('/office-location', async (req: Request, res: Response) => {
+    const {
+        companyName,
+        industry,
+        businessStage,
+        city,
+        businessType,
+        currentFunds,
+    } = req.body as {
+        companyName: string
+        industry: string
+        businessStage: string
+        city: string
+        businessType: string
+        currentFunds: number
+    }
+
+    if (!companyName || !industry || !city || !businessStage || !businessType || !currentFunds) {
+        res.status(400).json({
+            error: 'companyName, industry, city, businessStage, businessType, and currentFunds are required.',
+        })
+        return
+    }
+
+    const OFFICE_AGENT_ID       = process.env.BEDROCK_OFFICE_AGENT_ID       ?? 'SYN0JX0DXX'
+    const OFFICE_AGENT_ALIAS_ID = process.env.BEDROCK_OFFICE_AGENT_ALIAS_ID ?? 'DVRSIKLAPX'
+
+    const inputText = [
+        `Company: ${companyName}`,
+        `Industry: ${industry}`,
+        `Business Stage: ${businessStage}`,
+        `Location: ${city}, Malaysia`,
+        `Business Type: ${businessType}`,
+        `Current Funds: RM ${Number(currentFunds).toLocaleString('en-MY')}`,
+    ].join('\n')
+
+    console.log('=== [office-location] inputText sent to Bedrock agent ===\n', inputText)
+
+    let lastRaw = ''
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        const sessionId = `office-loc-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+        try {
+            const raw = await invokeAgent(inputText, sessionId, OFFICE_AGENT_ID, OFFICE_AGENT_ALIAS_ID)
+            lastRaw = raw
+
+            console.log(
+                `[office-location] Attempt ${attempt}/${MAX_RETRIES} — response length: ${raw.length} chars`,
+            )
+            console.log(`[office-location] Raw preview:`, raw.slice(0, 300))
+
+            const jsonString = extractJsonString(raw)
+            JSON.parse(jsonString) // validate
+
+            console.log(`[office-location] Attempt ${attempt} returned valid JSON`)
+            res.status(200).json({ content: raw })
+            return
+        } catch (err) {
+            if (err instanceof SyntaxError) {
+                console.warn(
+                    `[office-location] Attempt ${attempt}/${MAX_RETRIES} did NOT return valid JSON. ` +
+                    (attempt < MAX_RETRIES ? 'Retrying in 3s...' : 'No retries left.'),
+                )
+                if (attempt < MAX_RETRIES) await new Promise(r => setTimeout(r, 3000))
+                continue
+            }
+
+            console.error(`[SMEwise] /api/bedrock/office-location error on attempt ${attempt}:`, err)
+            res.status(500).json({
+                error: 'Something went wrong while generating the office & location guide. Please try again.',
+            })
+            return
+        }
+    }
+
+    console.error(
+        `[office-location] All ${MAX_RETRIES} attempts failed to return valid JSON. Returning last raw response.`,
+    )
+    res.status(200).json({ content: lastRaw })
+})
+
+// ─── POST /api/bedrock/risk-analyzer ─────────────────────────────────────────
+// Invokes the risk & regulations Bedrock agent.
+// Returns structured JSON with riskSummary, risks array, and disclaimer.
+
+router.post('/risk-analyzer', async (req: Request, res: Response) => {
+    const {
+        companyName,
+        industry,
+        businessStage,
+        city,
+        businessType,
+        currentFunds,
+    } = req.body as {
+        companyName: string
+        industry: string
+        businessStage: string
+        city: string
+        businessType: string
+        currentFunds: number
+    }
+
+    if (!companyName || !industry || !city || !businessStage || !businessType) {
+        res.status(400).json({
+            error: 'companyName, industry, city, businessStage, and businessType are required.',
+        })
+        return
+    }
+
+    const RISK_AGENT_ID       = process.env.BEDROCK_RISK_AGENT_ID       ?? '4RYTKWLEVB'
+    const RISK_AGENT_ALIAS_ID = process.env.BEDROCK_RISK_AGENT_ALIAS_ID ?? 'ODFAKDIZFV'
+
+    const inputText = [
+        `Company: ${companyName}`,
+        `Industry: ${industry}`,
+        `Business Stage: ${businessStage}`,
+        `Location: ${city}, Malaysia`,
+        `Business Type: ${businessType}`,
+        currentFunds ? `Current Funds: RM ${Number(currentFunds).toLocaleString('en-MY')}` : null,
+    ].filter(Boolean).join('\n')
+
+    console.log('=== [risk-analyzer] inputText sent to Bedrock agent ===\n', inputText)
+
+    let lastRaw = ''
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        const sessionId = `risk-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+        try {
+            const raw = await invokeAgent(inputText, sessionId, RISK_AGENT_ID, RISK_AGENT_ALIAS_ID)
+            lastRaw = raw
+
+            console.log(`[risk-analyzer] Attempt ${attempt}/${MAX_RETRIES} — response length: ${raw.length} chars`)
+            console.log(`[risk-analyzer] Raw preview:`, raw.slice(0, 300))
+
+            const jsonString = extractJsonString(raw)
+            JSON.parse(jsonString) // validate
+
+            console.log(`[risk-analyzer] Attempt ${attempt} returned valid JSON`)
+            res.status(200).json({ content: raw })
+            return
+        } catch (err) {
+            if (err instanceof SyntaxError) {
+                console.warn(
+                    `[risk-analyzer] Attempt ${attempt}/${MAX_RETRIES} did NOT return valid JSON. ` +
+                    (attempt < MAX_RETRIES ? 'Retrying in 3s...' : 'No retries left.'),
+                )
+                if (attempt < MAX_RETRIES) await new Promise(r => setTimeout(r, 3000))
+                continue
+            }
+
+            console.error(`[SMEwise] /api/bedrock/risk-analyzer error on attempt ${attempt}:`, err)
+            res.status(500).json({
+                error: 'Something went wrong while generating the risk analysis. Please try again.',
+            })
+            return
+        }
+    }
+
+    console.error(`[risk-analyzer] All ${MAX_RETRIES} attempts failed. Returning last raw response.`)
     res.status(200).json({ content: lastRaw })
 })
 

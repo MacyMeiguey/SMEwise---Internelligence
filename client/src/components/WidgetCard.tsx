@@ -17,7 +17,8 @@ function LoadingState() {
   );
 }
 
-function IdlePrompt({ hint }: { hint?: string }) {
+function IdlePrompt({ hint, idleContent }: { hint?: string; idleContent?: ReactNode }) {
+  if (idleContent) return <>{idleContent}</>;
   if (hint?.trim()) {
     return <p className="text-sm text-neutral-600 leading-relaxed dark:text-neutral-400">{hint}</p>;
   }
@@ -76,7 +77,9 @@ export interface WidgetCardProps {
   onGenerate: () => Promise<void>;
   state: WidgetState;
   children?: ReactNode;
-  /** Custom idle copy instead of the default “Choose Generate…” line. */
+  /** Custom idle content (ReactNode) — replaces the default idle prompt entirely. */
+  idleContent?: ReactNode;
+  /** Custom idle copy instead of the default "Choose Generate…" line. */
   idleHint?: string;
   /** Primary button label when idle (default: Generate). */
   idleButtonLabel?: string;
@@ -89,6 +92,7 @@ export default function WidgetCard({
   onGenerate,
   state,
   children,
+  idleContent,
   idleHint,
   idleButtonLabel = 'Generate',
   regenerateLabel = 'Regenerate',
@@ -125,7 +129,7 @@ export default function WidgetCard({
       </header>
 
       <div className="flex flex-col p-4 sm:p-5">
-        {status === 'idle' && <IdlePrompt hint={idleHint} />}
+        {status === 'idle' && <IdlePrompt hint={idleHint} idleContent={idleContent} />}
         {status === 'loading' && <LoadingState />}
 
         {status === 'success' && (

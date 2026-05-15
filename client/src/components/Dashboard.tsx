@@ -137,31 +137,25 @@ export default function Dashboard({ profile, isUnlocked, activeSection }: Dashbo
               index={index}
             >
               {section === 'Operations' && profile && (
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 lg:gap-5">
-                  <div className="xl:col-span-7 min-w-0">
-                    <StartupRegistrationWidget
-                      profile={profile}
-                      onGenerateRef={(fn) => {
-                        startupRegRef.current = fn;
-                      }}
-                    />
-                  </div>
-                  <div className="xl:col-span-5 min-w-0">
-                    <OfficeLocationWidget
-                      profile={profile}
-                      onGenerateRef={(fn) => {
-                        officeLocRef.current = fn;
-                      }}
-                    />
-                  </div>
-                  <div className="xl:col-span-12 min-w-0">
-                    <RiskAnalyzerWidget
-                      profile={profile}
-                      onGenerateRef={(fn) => {
-                        riskRef.current = fn;
-                      }}
-                    />
-                  </div>
+                <div className="grid grid-cols-1 gap-4 lg:gap-5">
+                  <StartupRegistrationWidget
+                    profile={profile}
+                    onGenerateRef={(fn) => {
+                      startupRegRef.current = fn;
+                    }}
+                  />
+                  <OfficeLocationWidget
+                    profile={profile}
+                    onGenerateRef={(fn) => {
+                      officeLocRef.current = fn;
+                    }}
+                  />
+                  <RiskAnalyzerWidget
+                    profile={profile}
+                    onGenerateRef={(fn) => {
+                      riskRef.current = fn;
+                    }}
+                  />
                 </div>
               )}
 
