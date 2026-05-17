@@ -15,7 +15,7 @@ import RevenueProjectionWidget from './widgets/RevenueProjectionWidget';
 import LoansFundingWidget from './widgets/LoansFundingWidget';
 import InvestorFundingWidget from './widgets/InvestorFundingWidget';
 
-import PricingOptionalInputsComponent from './PricingOptionalInputs';
+import PricingOptionalInputsComponent, { type PricingInputsValidationRef } from './PricingOptionalInputs';
 import CompetitorPricingWidget, { type CompetitorAnalysisResult } from './widgets/CompetitorPricingWidget';
 import SmartPricingWidget from './widgets/SmartPricingWidget';
 import PricingHistoryWidget from './widgets/PricingHistoryWidget';
@@ -124,6 +124,7 @@ export default function Dashboard({
   const competitorPricingRef = useRef<(() => Promise<void>) | null>(null);
   const smartPricingRef = useRef<(() => Promise<void>) | null>(null);
   const productVisualRef = useRef<(() => Promise<void>) | null>(null);
+  const pricingInputsRef = useRef<PricingInputsValidationRef | null>(null);
 
   const marketingStrategyRef = useRef<((fundAllocationOverride?: string) => Promise<void>) | null>(null);
   const marketingGuidelinesRef = useRef<((planJson?: string) => Promise<void>) | null>(null);
@@ -212,6 +213,7 @@ export default function Dashboard({
         investorFundingRef.current?.(),
       ]);
     } else if (section === 'Pricing Strategy') {
+      if (!pricingInputsRef.current?.validate()) return;
       await Promise.all([
         competitorPricingRef.current?.(),
         smartPricingRef.current?.(),
@@ -356,7 +358,7 @@ export default function Dashboard({
 
                 {section === 'Pricing Strategy' && profile && (
                   <div className="flex flex-col gap-4 lg:gap-5">
-                    <PricingOptionalInputsComponent value={pricingInputs} onChange={setPricingInputs} />
+                    <PricingOptionalInputsComponent ref={pricingInputsRef} value={pricingInputs} onChange={setPricingInputs} />
                     <div
                       className="grid grid-cols-2 gap-4 lg:gap-5 min-w-0"
                     >
@@ -368,6 +370,7 @@ export default function Dashboard({
                           competitorPricingRef.current = fn;
                         }}
                         onAnalysisComplete={(result) => setCompetitorResult(result)}
+                        onBeforeGenerate={() => pricingInputsRef.current?.validate() ?? false}
                       />
                       </div>
                       <div className="min-w-0">
@@ -379,6 +382,7 @@ export default function Dashboard({
                         }}
                         competitorResult={competitorResult}
                         onPricingComplete={(result) => setSmartPricingResult(result as Record<string, unknown>)}
+                        onBeforeGenerate={() => pricingInputsRef.current?.validate() ?? false}
                       />
                       </div>
                     </div>

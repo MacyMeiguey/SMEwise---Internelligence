@@ -197,6 +197,7 @@ interface CompetitorPricingWidgetProps {
   onGenerateRef?: (fn: () => Promise<void>) => void
   /** Called with the parsed JSON after successful generation — used by SmartPricingWidget */
   onAnalysisComplete?: (result: CompetitorAnalysisResult) => void
+  onBeforeGenerate?: () => boolean
 }
 
 export default function CompetitorPricingWidget({
@@ -204,14 +205,18 @@ export default function CompetitorPricingWidget({
   pricingInputs,
   onGenerateRef,
   onAnalysisComplete,
+  onBeforeGenerate, 
 }: CompetitorPricingWidgetProps) {
   const { state, generate } = useWidgetState()
   const [analysis, setAnalysis]       = useState<CompetitorAnalysisResult | null>(null)
   const [rawFallback, setRawFallback] = useState<string>('')
+  const [errorMessage, setErrorMessage] = useState<string>('')
 
   const handleGenerate = useCallback(async () => {
+     if (onBeforeGenerate && !onBeforeGenerate()) return
     setAnalysis(null)
     setRawFallback('')
+    setErrorMessage('')
 
     await generate(async () => {
       const products: Array<{ name: string; cost: string }> = []
@@ -267,7 +272,11 @@ export default function CompetitorPricingWidget({
       if (start !== -1 && end !== -1) cleaned = cleaned.slice(start, end + 1)
 
       try {
-        const parsed = JSON.parse(cleaned) as CompetitorAnalysisResult
+        const parsed = JSON.parse(cleaned) as CompetitorAnalysisResult & { error?: boolean; errorMessage?: string }
+        if (parsed.error === true) {
+          setErrorMessage(parsed.errorMessage ?? 'An error occurred. Please check your inputs and try again.')
+          return
+        }
         setAnalysis(parsed)
         onAnalysisComplete?.(parsed)
       } catch {
@@ -297,6 +306,18 @@ export default function CompetitorPricingWidget({
           {rawFallback}
         </pre>
       ) : null}
+      {errorMessage && (
+        <div className="rounded-xl border border-red-300 bg-red-50 p-4 dark:border-red-500/30 dark:bg-red-500/10">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-semibold text-red-700 dark:text-red-400">
+              Unable to generate analysis
+            </span>
+          </div>
+          <p className="text-xs text-red-800 dark:text-red-200/80 leading-relaxed">
+            {errorMessage}
+          </p>
+        </div>
+      )}
     </WidgetCard>
   )
 }

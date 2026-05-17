@@ -1236,8 +1236,8 @@ router.post('/smart-pricing', async (req: Request, res: Response) => {
         return
     }
 
-    const SMART_AGENT_ID = process.env.BEDROCK_SMART_PRICING_AGENT_ID ?? 'MBTQYPGAAU'
-    const SMART_AGENT_ALIAS_ID = process.env.BEDROCK_SMART_PRICING_AGENT_ALIAS_ID ?? 'EKWPIHADSF'
+    const SMART_AGENT_ID       = process.env.BEDROCK_SMART_PRICING_AGENT_ID       ?? 'MBTQYPGAAU'
+    const SMART_AGENT_ALIAS_ID = process.env.BEDROCK_SMART_PRICING_AGENT_ALIAS_ID ?? 'EVH8JQ9YQ4'
 
     const productLines = products && products.length > 0
         ? [

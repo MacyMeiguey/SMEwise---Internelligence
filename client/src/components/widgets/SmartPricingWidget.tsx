@@ -20,8 +20,8 @@ interface ProductPricingEntry {
   recommendedPrice: string
   profitPerUnit: string
   marginPercentage: string
-  pricingMethod: string   // Cost-Plus Pricing | Competitive Pricing | Value-Based Pricing | Psychological Pricing
-  marketPosition: string  // Budget-Friendly | Mid-Market | Premium | Value-Focused
+  pricingMethod: string
+  marketPosition: string
 }
 
 interface SmartPricingData {
@@ -32,7 +32,7 @@ interface SmartPricingData {
   pricingOverview?: {
     averageMarkup: string
     averageMargin: string
-    projectedMonthlyRevenue: string
+    marginVsMarket: string
   }
   productPricing?: ProductPricingEntry[]
   pricingRisks?: string
@@ -48,8 +48,8 @@ function SmartPricingResult({
   data: SmartPricingData
   mainGoal?: string
 }) {
-  const overview  = data.pricingOverview
-  const products  = data.productPricing ?? []
+  const overview = data.pricingOverview
+  const products = data.productPricing ?? []
 
   return (
     <div className="flex flex-col gap-5">
@@ -60,7 +60,7 @@ function SmartPricingResult({
           {[
             { label: 'Avg Markup',       value: overview.averageMarkup },
             { label: 'Avg Margin',       value: overview.averageMargin },
-            { label: 'Monthly Revenue',  value: overview.projectedMonthlyRevenue },
+            { label: 'Margin vs Market', value: overview.marginVsMarket },
           ].map((s) => (
             <div key={s.label}
               className="rounded-xl border border-neutral-200 bg-white p-2.5 min-w-0
@@ -87,7 +87,6 @@ function SmartPricingResult({
               <div key={i}
                 className="rounded-xl border border-neutral-200 bg-white p-3 min-w-0 overflow-hidden
                            dark:border-white/[0.08] dark:bg-[#1a1728]">
-                {/* Header */}
                 <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
                   <span className="font-semibold text-neutral-900 dark:text-white text-sm leading-snug min-w-0 break-words">
                     {p.productName}
@@ -98,8 +97,6 @@ function SmartPricingResult({
                     {p.marketPosition}
                   </span>
                 </div>
-
-                {/* Price row */}
                 <div className="flex flex-wrap items-center gap-1 text-xs mb-2">
                   <span className="text-neutral-500 dark:text-[#6b6890]">Cost {p.cost}</span>
                   <span className="font-black text-lg text-emerald-400 mx-1">→</span>
@@ -115,8 +112,6 @@ function SmartPricingResult({
                     {p.profitPerUnit} profit/unit
                   </span>
                 </div>
-
-                {/* Pricing method */}
                 <p className="text-xs text-neutral-400 dark:text-[#6b6890] break-words">
                   Method: <span className="font-medium text-neutral-600 dark:text-neutral-300">{p.pricingMethod}</span>
                 </p>
@@ -193,10 +188,9 @@ interface SmartPricingWidgetProps {
   profile: BusinessProfile
   pricingInputs: PricingOptionalInputs
   onGenerateRef?: (fn: () => Promise<void>) => void
-  /** Competitor analysis result — passed from CompetitorPricingWidget */
   competitorResult?: CompetitorAnalysisResult | null
-  /** Called with the parsed JSON after successful generation */
   onPricingComplete?: (result: SmartPricingData) => void
+  onBeforeGenerate?: () => boolean
 }
 
 export default function SmartPricingWidget({
@@ -205,15 +199,18 @@ export default function SmartPricingWidget({
   onGenerateRef,
   competitorResult,
   onPricingComplete,
+  onBeforeGenerate,
 }: SmartPricingWidgetProps) {
   const { state, generate } = useWidgetState()
   const [data, setData]               = useState<SmartPricingData | null>(null)
   const [rawFallback, setRawFallback] = useState<string>('')
 
   const handleGenerate = useCallback(async () => {
+    if (onBeforeGenerate && !onBeforeGenerate()) return
+    
     setData(null)
     setRawFallback('')
-
+   
     await generate(async () => {
       const products: Array<{ name: string; cost: string }> = []
       if (pricingInputs.productServiceNames) {
@@ -241,7 +238,6 @@ export default function SmartPricingWidget({
             mainGoal:       profile.mainGoal || undefined,
             monthlyRevenue: pricingInputs.monthlyRevenueRange ?? undefined,
             products:       products.length > 0 ? products : undefined,
-            // Pass competitor JSON as market intelligence input
             competitorJson: competitorResult
               ? JSON.stringify(competitorResult)
               : undefined,
