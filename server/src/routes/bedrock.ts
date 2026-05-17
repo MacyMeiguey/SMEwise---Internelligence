@@ -1241,4 +1241,95 @@ router.post('/smart-pricing', async (req: Request, res: Response) => {
     res.status(200).json({ content: lastRaw })
 })
 
+// ─── POST /api/bedrock/analytics-dashboard ───────────────────────────────────
+// Invokes the AnalyticsDashboard Bedrock agent (9VWWUJ0WX2 / WJZ0N9RES5).
+// Accepts a business profile, returns structured JSON with revenue, expenses, KPIs, and projections.
+
+router.post('/analytics-dashboard', async (req: Request, res: Response) => {
+    const {
+        companyName,
+        industry,
+        businessStage,
+        city,
+        businessType,
+        currentFunds,
+        targetCustomer,
+        mainGoal,
+    } = req.body as {
+        companyName: string
+        industry: string
+        businessStage: string
+        city: string
+        businessType: string
+        currentFunds: number
+        targetCustomer?: string
+        mainGoal?: string
+    }
+
+    if (!companyName || !industry || !businessStage || !city || !businessType || !currentFunds) {
+        res.status(400).json({
+            error: 'companyName, industry, businessStage, city, businessType, and currentFunds are required.',
+        })
+        return
+    }
+
+    const AGENT_ID       = process.env.BEDROCK_ANALYTICS_AGENT_ID       ?? '9VWWUJ0WX2'
+    const AGENT_ALIAS_ID = process.env.BEDROCK_ANALYTICS_AGENT_ALIAS_ID ?? 'WJZ0N9RES5'
+
+    const inputText = [
+        `Company: ${companyName}`,
+        `Industry: ${industry}`,
+        `Business Stage: ${businessStage}`,
+        `Location: ${city}, Malaysia`,
+        `Business Type: ${businessType}`,
+        `Current Funds: RM ${Number(currentFunds).toLocaleString('en-MY')}`,
+        targetCustomer ? `Target Customer: ${targetCustomer}` : null,
+        mainGoal       ? `Main Business Goal: ${mainGoal}`    : null,
+    ].filter(Boolean).join('\n')
+
+    console.log('=== [analytics-dashboard] inputText sent to Bedrock agent ===\n', inputText)
+
+    let lastRaw = ''
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        const sessionId = `analytics-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+        try {
+            const raw = await invokeAgent(inputText, sessionId, AGENT_ID, AGENT_ALIAS_ID)
+            lastRaw = raw
+
+            console.log(`[analytics-dashboard] Attempt ${attempt}/${MAX_RETRIES} — ${raw.length} chars`)
+
+            const jsonString = extractJsonString(raw)
+            JSON.parse(jsonString) // validate
+
+            console.log(`[analytics-dashboard] Attempt ${attempt} returned valid JSON`)
+            res.status(200).json({ content: raw })
+            return
+        } catch (err) {
+            if (err instanceof SyntaxError) {
+                console.warn(
+                    `[analytics-dashboard] Attempt ${attempt}/${MAX_RETRIES} invalid JSON.` +
+                    (attempt < MAX_RETRIES ? ' Retrying...' : ' No retries left.'),
+                )
+                continue
+            }
+
+            const awsErr = err as { name?: string; message?: string }
+            console.error(`[SMEwise] /api/bedrock/analytics-dashboard error on attempt ${attempt}:`, {
+                name: awsErr.name,
+                message: awsErr.message,
+                full: err,
+            })
+            res.status(500).json({
+                error: `Agent error: ${awsErr.name ?? 'Unknown'} — ${awsErr.message ?? 'No message'}`,
+            })
+            return
+        }
+    }
+
+    console.error(`[analytics-dashboard] All ${MAX_RETRIES} attempts failed. Returning last raw response.`)
+    res.status(200).json({ content: lastRaw })
+})
+
 export default router

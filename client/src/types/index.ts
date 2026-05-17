@@ -57,3 +57,50 @@ export interface ChatMessage {
   content: string;
   timestamp: number; // Unix epoch ms
 }
+
+// ─── Analytics Dashboard ──────────────────────────────────────────────────────
+
+export interface MonthlyRevenue {
+  month: string;
+  value: number;
+}
+
+export interface ExpenseBreakdown {
+  category: string;
+  value: number;
+  percentage: number;
+}
+
+export interface KPI {
+  label: string;
+  value: string;
+  trend: "up" | "down" | "stable";
+  change: string;
+}
+
+export interface Projections {
+  nextQuarter: {
+    revenue: number;
+    growth: number;
+  };
+  yearEnd: {
+    revenue: number;
+    growth: number;
+  };
+}
+
+export interface AnalyticsDashboardData {
+  companyName: string;
+  generatedAt: string;
+  revenue: {
+    monthly: MonthlyRevenue[];
+    total: number;
+    growth: number;
+  };
+  expenses: {
+    breakdown: ExpenseBreakdown[];
+    total: number;
+  };
+  kpis: KPI[];
+  projections: Projections;
+}

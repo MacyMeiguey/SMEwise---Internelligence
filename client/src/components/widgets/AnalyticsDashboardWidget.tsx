@@ -1,6 +1,6 @@
 /**
  * AnalyticsDashboardWidget — Owner Tools Section
- * Generates an analytics dashboard image using Amazon Nova Canvas via the nova API.
+ * Generates analytics dashboard data using the AnalyticsDashboard Bedrock agent.
  * Requirements: 17.1, 17.2, 17.3, 17.4, 17.5
  *
  * Props:
@@ -9,10 +9,22 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import type { BusinessProfile } from "../../types";
+import type { BusinessProfile, AnalyticsDashboardData, ExpenseBreakdown } from "../../types";
 import { useWidgetState } from "../../hooks/useWidgetState";
 import WidgetCard from "../WidgetCard";
 import { API_BASE } from "../../lib/api";
+import {
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -21,38 +33,55 @@ interface AnalyticsDashboardWidgetProps {
   onGenerateRef?: (fn: () => Promise<void>) => void;
 }
 
+const COLORS = ["#8b5cf6", "#6366f1", "#3b82f6", "#06b6d4", "#10b981", "#f59e0b"];
+
 export default function AnalyticsDashboardWidget({
   profile,
   onGenerateRef,
 }: AnalyticsDashboardWidgetProps) {
   const { state, generate } = useWidgetState();
-  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [dashboardData, setDashboardData] = useState<AnalyticsDashboardData | null>(null);
 
   const handleGenerate = useCallback(async () => {
-    setImageBase64(null);
+    setDashboardData(null);
     await generate(async () => {
-      const prompt =
-        `Minimalist SaaS-style analytics dashboard for a Malaysian ${profile.industry} business. ` +
-        `Include: bar charts showing monthly revenue, line graph showing growth trend, ` +
-        `pie chart showing expense breakdown, KPI cards. ` +
-        `Dark background with purple/blue accent colours, clean modern UI design, professional data visualisation.`;
-
-      const res = await fetch(`${API_BASE}/api/nova/image`, {
+      const res = await fetch(`${API_BASE}/api/bedrock/analytics-dashboard`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, width: 1024, height: 768 }),
+        body: JSON.stringify({
+          companyName: profile.companyName,
+          industry: profile.industry,
+          businessStage: profile.businessStage,
+          city: profile.city,
+          businessType: profile.businessType,
+          currentFunds: profile.currentFunds,
+          targetCustomer: profile.targetCustomer,
+          mainGoal: profile.mainGoal,
+        }),
       });
 
       if (!res.ok) {
-        throw new Error(`Image generation failed: HTTP ${res.status}`);
+        throw new Error(`Analytics generation failed: HTTP ${res.status}`);
       }
 
-      const data = (await res.json()) as { imageBase64?: string; error?: string };
-      if (!data.imageBase64) {
-        throw new Error(data.error ?? "No image returned. Please try again.");
+      const data = (await res.json()) as { content?: string; error?: string };
+      if (!data.content) {
+        throw new Error(data.error ?? "No analytics data returned. Please try again.");
       }
 
-      setImageBase64(data.imageBase64);
+      // Extract JSON from the response
+      let cleaned = data.content.trim();
+      if (cleaned.startsWith("```")) {
+        cleaned = cleaned.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/, "").trim();
+      }
+      const start = cleaned.indexOf("{");
+      const end = cleaned.lastIndexOf("}");
+      if (start !== -1 && end !== -1 && end > start) {
+        cleaned = cleaned.slice(start, end + 1);
+      }
+
+      const parsed = JSON.parse(cleaned) as AnalyticsDashboardData;
+      setDashboardData(parsed);
     });
   }, [profile, generate]);
 
@@ -65,21 +94,129 @@ export default function AnalyticsDashboardWidget({
       title="Analytics Dashboard"
       onGenerate={handleGenerate}
       state={state}
-      idleHint="Each run is a fresh illustrative board — ideal for pitch decks; figures are not live accounting data."
-      idleButtonLabel="Create snapshot"
-      regenerateLabel="New snapshot"
+      idleHint="Generate realistic analytics data based on your business profile — ideal for pitch decks and planning."
+      idleButtonLabel="Generate Dashboard"
+      regenerateLabel="Regenerate"
     >
-      {imageBase64 && (
-        <figure className="space-y-2">
-          <img
-            src={`data:image/png;base64,${imageBase64}`}
-            alt="Generated analytics-style dashboard illustration"
-            className="w-full rounded-xl border border-neutral-200/90 bg-neutral-100/50 shadow-inner dark:border-white/[0.08] dark:bg-black/30"
-          />
+      {dashboardData && (
+        <div className="space-y-6">
+          {/* KPIs */}
+          <div className="grid grid-cols-2 gap-3">
+            {dashboardData.kpis.map((kpi, idx) => (
+              <div
+                key={idx}
+                className="rounded-lg border border-neutral-200/90 bg-neutral-50/50 p-3 dark:border-white/[0.08] dark:bg-black/20"
+              >
+                <div className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+                  {kpi.label}
+                </div>
+                <div className="mt-1 flex items-baseline gap-2">
+                  <div className="text-lg font-semibold text-neutral-900 dark:text-white">
+                    {kpi.value}
+                  </div>
+                  <div
+                    className={`text-xs font-medium ${
+                      kpi.trend === "up"
+                        ? "text-green-600 dark:text-green-400"
+                        : kpi.trend === "down"
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-neutral-500 dark:text-neutral-400"
+                    }`}
+                  >
+                    {kpi.change}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Monthly Revenue Bar Chart */}
+          <div className="rounded-lg border border-neutral-200/90 bg-neutral-50/50 p-4 dark:border-white/[0.08] dark:bg-black/20">
+            <h4 className="mb-3 text-sm font-semibold text-neutral-900 dark:text-white">
+              Monthly Revenue (RM)
+            </h4>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={dashboardData.revenue.monthly}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#1f2937",
+                    border: "none",
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                  }}
+                />
+                <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Expense Breakdown Pie Chart */}
+          <div className="rounded-lg border border-neutral-200/90 bg-neutral-50/50 p-4 dark:border-white/[0.08] dark:bg-black/20">
+            <h4 className="mb-3 text-sm font-semibold text-neutral-900 dark:text-white">
+              Expense Breakdown
+            </h4>
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie
+                  data={dashboardData.expenses.breakdown}
+                  dataKey="value"
+                  nameKey="category"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={70}
+                  label={({ payload }: { payload?: ExpenseBreakdown }) =>
+                    payload ? `${payload.category} (${payload.percentage}%)` : ""}
+                >
+                  {dashboardData.expenses.breakdown.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#1f2937",
+                    border: "none",
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Projections */}
+          <div className="rounded-lg border border-neutral-200/90 bg-neutral-50/50 p-4 dark:border-white/[0.08] dark:bg-black/20">
+            <h4 className="mb-3 text-sm font-semibold text-neutral-900 dark:text-white">
+              Projections
+            </h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-neutral-600 dark:text-neutral-400">Next Quarter Revenue:</span>
+                <span className="font-semibold text-neutral-900 dark:text-white">
+                  RM {dashboardData.projections.nextQuarter.revenue.toLocaleString("en-MY")}
+                  <span className="ml-2 text-xs text-green-600 dark:text-green-400">
+                    +{dashboardData.projections.nextQuarter.growth}%
+                  </span>
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-600 dark:text-neutral-400">Year-End Revenue:</span>
+                <span className="font-semibold text-neutral-900 dark:text-white">
+                  RM {dashboardData.projections.yearEnd.revenue.toLocaleString("en-MY")}
+                  <span className="ml-2 text-xs text-green-600 dark:text-green-400">
+                    +{dashboardData.projections.yearEnd.growth}%
+                  </span>
+                </span>
+              </div>
+            </div>
+          </div>
+
           <figcaption className="text-[11px] leading-snug text-neutral-500 dark:text-neutral-400">
-            Illustrative visualisation — not connected to live books or bank feeds.
+            Generated analytics based on industry benchmarks and business profile — not connected to live accounting data.
           </figcaption>
-        </figure>
+        </div>
       )}
     </WidgetCard>
   );

@@ -26,7 +26,6 @@ import MarketingForecastWidget from './widgets/MarketingForecastWidget';
 
 import AnalyticsDashboardWidget from './widgets/AnalyticsDashboardWidget';
 import { DocumentGeneratorWidgetWithControls as DocumentGeneratorWidget } from './widgets/DocumentGeneratorWidget';
-import OwnerToolsWorkspace from './workspace/OwnerToolsWorkspace';
 
 interface DashboardProps {
   profile: BusinessProfile | null;
@@ -233,13 +232,14 @@ export default function Dashboard({
 
       <div className="flex flex-col gap-10 lg:gap-12">
         {SECTIONS.map((section, index) => {
-          // The three sections we auto-generate render in compact mode (no
-          // hero band, no manual run-all button, no per-widget generate).
+          // Auto-generate sections and Owner Tools use compact mode (no hero band
+          // or bulk run-all button).
           const isAutoSection =
             autoGenerate &&
             (section === 'Operations' ||
               section === 'Financial Planning' ||
               section === 'Marketing');
+          const isCompactSection = isAutoSection || section === 'Owner Tools';
 
           return (
             <div key={section} className={activeSection && activeSection !== section ? 'hidden' : ''}>
@@ -248,7 +248,7 @@ export default function Dashboard({
                 isLocked={!isUnlocked}
                 onGenerateAll={() => handleGenerateAll(section)}
                 index={index}
-                compact={isAutoSection}
+                compact={isCompactSection}
               >
                 {section === 'Operations' && profile && (
                   <div className="grid grid-cols-1 gap-4 lg:gap-5">
