@@ -1,51 +1,15 @@
 /**
- * TrustMarquee — platforms & programmes with recognizable logo marks + SMEwise brand.
+ * TrustMarquee — platforms & programmes with logo marks from /public/logos.
  */
 
 import LogoWordmark from '../shared/LogoWordmark';
-import {
-  IconShopee,
-  IconLazada,
-  IconTikTok,
-  IconWhatsApp,
-  IconGrab,
-  IconFoodpanda,
-  IconSSM,
-  IconFund,
-  IconRM,
-} from './platformLogos';
-import type { FC, SVGProps } from 'react';
-
-type TrackItem = {
-  Icon: FC<SVGProps<SVGSVGElement>>;
-  label: string;
-};
-
-const PLATFORMS: TrackItem[] = [
-  { Icon: IconTikTok,     label: 'TikTok Shop' },
-  { Icon: IconShopee,     label: 'Shopee' },
-  { Icon: IconLazada,     label: 'Lazada' },
-  { Icon: IconWhatsApp,   label: 'WhatsApp Business' },
-  { Icon: IconGrab,       label: 'GrabFood' },
-  { Icon: IconFoodpanda,  label: 'foodpanda' },
-  { Icon: IconSSM,        label: 'SSM-aware' },
-  { Icon: IconFund,       label: 'BSN · MARA' },
-  { Icon: IconFund,       label: 'Cradle · TEKUN' },
-  { Icon: IconFund,       label: 'MDEC' },
-  { Icon: IconRM,         label: 'RM context' },
-];
+import { MarqueeBrandChip, PLATFORM_LOGOS } from './platformLogos';
 
 function Track() {
   return (
-    <div className="flex shrink-0 items-center gap-3 pr-3" aria-hidden>
-      {PLATFORMS.map(({ Icon, label }, i) => (
-        <span
-          key={`${label}-${i}`}
-          className="inline-flex items-center gap-2.5 rounded-2xl border border-white/[0.12] bg-white/[0.05] backdrop-blur-sm px-3.5 py-2.5 text-sm font-medium text-neutral-100 whitespace-nowrap shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]"
-        >
-          <Icon className="h-8 w-8 shrink-0" width={32} height={32} />
-          <span className="leading-tight">{label}</span>
-        </span>
+    <div className="flex shrink-0 items-center gap-4 pr-4" aria-hidden>
+      {PLATFORM_LOGOS.map((item) => (
+        <MarqueeBrandChip key={item.label} {...item} />
       ))}
     </div>
   );
@@ -54,7 +18,7 @@ function Track() {
 export default function TrustMarquee() {
   return (
     <section
-      aria-label="Platforms and Malaysian context this advisor understands"
+      aria-label="Platforms and programmes this advisor understands"
       className="relative border-y border-white/[0.08] bg-[#07070b]/38 backdrop-blur-xl py-8 overflow-hidden text-white"
     >
       <div className="max-w-4xl mx-auto px-4 text-center mb-6">

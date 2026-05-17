@@ -65,7 +65,7 @@ export interface HeroSectionProps {
 }
 
 const TRUTH_PILLS = [
-  'RM & Malaysian context',
+  'Malaysian platforms & grants',
   '~3 minute setup',
   'No payment step',
   'Edit profile anytime',

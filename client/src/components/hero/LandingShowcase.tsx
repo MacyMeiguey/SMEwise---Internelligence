@@ -15,14 +15,6 @@ const MOCKUP_SRC = '/marketing/workspace-mockup.svg';
 const MP4_LOCAL = '/marketing/product-tour.mp4';
 const WEBM_LOCAL = '/marketing/product-tour.webm';
 
-/**
- * Fallback MP4 (works without upload). Replace with hosted product demo.
- * Source: Blender Foundation CC BY open movie (“Elephants Dream”) via archive.org.
- */
-const MP4_FALLBACK_REMOTE =
-  'https://archive.org/download/ElephantsDream/ed_1024_512kb.mp4';
-
-/** Sticky illustration beside hero copy */
 export function HeroProductMockup() {
   return (
     <div
@@ -208,12 +200,12 @@ const SME_TILES: Array<{
 export function LandingMediaGallery() {
   const [sourcesExhausted, setSourcesExhausted] = useState(false);
 
+  /** MP4 before WebM — a missing optional `.webm` must not block playback of `.mp4`. */
   const videoSources = useMemo(
     () =>
       [
-        { src: WEBM_LOCAL, type: 'video/webm' },
         { src: MP4_LOCAL, type: 'video/mp4' },
-        { src: MP4_FALLBACK_REMOTE, type: 'video/mp4' },
+        { src: WEBM_LOCAL, type: 'video/webm' },
       ] as const,
     [],
   );
@@ -266,8 +258,10 @@ export function LandingMediaGallery() {
                   className="w-[min(100%,280px)] h-auto rounded-lg border border-neutral-700 opacity-95"
                 />
                 <p className="text-sm text-neutral-400 text-center max-w-xs">
-                  Product tour video unavailable — illustration preview shown. Add{' '}
-                  <code className="text-primary-300">public/marketing/product-tour.mp4</code>.
+                  Product tour clip not found — illustration preview shown. Generate one with{' '}
+                  <code className="text-primary-300 whitespace-nowrap">npm run generate:product-tour</code>{' '}
+                  from the repo root (writes{' '}
+                  <code className="text-primary-300">public/marketing/product-tour.mp4</code>).
                 </p>
               </div>
             )}
