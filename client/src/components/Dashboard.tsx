@@ -26,6 +26,7 @@ import MarketingForecastWidget from './widgets/MarketingForecastWidget';
 
 import AnalyticsDashboardWidget from './widgets/AnalyticsDashboardWidget';
 import { DocumentGeneratorWidgetWithControls as DocumentGeneratorWidget } from './widgets/DocumentGeneratorWidget';
+import OwnerToolsWorkspace from './workspace/OwnerToolsWorkspace';
 
 interface DashboardProps {
   profile: BusinessProfile | null;
@@ -154,6 +155,8 @@ export default function Dashboard({
 
     void start();
   }, [autoGenerate, profile, isUnlocked]);
+  /** Owner Tools: auto-run generators once per visit to this tab (avoids repeat API storms). */
+  const ownerToolsAutoRanRef = useRef(false);
 
   async function handleGenerateAll(section: string) {
     if (section === 'Operations') {
@@ -193,6 +196,27 @@ export default function Dashboard({
       await Promise.all([analyticsRef.current?.(), documentRef.current?.()]);
     }
   }
+
+  useEffect(() => {
+    if (!profile || !isUnlocked) return;
+
+    if (activeSection !== 'Owner Tools') {
+      ownerToolsAutoRanRef.current = false;
+      return;
+    }
+
+    if (ownerToolsAutoRanRef.current) return;
+
+    const timer = window.setTimeout(() => {
+      ownerToolsAutoRanRef.current = true;
+      void Promise.all([
+        analyticsRef.current?.() ?? Promise.resolve(),
+        documentRef.current?.() ?? Promise.resolve(),
+      ]);
+    }, 400);
+
+    return () => window.clearTimeout(timer);
+  }, [activeSection, profile, isUnlocked]);
 
   return (
     <section aria-label="Dashboard" className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-10">

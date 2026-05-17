@@ -84,16 +84,17 @@ export const WORKSPACE_SECTION_META: Record<string, WorkspaceSectionMeta> = {
     heroArt: 'marketing',
   },
   'Owner Tools': {
-    tagline: 'One visual snapshot, exportable briefs, and a chat that already knows your numbers.',
+    tagline:
+      'Stakeholder-ready visuals and exportable briefs — one clear path, no duplicate chat surfaces.',
     Icon: FileBarChart,
     glow: 'rgba(109, 40, 217, 0.3)',
     highlights: [
-      'Analytics image is illustrative — use it in slides or investor teasers.',
-      'Documents land as PDF / Word so you can edit offline or share safely.',
-      'Need a sounding board? The Business advisor panel (right rail) already knows this profile — no second chat needed.',
+      'Use the flow strip below: snapshot first, then written exports — mirrors how founders prep packs.',
+      '"Build owner bundle" still runs both generators in one tap when you are iterating fast.',
+      'Downloads stay on this device until you choose to share — good hygiene for drafts.',
     ],
     runAllLabel: 'Build owner bundle',
-    runAllHint: 'Kicks off dashboard art + document generator together.',
+    runAllHint: 'Runs dashboard snapshot and document generator together.',
     heroArt: 'owner',
   },
 };

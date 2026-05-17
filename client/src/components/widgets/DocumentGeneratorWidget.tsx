@@ -283,9 +283,8 @@ export function DocumentGeneratorWidgetWithControls({
       <div className="flex flex-col p-4 sm:p-5">
         {state.status === "idle" && (
           <p className="text-sm text-neutral-600 leading-relaxed dark:text-neutral-400">
-            Choose{" "}
-            <span className="font-semibold text-neutral-800 dark:text-neutral-200">Generate</span> for a first draft.
-            <span className="text-neutral-500"> Pick a document type first, then add an optional template.</span>
+            <span className="font-semibold text-neutral-800 dark:text-neutral-200">Generate</span> drafts from your
+            profile. Adjust type or template above, then export when ready.
           </p>
         )}
 

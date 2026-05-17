@@ -65,16 +65,21 @@ export default function AnalyticsDashboardWidget({
       title="Analytics Dashboard"
       onGenerate={handleGenerate}
       state={state}
-      idleHint="Illustrative KPI collage for decks or lender updates — each run produces a fresh composition."
+      idleHint="Each run is a fresh illustrative board — ideal for pitch decks; figures are not live accounting data."
       idleButtonLabel="Create snapshot"
       regenerateLabel="New snapshot"
     >
       {imageBase64 && (
-        <img
-          src={`data:image/png;base64,${imageBase64}`}
-          alt="Analytics dashboard"
-          className="w-full rounded-lg"
-        />
+        <figure className="space-y-2">
+          <img
+            src={`data:image/png;base64,${imageBase64}`}
+            alt="Generated analytics-style dashboard illustration"
+            className="w-full rounded-xl border border-neutral-200/90 bg-neutral-100/50 shadow-inner dark:border-white/[0.08] dark:bg-black/30"
+          />
+          <figcaption className="text-[11px] leading-snug text-neutral-500 dark:text-neutral-400">
+            Illustrative visualisation — not connected to live books or bank feeds.
+          </figcaption>
+        </figure>
       )}
     </WidgetCard>
   );
