@@ -207,7 +207,7 @@ function PhaseRow({ phase, currency, isOpen, onToggle }: {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function MarketingPlan({ plan = DEMO_PLAN }: { plan?: MarketingPlan }) {
-  const [openPhases, setOpenPhases] = useState<Set<number>>(new Set([1]));
+  const [openPhases, setOpenPhases] = useState<Set<number>>(new Set());
 
   const toggle = (n: number) => setOpenPhases(prev => {
     const next = new Set(prev);

@@ -114,7 +114,7 @@ async function invokeAgent(
     agentId: string,
     agentAliasId: string,
 ): Promise<string> {
-    const THROTTLE_RETRIES = 3
+    const THROTTLE_RETRIES = 5
     for (let t = 1; t <= THROTTLE_RETRIES; t++) {
         try {
             const command = new InvokeAgentCommand({
@@ -139,7 +139,7 @@ async function invokeAgent(
             } catch (streamErr) {
                 // Throttle errors often surface here during stream iteration
                 if (isThrottleError(streamErr) && t < THROTTLE_RETRIES) {
-                    const delay = 8000 * t  // 8s, 16s
+                    const delay = 5000 * (t * 0.5)
                     console.warn(`[Bedrock] Throttled during stream on attempt ${t}/${THROTTLE_RETRIES}. Waiting ${delay}ms...`)
                     await sleep(delay)
                     continue
@@ -154,7 +154,7 @@ async function invokeAgent(
             return raw
         } catch (err) {
             if (isThrottleError(err) && t < THROTTLE_RETRIES) {
-                const delay = 8000 * t  // 8s, 16s
+                const delay = 5000 * (t * 0.5)
                 console.warn(`[Bedrock] Throttled on attempt ${t}/${THROTTLE_RETRIES}. Waiting ${delay}ms before retry...`)
                 await sleep(delay)
                 continue

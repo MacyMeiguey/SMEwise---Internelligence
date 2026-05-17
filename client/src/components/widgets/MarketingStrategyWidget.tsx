@@ -426,7 +426,7 @@ export default function MarketingStrategyWidget({
         {status === "success" && (
           <div className="flex flex-col gap-3">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Result</p>
-            <div className="rounded-xl border border-neutral-200 bg-neutral-50 max-h-[min(70vh,41rem)] overflow-y-auto overscroll-contain dark:border-white/[0.08] dark:bg-black/40">
+            <div className="rounded-xl border border-neutral-200 bg-neutral-50 max-h-[min(70vh,40.3rem)] overflow-y-auto overscroll-contain dark:border-white/[0.08] dark:bg-black/40">
               <div className="p-4 text-sm text-neutral-800 leading-relaxed dark:text-neutral-200">
                 {parseError ? (
                   <p className="text-red-600 dark:text-red-400">{parseError}</p>
