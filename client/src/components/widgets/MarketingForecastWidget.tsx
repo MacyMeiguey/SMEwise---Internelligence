@@ -13,7 +13,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useWidgetState } from "../../hooks/useWidgetState";
-import MarketingForecast, { type MarketingForecast as MarketingForecastData } from "./MarketingForecast";
+import MarketingForecastView, { type MarketingForecast as MarketingForecastData } from "./MarketingForecast";
 import { API_BASE } from "../../lib/api";
 
 // â”€â”€â”€ API call â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -82,6 +82,10 @@ export default function MarketingForecastWidget({
 
   const makeCacheInputs = (planJson: string) => ({ marketingPlanJson: planJson });
 
+  // Guard against duplicate concurrent calls (e.g. onStrategyGenerated fires
+  // while the auto-gen pipeline also calls handleGenerate for the same input).
+  const isGeneratingRef = useRef(false);
+
   useEffect(() => {
     if (!marketingPlanJson) return;
     const cached = checkCache<MarketingForecastData>(CACHE_KEY, makeCacheInputs(marketingPlanJson));
@@ -96,6 +100,9 @@ export default function MarketingForecastWidget({
     const jsonToUse = planJsonOverride ?? marketingPlanJson;
     if (!jsonToUse) return;
 
+    // Skip if already in-flight — prevents duplicate API calls.
+    if (isGeneratingRef.current) return;
+
     const cached = checkCache<MarketingForecastData>(CACHE_KEY, makeCacheInputs(jsonToUse));
     if (cached) {
       setForecast(cached.result);
@@ -104,24 +111,29 @@ export default function MarketingForecastWidget({
       return;
     }
 
+    isGeneratingRef.current = true;
     setForecast(null);
     setParseError(null);
 
-    await generate(async () => {
-      const raw = await fetchMarketingForecast(jsonToUse);
+    try {
+      await generate(async () => {
+        const raw = await fetchMarketingForecast(jsonToUse);
 
-      try {
-        const jsonStr = extractJson(raw);
-        const parsed = JSON.parse(jsonStr) as MarketingForecastData;
-        setForecast(parsed);
-        writeCache(CACHE_KEY, hashInputs(makeCacheInputs(jsonToUse)), parsed);
-      } catch {
-        setParseError(
-          "The agent returned a response that couldn't be parsed as a forecast. Try regenerating."
-        );
-        throw new Error("Failed to parse marketing forecast JSON from agent response.");
-      }
-    });
+        try {
+          const jsonStr = extractJson(raw);
+          const parsed = JSON.parse(jsonStr) as MarketingForecastData;
+          setForecast(parsed);
+          writeCache(CACHE_KEY, hashInputs(makeCacheInputs(jsonToUse)), parsed);
+        } catch {
+          setParseError(
+            "The agent returned a response that couldn't be parsed as a forecast. Try regenerating."
+          );
+          throw new Error("Failed to parse marketing forecast JSON from agent response.");
+        }
+      });
+    } finally {
+      isGeneratingRef.current = false;
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [marketingPlanJson, generate]);
 
@@ -221,7 +233,7 @@ export default function MarketingForecastWidget({
                 {parseError ? (
                   <p className="text-red-600 dark:text-red-400">{parseError}</p>
                 ) : forecast ? (
-                  <MarketingForecast forecast={forecast} />
+                  <MarketingForecastView forecast={forecast} />
                 ) : null}
               </div>
             </div>

@@ -45,6 +45,21 @@ interface DashboardProps {
    * for future Marketing Strategy calls.
    */
   onFundAllocationSummary?: (summary: string) => void;
+  /**
+   * Reports in-memory state that isn't persisted to the widget cache —
+   * pricing inputs, competitor analysis, smart pricing, marketing plan JSON.
+   * The host uses this to feed the AI advisor extra context about what the
+   * user is currently working on.
+   */
+  onLiveContextChange?: (context: DashboardLiveContext) => void;
+}
+
+export interface DashboardLiveContext {
+  pricingInputs: PricingOptionalInputs;
+  competitorResult: unknown;
+  smartPricingResult: unknown;
+  marketingPlanJson: string | null;
+  budgetAllocation: string | undefined;
 }
 
 const SECTIONS = [
@@ -67,6 +82,7 @@ export default function Dashboard({
   activeSection,
   autoGenerate = false,
   onFundAllocationSummary,
+  onLiveContextChange,
 }: DashboardProps) {
   const [pricingInputs, setPricingInputs] = useState<PricingOptionalInputs>(DEFAULT_PRICING_INPUTS);
   const [competitorResult, setCompetitorResult] = useState<CompetitorAnalysisResult | null>(null);
@@ -75,6 +91,26 @@ export default function Dashboard({
   const [budgetAllocation, setBudgetAllocation] = useState<string | undefined>(undefined);
   const marketingPlanJsonRef = useRef<string | null>(null);
   const budgetAllocationRef = useRef<string | undefined>(undefined);
+
+  // Keep the host (App) in sync with our in-memory live state. The host then
+  // forwards this snapshot to the AI advisor so it can answer with awareness
+  // of the user's current pricing inputs, competitor analysis, etc.
+  useEffect(() => {
+    onLiveContextChange?.({
+      pricingInputs,
+      competitorResult,
+      smartPricingResult,
+      marketingPlanJson,
+      budgetAllocation,
+    });
+  }, [
+    onLiveContextChange,
+    pricingInputs,
+    competitorResult,
+    smartPricingResult,
+    marketingPlanJson,
+    budgetAllocation,
+  ]);
 
   const startupRegRef = useRef<(() => Promise<void>) | null>(null);
   const officeLocRef = useRef<(() => Promise<void>) | null>(null);

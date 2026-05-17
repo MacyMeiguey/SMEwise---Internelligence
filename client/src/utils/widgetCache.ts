@@ -89,3 +89,35 @@ export function checkCache<T>(
     if (entry.inputHash !== currentHash) return null;
     return entry;
 }
+
+/**
+ * Snapshot every widget cache entry currently in localStorage.
+ * Used by the AI advisor to feed the agent the full set of generated outputs
+ * as part of the conversation context.
+ *
+ * Returns an object keyed by widget name (e.g. "fund-allocation") whose values
+ * are the parsed `result` field of each cache entry. Entries that fail to
+ * parse are silently skipped.
+ */
+export function getAllWidgetCacheEntries(): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (!key || !key.startsWith(CACHE_PREFIX)) continue;
+            const widgetKey = key.slice(CACHE_PREFIX.length);
+            const raw = localStorage.getItem(key);
+            if (!raw) continue;
+            try {
+                const entry = JSON.parse(raw) as WidgetCacheEntry<unknown>;
+                out[widgetKey] = entry.result;
+            } catch {
+                // skip malformed entries
+            }
+        }
+    } catch {
+        // Some browsers/contexts (private mode quotas, denied storage) throw.
+        // Just return whatever we collected so far.
+    }
+    return out;
+}

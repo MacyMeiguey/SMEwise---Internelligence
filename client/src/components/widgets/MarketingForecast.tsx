@@ -1,22 +1,68 @@
-// ─── Types ────────────────────────────────────────────────────────────────────
+/**
+ * MarketingForecast — Recharts-powered visualization of the marketing forecast
+ * agent output. Renders:
+ *   1. Executive Summary stat cards
+ *   2. Time-series area/line charts (clients, revenue, budget spend, reach)
+ *   3. Channel breakdown bar chart
+ *   4. Funnel metrics
+ *   5. Phase projection cards
+ *   6. Benchmarking comparison
+ */
+
+import {
+  AreaChart, Area, BarChart, Bar, LineChart, Line,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, Cell,
+} from 'recharts';
+
+// ─── Types (matches the agent's JSON schema exactly) ──────────────────────────
 
 export interface ExecutiveSummary {
   projectedTotalGrowth: number;
   averageMonthlySuccessRate: number;
   estimatedCAC: number;
+  estimatedROI: number;
   forecastConfidence: number;
+  projectedTotalRevenue: number;
+  projectedTotalNewClients: number;
 }
 
 export interface TimeSeriesData {
   months: number[];
   projectedNewClients: number[];
+  cumulativeClients: number[];
   growthRatePercentage: number[];
   marketingReachThousands: number[];
+  monthlyBudgetSpend: number[];
+  cumulativeBudgetSpend: number[];
+  projectedMonthlyRevenue: number[];
+  cumulativeRevenue: number[];
+}
+
+export interface ChannelBreakdown {
+  channel: string;
+  allocatedBudget: number;
+  budgetPercentage: number;
+  projectedReach: number;
+  projectedConversions: number;
+  estimatedROI: number;
+}
+
+export interface FunnelMetrics {
+  totalImpressions: number;
+  totalLeads: number;
+  totalConversions: number;
+  impressionToLeadRate: number;
+  leadToConversionRate: number;
 }
 
 export interface PhaseProjection {
   phaseNumber: number;
+  budgetSpend: number;
   expectedConversionRate: number;
+  projectedNewClients: number;
+  projectedRevenue: number;
+  estimatedROI: number;
   successProbability: number;
   primaryGrowthDriver: string;
   riskToGrowth: string;
@@ -24,174 +70,51 @@ export interface PhaseProjection {
 
 export interface Benchmarking {
   malaysianIndustryAverageGrowth: number;
+  competitorScoreIndex: number;
   performanceVsCompetitors: "Above Average" | "At Par" | "Below Average";
   marketSaturationWarning: boolean;
+  industryAverageCAC: number;
+  industryAverageROI: number;
 }
 
 export interface MarketingForecast {
   executiveSummary: ExecutiveSummary;
   timeSeriesData: TimeSeriesData;
+  channelBreakdown: ChannelBreakdown[];
+  funnelMetrics: FunnelMetrics;
   phaseProjections: PhaseProjection[];
   benchmarking: Benchmarking;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const PERF_STYLES: Record<Benchmarking["performanceVsCompetitors"], { bg: string; text: string; border: string }> = {
-  "Above Average": { bg: "bg-emerald-50 dark:bg-emerald-950/30", text: "text-emerald-800 dark:text-emerald-200", border: "border-emerald-300 dark:border-emerald-600/50" },
-  "At Par":        { bg: "bg-amber-50 dark:bg-amber-950/30",     text: "text-amber-800 dark:text-amber-200",     border: "border-amber-300 dark:border-amber-600/50"   },
-  "Below Average": { bg: "bg-rose-50 dark:bg-rose-950/30",       text: "text-rose-800 dark:text-rose-200",       border: "border-rose-300 dark:border-rose-600/50"     },
+function fmt(n: number): string {
+  return n.toLocaleString('en-MY');
+}
+
+function fmtRM(n: number): string {
+  return `RM ${fmt(n)}`;
+}
+
+const PHASE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#f43f5e'];
+const CHANNEL_COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#f43f5e', '#06b6d4', '#ec4899'];
+
+const PERF_STYLES: Record<string, { bg: string; text: string; border: string }> = {
+  "Above Average": { bg: "bg-emerald-50 dark:bg-emerald-950/30", text: "text-emerald-700 dark:text-emerald-200", border: "border-emerald-300 dark:border-emerald-600/50" },
+  "At Par":        { bg: "bg-amber-50 dark:bg-amber-950/30",     text: "text-amber-700 dark:text-amber-200",     border: "border-amber-300 dark:border-amber-600/50"   },
+  "Below Average": { bg: "bg-rose-50 dark:bg-rose-950/30",       text: "text-rose-700 dark:text-rose-200",       border: "border-rose-300 dark:border-rose-600/50"     },
 };
 
-const PHASE_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#f43f5e"];
+// Shared tooltip styling — dark background with white text so it's readable
+// on both light and dark themes.
+const TOOLTIP_STYLE = {
+  contentStyle: { backgroundColor: '#1e1b2e', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8 },
+  labelStyle: { color: '#e2e8f0', fontWeight: 600, marginBottom: 4 },
+  itemStyle: { color: '#e2e8f0' },
+};
 
-// ─── SVG Line Chart ───────────────────────────────────────────────────────────
-
-interface LineChartProps {
-  data: number[];
-  labels: string[];
-  color: string;
-  fillColor: string;
-  yLabel: string;
-  formatY?: (v: number) => string;
-}
-
-function LineChart({ data, labels, color, fillColor, yLabel, formatY = String }: LineChartProps) {
-  const W = 480;
-  const H = 160;
-  const PAD = { top: 12, right: 16, bottom: 32, left: 48 };
-  const chartW = W - PAD.left - PAD.right;
-  const chartH = H - PAD.top - PAD.bottom;
-
-  const minVal = Math.min(...data);
-  const maxVal = Math.max(...data);
-  const range = maxVal - minVal || 1;
-
-  const xStep = chartW / (data.length - 1);
-  const toX = (i: number) => PAD.left + i * xStep;
-  const toY = (v: number) => PAD.top + chartH - ((v - minVal) / range) * chartH;
-
-  const points = data.map((v, i) => `${toX(i)},${toY(v)}`).join(" ");
-  const areaPoints = [
-    `${toX(0)},${PAD.top + chartH}`,
-    ...data.map((v, i) => `${toX(i)},${toY(v)}`),
-    `${toX(data.length - 1)},${PAD.top + chartH}`,
-  ].join(" ");
-
-  // Y-axis ticks (3 ticks)
-  const yTicks = [minVal, minVal + range / 2, maxVal];
-
-  return (
-    <div className="w-full">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">{yLabel}</p>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 160 }}>
-        {/* Grid lines */}
-        {yTicks.map((tick, i) => (
-          <g key={i}>
-            <line
-              x1={PAD.left} y1={toY(tick)}
-              x2={PAD.left + chartW} y2={toY(tick)}
-              stroke="currentColor" strokeOpacity={0.08} strokeWidth={1}
-            />
-            <text
-              x={PAD.left - 6} y={toY(tick) + 4}
-              textAnchor="end" fontSize={9}
-              fill="currentColor" fillOpacity={0.45}
-            >
-              {formatY(Math.round(tick * 10) / 10)}
-            </text>
-          </g>
-        ))}
-
-        {/* Area fill */}
-        <polygon points={areaPoints} fill={fillColor} opacity={0.15} />
-
-        {/* Line */}
-        <polyline points={points} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-
-        {/* Data points */}
-        {data.map((v, i) => (
-          <circle key={i} cx={toX(i)} cy={toY(v)} r={3} fill={color} />
-        ))}
-
-        {/* X-axis labels — show every 3rd */}
-        {labels.map((label, i) => (
-          i % 3 === 0 && (
-            <text key={i} x={toX(i)} y={H - 6} textAnchor="middle" fontSize={9} fill="currentColor" fillOpacity={0.45}>
-              {label}
-            </text>
-          )
-        ))}
-      </svg>
-    </div>
-  );
-}
-
-// ─── Dual Line Chart (two series) ────────────────────────────────────────────
-
-interface DualLineChartProps {
-  data1: number[];
-  data2: number[];
-  color1: string;
-  color2: string;
-  label1: string;
-  label2: string;
-  labels: string[];
-  formatY?: (v: number) => string;
-}
-
-function DualLineChart({ data1, data2, color1, color2, label1, label2, labels, formatY = String }: DualLineChartProps) {
-  const W = 480;
-  const H = 160;
-  const PAD = { top: 12, right: 16, bottom: 32, left: 48 };
-  const chartW = W - PAD.left - PAD.right;
-  const chartH = H - PAD.top - PAD.bottom;
-
-  const allVals = [...data1, ...data2];
-  const minVal = Math.min(...allVals);
-  const maxVal = Math.max(...allVals);
-  const range = maxVal - minVal || 1;
-
-  const xStep = chartW / (data1.length - 1);
-  const toX = (i: number) => PAD.left + i * xStep;
-  const toY = (v: number) => PAD.top + chartH - ((v - minVal) / range) * chartH;
-
-  const pts1 = data1.map((v, i) => `${toX(i)},${toY(v)}`).join(" ");
-  const pts2 = data2.map((v, i) => `${toX(i)},${toY(v)}`).join(" ");
-  const yTicks = [minVal, minVal + range / 2, maxVal];
-
-  return (
-    <div className="w-full">
-      <div className="flex items-center gap-4 mb-1">
-        {[{ color: color1, label: label1 }, { color: color2, label: label2 }].map(({ color, label }) => (
-          <div key={label} className="flex items-center gap-1.5">
-            <span className="w-3 h-0.5 rounded-full inline-block" style={{ background: color }} />
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">{label}</span>
-          </div>
-        ))}
-      </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 160 }}>
-        {yTicks.map((tick, i) => (
-          <g key={i}>
-            <line x1={PAD.left} y1={toY(tick)} x2={PAD.left + chartW} y2={toY(tick)} stroke="currentColor" strokeOpacity={0.08} strokeWidth={1} />
-            <text x={PAD.left - 6} y={toY(tick) + 4} textAnchor="end" fontSize={9} fill="currentColor" fillOpacity={0.45}>
-              {formatY(Math.round(tick * 10) / 10)}
-            </text>
-          </g>
-        ))}
-        <polyline points={pts1} fill="none" stroke={color1} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-        <polyline points={pts2} fill="none" stroke={color2} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" strokeDasharray="5 3" />
-        {data1.map((v, i) => <circle key={i} cx={toX(i)} cy={toY(v)} r={2.5} fill={color1} />)}
-        {data2.map((v, i) => <circle key={i} cx={toX(i)} cy={toY(v)} r={2.5} fill={color2} />)}
-        {labels.map((label, i) => (
-          i % 3 === 0 && (
-            <text key={i} x={toX(i)} y={H - 6} textAnchor="middle" fontSize={9} fill="currentColor" fillOpacity={0.45}>{label}</text>
-          )
-        ))}
-      </svg>
-    </div>
-  );
-}
+// Axis tick styling — white-ish text readable on dark backgrounds.
+const AXIS_TICK = { fontSize: 11, fill: '#cbd5e1' };
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 
@@ -205,10 +128,8 @@ function StatCard({ label, value, sub, color }: { label: string; value: string; 
   );
 }
 
-// ─── Confidence Bar ───────────────────────────────────────────────────────────
-
 function ConfidenceBar({ value }: { value: number }) {
-  const color = value >= 70 ? "#10b981" : value >= 40 ? "#f59e0b" : "#f43f5e";
+  const color = value >= 70 ? '#10b981' : value >= 40 ? '#f59e0b' : '#f43f5e';
   return (
     <div className="rounded-xl border border-neutral-200 dark:border-white/[0.09] bg-white dark:bg-[#101018] p-3 sm:p-4">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">Forecast Confidence</p>
@@ -222,175 +143,283 @@ function ConfidenceBar({ value }: { value: number }) {
   );
 }
 
-// ─── Phase Projection Cards ───────────────────────────────────────────────────
+// ─── Section Heading ──────────────────────────────────────────────────────────
 
-function PhaseProjectionCard({ phase }: { phase: PhaseProjection }) {
-  const color = PHASE_COLORS[(phase.phaseNumber - 1) % PHASE_COLORS.length];
-  const convPct = Math.round(phase.expectedConversionRate * 100) / 100;
-  const succPct = Math.round(phase.successProbability * 100) / 100;
-
+function SectionHeading({ children }: { children: string }) {
   return (
-    <div className="rounded-xl border border-neutral-200 dark:border-white/[0.09] bg-white dark:bg-[#101018] p-3 sm:p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{ background: color }}>
-          P{phase.phaseNumber}
-        </div>
-        <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Phase {phase.phaseNumber}</p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 mb-3">
-        <div>
-          <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mb-0.5">Conversion Rate</p>
-          <p className="text-sm font-bold" style={{ color }}>{convPct}%</p>
-        </div>
-        <div>
-          <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mb-0.5">Success Probability</p>
-          <p className="text-sm font-bold" style={{ color }}>{succPct}%</p>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <div className="rounded-md bg-neutral-50 dark:bg-white/[0.03] border border-neutral-100 dark:border-white/[0.06] px-2.5 py-2">
-          <p className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 mb-0.5">Primary Growth Driver</p>
-          <p className="text-xs text-neutral-700 dark:text-neutral-300 leading-snug">{phase.primaryGrowthDriver}</p>
-        </div>
-        <div className="rounded-md bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-800/30 px-2.5 py-2">
-          <p className="text-[10px] font-semibold text-rose-600 dark:text-rose-400 mb-0.5">Risk to Growth</p>
-          <p className="text-xs text-rose-700 dark:text-rose-300 leading-snug">{phase.riskToGrowth}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Benchmarking Card ────────────────────────────────────────────────────────
-
-function BenchmarkingCard({ bench, projectedGrowth }: { bench: Benchmarking; projectedGrowth: number }) {
-  const s = PERF_STYLES[bench.performanceVsCompetitors] ?? PERF_STYLES["At Par"];
-
-  return (
-    <div className={`rounded-xl border ${s.border} ${s.bg} p-4 sm:p-5`}>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-3">
-        Malaysian Market Benchmarking
-      </p>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-        <div>
-          <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mb-0.5">Industry Avg Growth</p>
-          <p className={`text-lg font-bold ${s.text}`}>{bench.malaysianIndustryAverageGrowth}%</p>
-        </div>
-        <div>
-          <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mb-0.5">Your Projected Growth</p>
-          <p className={`text-lg font-bold ${s.text}`}>{projectedGrowth}%</p>
-        </div>
-        <div>
-          <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mb-0.5">vs Competitors</p>
-          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border ${s.border} ${s.text} ${s.bg}`}>
-            {bench.performanceVsCompetitors}
-          </span>
-        </div>
-      </div>
-      {bench.marketSaturationWarning && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-700/40 bg-amber-50 dark:bg-amber-950/30 px-3 py-2">
-          <svg className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <p className="text-xs text-amber-800 dark:text-amber-200 leading-snug">
-            <span className="font-semibold">Market Saturation Warning:</span> Your target market may be approaching saturation. Consider diversifying channels or targeting adjacent segments.
-          </p>
-        </div>
-      )}
-    </div>
+    <p className="text-xs font-semibold uppercase tracking-wider text-neutral-800 dark:text-neutral-100 mb-2">
+      {children}
+    </p>
   );
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function MarketingForecast({ forecast }: { forecast: MarketingForecast }) {
-  const { executiveSummary: exec, timeSeriesData: ts, phaseProjections, benchmarking } = forecast;
-  const monthLabels = ts.months.map(m => `M${m}`);
+export default function MarketingForecastView({ forecast }: { forecast: MarketingForecast }) {
+  const { executiveSummary: exec, timeSeriesData: ts, channelBreakdown, funnelMetrics, phaseProjections, benchmarking } = forecast;
+
+  // Build time-series data array for Recharts
+  const timeData = ts.months.map((m, i) => ({
+    month: `M${m}`,
+    newClients: ts.projectedNewClients[i] ?? 0,
+    cumulativeClients: ts.cumulativeClients[i] ?? 0,
+    growthRate: ts.growthRatePercentage[i] ?? 0,
+    reach: ts.marketingReachThousands[i] ?? 0,
+    budgetSpend: ts.monthlyBudgetSpend[i] ?? 0,
+    cumulativeBudget: ts.cumulativeBudgetSpend[i] ?? 0,
+    revenue: ts.projectedMonthlyRevenue[i] ?? 0,
+    cumulativeRevenue: ts.cumulativeRevenue[i] ?? 0,
+  }));
 
   return (
-    <div className="font-sans max-w-none space-y-5">
+    <div className="font-sans max-w-none space-y-6">
 
-      {/* ── Executive Summary Stats ── */}
+      {/* ── Executive Summary ── */}
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">
-          Executive Summary
-        </p>
+        <SectionHeading>Executive Summary</SectionHeading>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard
-            label="Projected Growth"
-            value={`${exec.projectedTotalGrowth}%`}
-            sub="over campaign duration"
-            color="#10b981"
-          />
-          <StatCard
-            label="Avg Monthly Success"
-            value={`${exec.averageMonthlySuccessRate}%`}
-            sub="success rate"
-            color="#3b82f6"
-          />
-          <StatCard
-            label="Est. CAC"
-            value={`RM ${exec.estimatedCAC.toLocaleString("en-MY")}`}
-            sub="cost per acquisition"
-            color="#f59e0b"
-          />
+          <StatCard label="Projected Growth" value={`${exec.projectedTotalGrowth}%`} sub="total growth" color="#10b981" />
+          <StatCard label="Total Revenue" value={fmtRM(exec.projectedTotalRevenue)} sub="projected" color="#3b82f6" />
+          <StatCard label="New Clients" value={fmt(exec.projectedTotalNewClients)} sub="total acquired" color="#8b5cf6" />
+          <StatCard label="Est. CAC" value={fmtRM(exec.estimatedCAC)} sub="cost per acquisition" color="#f59e0b" />
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+          <StatCard label="Avg Monthly Success" value={`${exec.averageMonthlySuccessRate}%`} color="#3b82f6" />
+          <StatCard label="Estimated ROI" value={`${exec.estimatedROI}x`} color="#10b981" />
           <ConfidenceBar value={exec.forecastConfidence} />
         </div>
       </div>
 
-      {/* ── Time Series Charts ── */}
+      {/* ── Revenue & Budget Time Series ── */}
       <div className="rounded-xl border border-neutral-200 dark:border-white/[0.09] bg-white dark:bg-[#101018] p-4 sm:p-5">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-4">
-          12-Month Projections
-        </p>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <LineChart
-            data={ts.projectedNewClients}
-            labels={monthLabels}
-            color="#3b82f6"
-            fillColor="#3b82f6"
-            yLabel="Projected New Clients"
-            formatY={(v) => String(Math.round(v))}
-          />
-          <LineChart
-            data={ts.growthRatePercentage}
-            labels={monthLabels}
-            color="#10b981"
-            fillColor="#10b981"
-            yLabel="Growth Rate (%)"
-            formatY={(v) => `${v}%`}
-          />
-          <div className="lg:col-span-2">
-            <DualLineChart
-              data1={ts.marketingReachThousands}
-              data2={ts.projectedNewClients.map(v => v / 10)}
-              color1="#a855f7"
-              color2="#f59e0b"
-              label1="Marketing Reach (K)"
-              label2="New Clients (÷10)"
-              labels={monthLabels}
-              formatY={(v) => `${v}`}
-            />
+        <SectionHeading>Monthly Revenue vs Budget Spend</SectionHeading>
+        <ResponsiveContainer width="100%" height={240}>
+          <AreaChart data={timeData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
+            <XAxis dataKey="month" tick={AXIS_TICK} />
+            <YAxis tick={AXIS_TICK} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+            <Tooltip formatter={(v: number) => fmtRM(v)} {...TOOLTIP_STYLE} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#10b981" fill="#10b981" fillOpacity={0.15} strokeWidth={2} />
+            <Area type="monotone" dataKey="budgetSpend" name="Budget Spend" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.1} strokeWidth={2} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* ── Client Growth ── */}
+      <div className="rounded-xl border border-neutral-200 dark:border-white/[0.09] bg-white dark:bg-[#101018] p-4 sm:p-5">
+        <SectionHeading>Client Acquisition & Cumulative Growth</SectionHeading>
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={timeData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
+            <XAxis dataKey="month" tick={AXIS_TICK} />
+            <YAxis tick={AXIS_TICK} />
+            <Tooltip {...TOOLTIP_STYLE} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Line type="monotone" dataKey="newClients" name="New Clients" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
+            <Line type="monotone" dataKey="cumulativeClients" name="Cumulative" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="5 3" dot={{ r: 2 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* ── Marketing Reach & Growth Rate ── */}
+      <div className="rounded-xl border border-neutral-200 dark:border-white/[0.09] bg-white dark:bg-[#101018] p-4 sm:p-5">
+        <SectionHeading>Marketing Reach & Growth Rate</SectionHeading>
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={timeData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
+            <XAxis dataKey="month" tick={AXIS_TICK} />
+            <YAxis yAxisId="left" tick={AXIS_TICK} tickFormatter={(v) => `${v}K`} />
+            <YAxis yAxisId="right" orientation="right" tick={AXIS_TICK} tickFormatter={(v) => `${v}%`} />
+            <Tooltip {...TOOLTIP_STYLE} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Line yAxisId="left" type="monotone" dataKey="reach" name="Reach (K)" stroke="#a855f7" strokeWidth={2} dot={{ r: 3 }} />
+            <Line yAxisId="right" type="monotone" dataKey="growthRate" name="Growth %" stroke="#10b981" strokeWidth={2} strokeDasharray="4 2" dot={{ r: 2 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* ── Channel Breakdown ── */}
+      {channelBreakdown?.length > 0 && (
+        <div className="rounded-xl border border-neutral-200 dark:border-white/[0.09] bg-white dark:bg-[#101018] p-4 sm:p-5">
+          <SectionHeading>Channel Budget Allocation & ROI</SectionHeading>
+          <ResponsiveContainer width="100%" height={Math.max(200, channelBreakdown.length * 40)}>
+            <BarChart data={channelBreakdown} layout="vertical" margin={{ top: 5, right: 30, left: 80, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
+              <XAxis type="number" tick={AXIS_TICK} tickFormatter={(v) => fmtRM(v)} />
+              <YAxis type="category" dataKey="channel" tick={AXIS_TICK} width={80} />
+              <Tooltip formatter={(v: number) => fmtRM(v)} {...TOOLTIP_STYLE} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="allocatedBudget" name="Budget (RM)" radius={[0, 4, 4, 0]}>
+                {channelBreakdown.map((_, i) => (
+                  <Cell key={i} fill={CHANNEL_COLORS[i % CHANNEL_COLORS.length]} fillOpacity={0.8} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+
+          {/* Channel detail table */}
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-neutral-200 dark:border-white/[0.08]">
+                  <th className="text-left py-2 px-2 font-semibold text-neutral-500">Channel</th>
+                  <th className="text-right py-2 px-2 font-semibold text-neutral-500">Budget</th>
+                  <th className="text-right py-2 px-2 font-semibold text-neutral-500">%</th>
+                  <th className="text-right py-2 px-2 font-semibold text-neutral-500">Reach</th>
+                  <th className="text-right py-2 px-2 font-semibold text-neutral-500">Conversions</th>
+                  <th className="text-right py-2 px-2 font-semibold text-neutral-500">ROI</th>
+                </tr>
+              </thead>
+              <tbody>
+                {channelBreakdown.map((ch, i) => (
+                  <tr key={ch.channel} className="border-b border-neutral-100 dark:border-white/[0.04]">
+                    <td className="py-2 px-2 font-medium text-neutral-800 dark:text-neutral-200">
+                      <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ background: CHANNEL_COLORS[i % CHANNEL_COLORS.length] }} />
+                      {ch.channel}
+                    </td>
+                    <td className="py-2 px-2 text-right text-neutral-600 dark:text-neutral-300">{fmtRM(ch.allocatedBudget)}</td>
+                    <td className="py-2 px-2 text-right text-neutral-600 dark:text-neutral-300">{ch.budgetPercentage}%</td>
+                    <td className="py-2 px-2 text-right text-neutral-600 dark:text-neutral-300">{fmt(ch.projectedReach)}</td>
+                    <td className="py-2 px-2 text-right text-neutral-600 dark:text-neutral-300">{fmt(ch.projectedConversions)}</td>
+                    <td className="py-2 px-2 text-right font-semibold text-emerald-600 dark:text-emerald-400">{ch.estimatedROI}x</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* ── Funnel Metrics ── */}
+      {funnelMetrics && (
+        <div className="rounded-xl border border-neutral-200 dark:border-white/[0.09] bg-white dark:bg-[#101018] p-4 sm:p-5">
+          <SectionHeading>Marketing Funnel</SectionHeading>
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+            <div className="text-center">
+              <p className="text-lg font-bold text-neutral-800 dark:text-white">{fmt(funnelMetrics.totalImpressions)}</p>
+              <p className="text-[10px] text-neutral-500">Impressions</p>
+            </div>
+            <div className="text-center hidden sm:block">
+              <p className="text-xs font-semibold text-primary-600 dark:text-primary-300">→ {funnelMetrics.impressionToLeadRate}%</p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-bold text-blue-600 dark:text-blue-300">{fmt(funnelMetrics.totalLeads)}</p>
+              <p className="text-[10px] text-neutral-500">Leads</p>
+            </div>
+            <div className="text-center hidden sm:block">
+              <p className="text-xs font-semibold text-primary-600 dark:text-primary-300">→ {funnelMetrics.leadToConversionRate}%</p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-bold text-emerald-600 dark:text-emerald-300">{fmt(funnelMetrics.totalConversions)}</p>
+              <p className="text-[10px] text-neutral-500">Conversions</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Phase Projections ── */}
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">
-          Phase Projections
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-          {phaseProjections.map(phase => (
-            <PhaseProjectionCard key={phase.phaseNumber} phase={phase} />
-          ))}
+      {phaseProjections?.length > 0 && (
+        <div>
+          <SectionHeading>Phase Projections</SectionHeading>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+            {phaseProjections.map((phase) => {
+              const color = PHASE_COLORS[(phase.phaseNumber - 1) % PHASE_COLORS.length];
+              return (
+                <div key={phase.phaseNumber} className="rounded-xl border border-neutral-200 dark:border-white/[0.09] bg-white dark:bg-[#101018] p-3 sm:p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{ background: color }}>
+                      P{phase.phaseNumber}
+                    </div>
+                    <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Phase {phase.phaseNumber}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
+                    <div>
+                      <p className="text-[10px] text-neutral-500 mb-0.5">Budget</p>
+                      <p className="font-bold" style={{ color }}>{fmtRM(phase.budgetSpend)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-neutral-500 mb-0.5">Revenue</p>
+                      <p className="font-bold" style={{ color }}>{fmtRM(phase.projectedRevenue)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-neutral-500 mb-0.5">New Clients</p>
+                      <p className="font-bold">{phase.projectedNewClients}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-neutral-500 mb-0.5">ROI</p>
+                      <p className="font-bold text-emerald-600 dark:text-emerald-400">{phase.estimatedROI}x</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-neutral-500 mb-0.5">Conversion</p>
+                      <p className="font-bold">{phase.expectedConversionRate}%</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-neutral-500 mb-0.5">Success Prob.</p>
+                      <p className="font-bold">{phase.successProbability}%</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="rounded-md bg-neutral-50 dark:bg-white/[0.03] border border-neutral-100 dark:border-white/[0.06] px-2.5 py-2">
+                      <p className="text-[10px] font-semibold text-neutral-500 mb-0.5">Growth Driver</p>
+                      <p className="text-xs text-neutral-700 dark:text-neutral-300 leading-snug">{phase.primaryGrowthDriver}</p>
+                    </div>
+                    <div className="rounded-md bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-800/30 px-2.5 py-2">
+                      <p className="text-[10px] font-semibold text-rose-600 dark:text-rose-400 mb-0.5">Risk</p>
+                      <p className="text-xs text-rose-700 dark:text-rose-300 leading-snug">{phase.riskToGrowth}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Benchmarking ── */}
-      <BenchmarkingCard bench={benchmarking} projectedGrowth={exec.projectedTotalGrowth} />
+      {benchmarking && (
+        <div className={`rounded-xl border ${(PERF_STYLES[benchmarking.performanceVsCompetitors] ?? PERF_STYLES["At Par"]).border} ${(PERF_STYLES[benchmarking.performanceVsCompetitors] ?? PERF_STYLES["At Par"]).bg} p-4 sm:p-5`}>
+          <SectionHeading>Malaysian Market Benchmarking</SectionHeading>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-3">
+            <div>
+              <p className="text-[10px] text-neutral-500 mb-0.5">Industry Avg Growth</p>
+              <p className="text-sm font-bold">{benchmarking.malaysianIndustryAverageGrowth}%</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-neutral-500 mb-0.5">Your Growth</p>
+              <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{exec.projectedTotalGrowth}%</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-neutral-500 mb-0.5">Competitor Score</p>
+              <p className="text-sm font-bold">{benchmarking.competitorScoreIndex}/100</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-neutral-500 mb-0.5">Industry Avg CAC</p>
+              <p className="text-sm font-bold">{fmtRM(benchmarking.industryAverageCAC)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-neutral-500 mb-0.5">Industry Avg ROI</p>
+              <p className="text-sm font-bold">{benchmarking.industryAverageROI}x</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-neutral-500 mb-0.5">vs Competitors</p>
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold border ${(PERF_STYLES[benchmarking.performanceVsCompetitors] ?? PERF_STYLES["At Par"]).border} ${(PERF_STYLES[benchmarking.performanceVsCompetitors] ?? PERF_STYLES["At Par"]).text}`}>
+                {benchmarking.performanceVsCompetitors}
+              </span>
+            </div>
+          </div>
+          {benchmarking.marketSaturationWarning && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-700/40 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 mt-2">
+              <svg className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <p className="text-xs text-amber-800 dark:text-amber-200 leading-snug">
+                <span className="font-semibold">Market Saturation Warning:</span> Your target market may be approaching saturation. Consider diversifying channels or targeting adjacent segments.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
