@@ -1463,4 +1463,97 @@ router.post('/assistant', async (req: Request, res: Response) => {
     }
 })
 
+// ─── POST /api/bedrock/document-generator ────────────────────────────────────
+// Invokes the ReportandDocumentGenerator Bedrock agent (4K4BZVI9F8 / G0Q3I9R5KX).
+// Accepts a business profile + document type, returns structured JSON.
+
+router.post('/document-generator', async (req: Request, res: Response) => {
+    const {
+        companyName,
+        businessType,
+        industry,
+        businessStage,
+        city,
+        targetCustomer,
+        mainGoal,
+        documentType,
+        templateText,
+    } = req.body as {
+        companyName: string
+        businessType: string
+        industry: string
+        businessStage: string
+        city: string
+        targetCustomer?: string
+        mainGoal?: string
+        documentType: string
+        templateText?: string
+    }
+
+    if (!companyName || !businessType || !industry || !businessStage || !city || !documentType) {
+        res.status(400).json({
+            error: 'companyName, businessType, industry, businessStage, city, and documentType are required.',
+        })
+        return
+    }
+
+    const AGENT_ID       = process.env.BEDROCK_DOCUMENT_AGENT_ID       ?? '4K4BZVI9F8'
+    const AGENT_ALIAS_ID = process.env.BEDROCK_DOCUMENT_AGENT_ALIAS_ID ?? 'G0Q3I9R5KX'
+
+    const inputText = [
+        `Document Type: ${documentType}`,
+        `Company: ${companyName}`,
+        `Business Type: ${businessType}`,
+        `Industry: ${industry}`,
+        `Business Stage: ${businessStage}`,
+        `Location: ${city}, Malaysia`,
+        targetCustomer ? `Target Customer: ${targetCustomer}` : null,
+        mainGoal       ? `Main Business Goal: ${mainGoal}`    : null,
+        templateText   ? `Template Reference:\n${templateText}` : null,
+    ].filter(Boolean).join('\n')
+
+    console.log('=== [document-generator] inputText sent to Bedrock agent ===\n', inputText)
+
+    let lastRaw = ''
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        const sessionId = `doc-gen-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+        try {
+            const raw = await invokeAgent(inputText, sessionId, AGENT_ID, AGENT_ALIAS_ID)
+            lastRaw = raw
+
+            console.log(`[document-generator] Attempt ${attempt}/${MAX_RETRIES} — ${raw.length} chars`)
+
+            const jsonString = extractJsonString(raw)
+            JSON.parse(jsonString) // validate
+
+            console.log(`[document-generator] Attempt ${attempt} returned valid JSON`)
+            res.status(200).json({ content: raw })
+            return
+        } catch (err) {
+            if (err instanceof SyntaxError) {
+                console.warn(
+                    `[document-generator] Attempt ${attempt}/${MAX_RETRIES} invalid JSON.` +
+                    (attempt < MAX_RETRIES ? ' Retrying...' : ' No retries left.'),
+                )
+                continue
+            }
+
+            const awsErr = err as { name?: string; message?: string }
+            console.error(`[SMEwise] /api/bedrock/document-generator error on attempt ${attempt}:`, {
+                name: awsErr.name,
+                message: awsErr.message,
+            })
+            res.status(500).json({
+                error: `Agent error: ${awsErr.name ?? 'Unknown'} — ${awsErr.message ?? 'No message'}`,
+            })
+            return
+        }
+    }
+
+    console.error(`[document-generator] All ${MAX_RETRIES} attempts failed. Returning last raw response.`)
+    res.status(200).json({ content: lastRaw })
+})
+
 export default router

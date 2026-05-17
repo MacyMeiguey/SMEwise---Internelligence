@@ -5,12 +5,13 @@
  * Supports PDF and .docx export.
  */
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { jsPDF } from "jspdf";
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
 import type { BusinessProfile } from "../../types";
 import { useWidgetState } from "../../hooks/useWidgetState";
 import { API_BASE } from "../../lib/api";
+import { checkCache, writeCache, hashInputs } from "../../utils/widgetCache";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -39,6 +40,14 @@ interface GeneratedDocument {
   sections: DocumentSection[];
   disclaimer: string;
 }
+
+/** Cached owner-tool result: structured JSON and/or raw agent text */
+interface DocumentGeneratorCachePayload {
+  parsedDoc: GeneratedDocument | null;
+  rawFallback: string;
+}
+
+const DOCUMENT_GENERATOR_CACHE_KEY = "document-generator";
 
 // ─── Parse agent response ─────────────────────────────────────────────────────
 
@@ -158,12 +167,51 @@ export function DocumentGeneratorWidgetWithControls({
   profile,
   onGenerateRef,
 }: DocumentGeneratorWidgetProps) {
-  const { state, generate } = useWidgetState();
+  const { state, generate, restoreSuccess } = useWidgetState();
   const [documentType, setDocumentType] = useState<DocumentType>("Business Plan Summary");
   const [parsedDoc, setParsedDoc] = useState<GeneratedDocument | null>(null);
   const [rawFallback, setRawFallback] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [templateText, setTemplateText] = useState<string | null>(null);
+
+  const cacheInputs = useMemo(
+    () => ({
+      companyName: profile.companyName,
+      businessType: profile.businessType,
+      industry: profile.industry,
+      businessStage: profile.businessStage,
+      city: profile.city,
+      targetCustomer: profile.targetCustomer,
+      mainGoal: profile.mainGoal ?? "",
+      documentType,
+      templateText: templateText ?? null,
+    }),
+    [
+      profile.companyName,
+      profile.businessType,
+      profile.industry,
+      profile.businessStage,
+      profile.city,
+      profile.targetCustomer,
+      profile.mainGoal,
+      documentType,
+      templateText,
+    ],
+  );
+
+  useEffect(() => {
+    const cached = checkCache<DocumentGeneratorCachePayload>(
+      DOCUMENT_GENERATOR_CACHE_KEY,
+      cacheInputs,
+    );
+    if (cached) {
+      setParsedDoc(cached.result.parsedDoc);
+      setRawFallback(cached.result.rawFallback ?? "");
+      restoreSuccess();
+    }
+    // Mount-only hydrate; per-request cache is checked in handleGenerate
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -176,6 +224,17 @@ export function DocumentGeneratorWidgetWithControls({
   }, []);
 
   const handleGenerate = useCallback(async () => {
+    const cached = checkCache<DocumentGeneratorCachePayload>(
+      DOCUMENT_GENERATOR_CACHE_KEY,
+      cacheInputs,
+    );
+    if (cached) {
+      setParsedDoc(cached.result.parsedDoc);
+      setRawFallback(cached.result.rawFallback ?? "");
+      restoreSuccess();
+      return;
+    }
+
     setParsedDoc(null);
     setRawFallback("");
     await generate(async () => {
@@ -206,12 +265,20 @@ export function DocumentGeneratorWidgetWithControls({
       const parsed = parseDocumentResponse(data.content);
       if (parsed) {
         setParsedDoc(parsed);
+        writeCache(DOCUMENT_GENERATOR_CACHE_KEY, hashInputs(cacheInputs), {
+          parsedDoc: parsed,
+          rawFallback: "",
+        });
       } else {
         // Agent returned non-JSON — show raw text as fallback
         setRawFallback(data.content);
+        writeCache(DOCUMENT_GENERATOR_CACHE_KEY, hashInputs(cacheInputs), {
+          parsedDoc: null,
+          rawFallback: data.content,
+        });
       }
     });
-  }, [profile, documentType, templateText, generate]);
+  }, [profile, documentType, templateText, generate, restoreSuccess, cacheInputs]);
 
   useEffect(() => {
     onGenerateRef?.(handleGenerate);

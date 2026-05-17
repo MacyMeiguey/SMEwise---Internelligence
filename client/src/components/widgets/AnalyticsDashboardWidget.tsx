@@ -8,11 +8,12 @@
  *   onGenerateRef — callback to register the generate handler for Generate All
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import type { BusinessProfile, AnalyticsDashboardData, ExpenseBreakdown } from "../../types";
 import { useWidgetState } from "../../hooks/useWidgetState";
 import WidgetCard from "../WidgetCard";
 import { API_BASE } from "../../lib/api";
+import { checkCache, writeCache, hashInputs } from "../../utils/widgetCache";
 import {
   BarChart,
   Bar,
@@ -35,14 +36,56 @@ interface AnalyticsDashboardWidgetProps {
 
 const COLORS = ["#8b5cf6", "#6366f1", "#3b82f6", "#06b6d4", "#10b981", "#f59e0b"];
 
+const CACHE_KEY = "analytics-dashboard";
+
 export default function AnalyticsDashboardWidget({
   profile,
   onGenerateRef,
 }: AnalyticsDashboardWidgetProps) {
-  const { state, generate } = useWidgetState();
+  const { state, generate, restoreSuccess } = useWidgetState();
   const [dashboardData, setDashboardData] = useState<AnalyticsDashboardData | null>(null);
 
+  const cacheInputs = useMemo(
+    () => ({
+      companyName: profile.companyName,
+      industry: profile.industry,
+      businessStage: profile.businessStage,
+      city: profile.city,
+      businessType: profile.businessType,
+      currentFunds: profile.currentFunds,
+      targetCustomer: profile.targetCustomer,
+      mainGoal: profile.mainGoal ?? "",
+    }),
+    [
+      profile.companyName,
+      profile.industry,
+      profile.businessStage,
+      profile.city,
+      profile.businessType,
+      profile.currentFunds,
+      profile.targetCustomer,
+      profile.mainGoal,
+    ],
+  );
+
+  useEffect(() => {
+    const cached = checkCache<AnalyticsDashboardData>(CACHE_KEY, cacheInputs);
+    if (cached) {
+      setDashboardData(cached.result);
+      restoreSuccess();
+    }
+    // Intentionally mount-only: same pattern as RiskAnalyzerWidget / FundAllocationWidget
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleGenerate = useCallback(async () => {
+    const cached = checkCache<AnalyticsDashboardData>(CACHE_KEY, cacheInputs);
+    if (cached) {
+      setDashboardData(cached.result);
+      restoreSuccess();
+      return;
+    }
+
     setDashboardData(null);
     await generate(async () => {
       const res = await fetch(`${API_BASE}/api/bedrock/analytics-dashboard`, {
@@ -82,8 +125,9 @@ export default function AnalyticsDashboardWidget({
 
       const parsed = JSON.parse(cleaned) as AnalyticsDashboardData;
       setDashboardData(parsed);
+      writeCache(CACHE_KEY, hashInputs(cacheInputs), parsed);
     });
-  }, [profile, generate]);
+  }, [cacheInputs, generate, restoreSuccess]);
 
   useEffect(() => {
     onGenerateRef?.(handleGenerate);
