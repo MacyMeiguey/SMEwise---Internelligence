@@ -17,7 +17,7 @@ import { loadProfile, saveProfile } from './utils/storage';
 import HeroSection from './components/hero/HeroSection';
 import ProfileWizard from './components/profile/ProfileWizard';
 import InsightsDashboard from './components/dashboard/InsightsDashboard';
-import Dashboard from './components/Dashboard';
+import Dashboard, { type DashboardLiveContext } from './components/Dashboard';
 import AIAssistantPanel from './components/assistant/AIAssistantPanel';
 import WorkspaceSidebar from './components/workspace/WorkspaceSidebar';
 import LandingStage3D from './components/three/LandingStage3D';
@@ -169,6 +169,15 @@ function AppContent() {
       return next;
     });
   };
+
+  // Track the AI assistant panel's current width so main content padding
+  // stays in sync when the user resizes the panel by dragging.
+  const [assistantWidthPx, setAssistantWidthPx] = useState<number>(384);
+
+  // Live (non-cached) Dashboard state — surfaced upward so the AI advisor can
+  // see what the user is currently working on (pricing inputs, in-flight
+  // competitor analysis, etc.). Updated via Dashboard's onLiveContextChange.
+  const [liveDashboardContext, setLiveDashboardContext] = useState<DashboardLiveContext | null>(null);
 
   const handleViewDetails = (sectionTitle: string) => {
     const entry = Object.entries(TAB_TO_SECTION).find(([, v]) => v === sectionTitle);
@@ -363,8 +372,13 @@ function AppContent() {
           className={`flex-1 bg-neutral-100 text-neutral-950 transition-[padding] duration-200 dark:bg-[#07070b] dark:text-white ${
             sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-60 xl:pl-64'
           } ${
-            assistantCollapsed ? 'lg:pr-24' : 'lg:pr-[26rem] xl:pr-[28rem]'
+            assistantCollapsed ? 'lg:pr-24' : ''
           }`}
+          style={
+            !assistantCollapsed
+              ? { paddingRight: `${assistantWidthPx + 40}px` }
+              : undefined
+          }
         >
 
           {activeTab === 'overview' && (
@@ -396,6 +410,7 @@ function AppContent() {
               onSectionNavigate={() => {}}
               autoGenerate={true}
               onFundAllocationSummary={handleFundAllocationSummary}
+              onLiveContextChange={setLiveDashboardContext}
             />
           </div>
 
@@ -404,6 +419,8 @@ function AppContent() {
             currentSection={advisorSection}
             isCollapsed={assistantCollapsed}
             onToggleCollapse={toggleAssistant}
+            liveContext={liveDashboardContext}
+            onWidthChange={setAssistantWidthPx}
           />
         </main>
       )}

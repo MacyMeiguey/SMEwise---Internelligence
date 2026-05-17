@@ -214,7 +214,7 @@ router.post('/marketing', async (req: Request, res: Response) => {
 })
 
 
- //Invoke a Bedrock agent by explicit agent ID + alias ID.
+//Invoke a Bedrock agent by explicit agent ID + alias ID.
 async function invokeAgentById(
     inputText: string,
     sessionId: string,
@@ -352,7 +352,7 @@ router.post('/fund-allocation', async (req: Request, res: Response) => {
     }
 
     const FUND_AGENT_ID = process.env.BEDROCK_FUND_AGENT_ID ?? 'RMJF0EXRHR'
-    const FUND_AGENT_ALIAS_ID = process.env.BEDROCK_FUND_AGENT_ALIAS_ID ?? 'RDAMSJUEK5'
+    const FUND_AGENT_ALIAS_ID = process.env.BEDROCK_FUND_AGENT_ALIAS_ID ?? 'UUHZO1BLOO'
 
     const inputText = [
         `Company: ${companyName}`,
@@ -435,7 +435,7 @@ router.post('/office-location', async (req: Request, res: Response) => {
         return
     }
 
-    const OFFICE_AGENT_ID       = process.env.BEDROCK_OFFICE_AGENT_ID       ?? 'SYN0JX0DXX'
+    const OFFICE_AGENT_ID = process.env.BEDROCK_OFFICE_AGENT_ID ?? 'SYN0JX0DXX'
     const OFFICE_AGENT_ALIAS_ID = process.env.BEDROCK_OFFICE_AGENT_ALIAS_ID ?? 'DVRSIKLAPX'
 
     const inputText = [
@@ -521,7 +521,7 @@ router.post('/risk-analyzer', async (req: Request, res: Response) => {
         return
     }
 
-    const RISK_AGENT_ID       = process.env.BEDROCK_RISK_AGENT_ID       ?? '4RYTKWLEVB'
+    const RISK_AGENT_ID = process.env.BEDROCK_RISK_AGENT_ID ?? '4RYTKWLEVB'
     const RISK_AGENT_ALIAS_ID = process.env.BEDROCK_RISK_AGENT_ALIAS_ID ?? 'ODFAKDIZFV'
 
     const inputText = [
@@ -649,7 +649,7 @@ router.post('/marketing-forecast', async (req: Request, res: Response) => {
     }
 
     const FORECAST_AGENT_ID = process.env.BEDROCK_FORECAST_AGENT_ID ?? 'HSXW0AKDZF'
-    const FORECAST_AGENT_ALIAS_ID = process.env.BEDROCK_FORECAST_AGENT_ALIAS_ID ?? 'QUI6ZWQMMZ'
+    const FORECAST_AGENT_ALIAS_ID = process.env.BEDROCK_FORECAST_AGENT_ALIAS_ID ?? 'ELIECSQ2L5'
 
     console.log('=== [marketing-forecast] Invoking agent with marketing plan ===')
 
@@ -659,13 +659,15 @@ router.post('/marketing-forecast', async (req: Request, res: Response) => {
         const sessionId = `forecast-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
         try {
-            const raw = await invokeAgent(marketingPlanJson, sessionId, FORECAST_AGENT_ID, FORECAST_AGENT_ALIAS_ID)
+            const inputJson = extractJsonString(marketingPlanJson)
+            // console.log(`input: ${inputJson}`)
+            const raw = await invokeAgent(inputJson, sessionId, FORECAST_AGENT_ID, FORECAST_AGENT_ALIAS_ID)
             lastRaw = raw
 
             console.log(
                 `[marketing-forecast] Attempt ${attempt}/${MAX_RETRIES} — response length: ${raw.length} chars`,
             )
-
+            // console.log(`raw: ${raw}`)
             const jsonString = extractJsonString(raw)
             JSON.parse(jsonString) // validate
 
@@ -888,7 +890,7 @@ router.post('/investor-funding', async (req: Request, res: Response) => {
         return
     }
 
-    const INVESTOR_AGENT_ID       = process.env.BEDROCK_INVESTOR_AGENT_ID       ?? 'K5UUZVS6JI'
+    const INVESTOR_AGENT_ID = process.env.BEDROCK_INVESTOR_AGENT_ID ?? 'K5UUZVS6JI'
     const INVESTOR_AGENT_ALIAS_ID = process.env.BEDROCK_INVESTOR_AGENT_ALIAS_ID ?? 'ZRJVGFTYSU'
 
     const inputText = [
@@ -1058,7 +1060,7 @@ router.post('/competitor-pricing', async (req: Request, res: Response) => {
         return
     }
 
-    const COMPETITOR_AGENT_ID       = process.env.BEDROCK_COMPETITOR_AGENT_ID       ?? 'U1JHBRBYCD'
+    const COMPETITOR_AGENT_ID = process.env.BEDROCK_COMPETITOR_AGENT_ID ?? 'U1JHBRBYCD'
     const COMPETITOR_AGENT_ALIAS_ID = process.env.BEDROCK_COMPETITOR_AGENT_ALIAS_ID ?? 'AU3DKNFIFF'
 
     // Build the same input format that works in the test script
@@ -1070,7 +1072,7 @@ router.post('/competitor-pricing', async (req: Request, res: Response) => {
             '',
             'Cost Per Product:',
             ...products.map(p => `${p.name}: ${p.cost}`),
-          ]
+        ]
         : []
 
     const inputText = [
@@ -1168,7 +1170,7 @@ router.post('/smart-pricing', async (req: Request, res: Response) => {
         return
     }
 
-    const SMART_AGENT_ID       = process.env.BEDROCK_SMART_PRICING_AGENT_ID       ?? 'MBTQYPGAAU'
+    const SMART_AGENT_ID = process.env.BEDROCK_SMART_PRICING_AGENT_ID ?? 'MBTQYPGAAU'
     const SMART_AGENT_ALIAS_ID = process.env.BEDROCK_SMART_PRICING_AGENT_ALIAS_ID ?? 'EKWPIHADSF'
 
     const productLines = products && products.length > 0
@@ -1179,7 +1181,7 @@ router.post('/smart-pricing', async (req: Request, res: Response) => {
             '',
             'Cost Per Product:',
             ...products.map(p => `${p.name}: ${p.cost}`),
-          ]
+        ]
         : []
 
     const inputLines: string[] = [
@@ -1273,7 +1275,7 @@ router.post('/analytics-dashboard', async (req: Request, res: Response) => {
         return
     }
 
-    const AGENT_ID       = process.env.BEDROCK_ANALYTICS_AGENT_ID       ?? '9VWWUJ0WX2'
+    const AGENT_ID = process.env.BEDROCK_ANALYTICS_AGENT_ID ?? '9VWWUJ0WX2'
     const AGENT_ALIAS_ID = process.env.BEDROCK_ANALYTICS_AGENT_ALIAS_ID ?? 'WJZ0N9RES5'
 
     const inputText = [
@@ -1284,7 +1286,7 @@ router.post('/analytics-dashboard', async (req: Request, res: Response) => {
         `Business Type: ${businessType}`,
         `Current Funds: RM ${Number(currentFunds).toLocaleString('en-MY')}`,
         targetCustomer ? `Target Customer: ${targetCustomer}` : null,
-        mainGoal       ? `Main Business Goal: ${mainGoal}`    : null,
+        mainGoal ? `Main Business Goal: ${mainGoal}` : null,
     ].filter(Boolean).join('\n')
 
     console.log('=== [analytics-dashboard] inputText sent to Bedrock agent ===\n', inputText)
@@ -1330,6 +1332,135 @@ router.post('/analytics-dashboard', async (req: Request, res: Response) => {
 
     console.error(`[analytics-dashboard] All ${MAX_RETRIES} attempts failed. Returning last raw response.`)
     res.status(200).json({ content: lastRaw })
+})
+
+// ─── POST /api/bedrock/assistant ─────────────────────────────────────────────
+// Streams the AI Assistant agent's reply token-by-token over SSE. The client
+// passes a free-form `message` (the user's question) plus an optional
+// `context` blob (profile, cached widget outputs, live in-memory state, the
+// section the user is currently viewing). The route stitches everything into
+// a single inputText for the agent and forwards each chunk as it arrives.
+//
+// Agent ID:       3UUYBVADJS
+// Agent Alias ID: R4UVOCXUYC
+//
+// SSE wire format (matches /converse/stream so the client can reuse parsers):
+//   data: {"delta":"...partial text..."}\n\n
+//   data: [DONE]\n\n
+
+router.post('/assistant', async (req: Request, res: Response) => {
+    const { message, context, sessionId: clientSessionId } = req.body as {
+        message: string
+        context?: Record<string, unknown>
+        sessionId?: string
+    }
+
+    if (!message || typeof message !== 'string') {
+        res.status(400).json({ error: 'message is required.' })
+        return
+    }
+
+    const ASSISTANT_AGENT_ID = process.env.BEDROCK_ASSISTANT_AGENT_ID ?? '3UUYBVADJS'
+    const ASSISTANT_AGENT_ALIAS_ID = process.env.BEDROCK_ASSISTANT_AGENT_ALIAS_ID ?? 'R4UVOCXUYC'
+
+    // Compose the agent's input. The agent sees one concatenated message per
+    // turn — context first (so the model can ground answers in it), then the
+    // user's question. The client builds the context object; we just serialise
+    // it here.
+    const contextSection = context
+        ? `--- CONTEXT (do not echo back verbatim, use only as reference) ---\n${JSON.stringify(context, null, 2)}\n--- END CONTEXT ---\n\n`
+        : ''
+    const inputText = `${contextSection}USER MESSAGE:\n${message}`
+
+    console.log(
+        `[assistant] inputText length=${inputText.length} chars ` +
+        `context.keys=${context ? Object.keys(context).join(',') : '(none)'}`,
+    )
+
+    // Reuse the same session across turns when the client provides one so the
+    // agent can keep memory of the conversation. Fall back to a fresh session.
+    const sessionId = clientSessionId && clientSessionId.length > 0
+        ? clientSessionId
+        : `assistant-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+    // Set SSE headers up front so the browser starts rendering immediately.
+    res.setHeader('Content-Type', 'text/event-stream')
+    res.setHeader('Cache-Control', 'no-cache')
+    res.setHeader('Connection', 'keep-alive')
+    res.flushHeaders()
+
+    try {
+        const command = new InvokeAgentCommand({
+            agentId: ASSISTANT_AGENT_ID,
+            agentAliasId: ASSISTANT_AGENT_ALIAS_ID,
+            sessionId,
+            inputText,
+        })
+
+        const agentResponse = await client.send(command)
+
+        let totalChars = 0
+        let eventCount = 0
+
+        for await (const event of agentResponse.completion ?? []) {
+            eventCount++
+
+            // Forward each chunk to the client as it arrives.
+            if (event.chunk?.bytes) {
+                const text = new TextDecoder().decode(event.chunk.bytes)
+                totalChars += text.length
+                res.write(`data: ${JSON.stringify({ delta: text })}\n\n`)
+                continue
+            }
+
+            // Surface error events so the user sees a usable message instead
+            // of a silent stream end.
+            const errorEvent =
+                event.accessDeniedException ??
+                event.badGatewayException ??
+                event.conflictException ??
+                event.dependencyFailedException ??
+                event.internalServerException ??
+                event.modelNotReadyException ??
+                event.resourceNotFoundException ??
+                event.serviceQuotaExceededException ??
+                event.throttlingException ??
+                event.validationException
+            if (errorEvent) {
+                const errorType =
+                    Object.keys(event).find(
+                        (k) => (event as unknown as Record<string, unknown>)[k] === errorEvent,
+                    ) ?? 'unknownException'
+                const msg = (errorEvent as { message?: string }).message ?? '(no message)'
+                console.error(
+                    `[assistant] ERROR EVENT type=${errorType} message=${msg}`,
+                )
+                res.write(`data: ${JSON.stringify({ error: `Agent ${errorType}: ${msg}` })}\n\n`)
+                continue
+            }
+        }
+
+        console.log(
+            `[assistant] stream finished events=${eventCount} chars=${totalChars} session=${sessionId}`,
+        )
+
+        res.write('data: [DONE]\n\n')
+        res.end()
+    } catch (err) {
+        console.error('[SMEwise] /api/bedrock/assistant error:', err)
+        const error = err as { name?: string; message?: string }
+
+        // We've already flushed SSE headers, so we can't switch to JSON now.
+        res.write(
+            `data: ${JSON.stringify({
+                error: error.name === 'ThrottlingException'
+                    ? 'Our AI service is busy right now. Please wait a moment and try again.'
+                    : `Something went wrong: ${error.message ?? 'unknown error'}`,
+            })}\n\n`,
+        )
+        res.write('data: [DONE]\n\n')
+        res.end()
+    }
 })
 
 export default router

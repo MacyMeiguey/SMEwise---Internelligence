@@ -76,6 +76,9 @@ export default function MarketingGuidelinesWidget({
   // changes (strategy regenerated), guidelines automatically invalidate.
   const makeCacheInputs = (planJson: string) => ({ marketingPlanJson: planJson });
 
+  // Guard against duplicate concurrent calls.
+  const isGeneratingRef = useRef(false);
+
   useEffect(() => {
     if (!marketingPlanJson) return;
     const cached = checkCache<MarketingGuidelinesData>(CACHE_KEY, makeCacheInputs(marketingPlanJson));
@@ -90,6 +93,9 @@ export default function MarketingGuidelinesWidget({
     const jsonToUse = planJsonOverride ?? marketingPlanJson;
     if (!jsonToUse) return;
 
+    // Skip if already in-flight — prevents duplicate API calls.
+    if (isGeneratingRef.current) return;
+
     const cached = checkCache<MarketingGuidelinesData>(CACHE_KEY, makeCacheInputs(jsonToUse));
     if (cached) {
       setGuidelines(cached.result);
@@ -98,25 +104,30 @@ export default function MarketingGuidelinesWidget({
       return;
     }
 
+    isGeneratingRef.current = true;
     setGuidelines(null);
     setParseError(null);
 
-    await generate(async () => {
-      const raw = await fetchMarketingGuidelines(jsonToUse);
+    try {
+      await generate(async () => {
+        const raw = await fetchMarketingGuidelines(jsonToUse);
 
-      try {
-        const jsonStr = extractJson(raw);
-        const parsed = JSON.parse(jsonStr) as MarketingGuidelinesData;
-        setGuidelines(parsed);
-        writeCache(CACHE_KEY, hashInputs(makeCacheInputs(jsonToUse)), parsed);
-      } catch {
-        setParseError(
-          "The agent returned a response that couldn't be parsed as marketing guidelines. " +
-          "Try regenerating."
-        );
-        throw new Error("Failed to parse marketing guidelines JSON from agent response.");
-      }
-    });
+        try {
+          const jsonStr = extractJson(raw);
+          const parsed = JSON.parse(jsonStr) as MarketingGuidelinesData;
+          setGuidelines(parsed);
+          writeCache(CACHE_KEY, hashInputs(makeCacheInputs(jsonToUse)), parsed);
+        } catch {
+          setParseError(
+            "The agent returned a response that couldn't be parsed as marketing guidelines. " +
+            "Try regenerating."
+          );
+          throw new Error("Failed to parse marketing guidelines JSON from agent response.");
+        }
+      });
+    } finally {
+      isGeneratingRef.current = false;
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [marketingPlanJson, generate]);
 

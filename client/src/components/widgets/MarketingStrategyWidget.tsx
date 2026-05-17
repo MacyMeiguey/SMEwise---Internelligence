@@ -77,9 +77,13 @@ interface BudgetSliderPanelProps {
   onChange: (value: number) => void;
   onClose: () => void;
   onClear: () => void;
+  /** Called when the user wants to regenerate with the new budget. */
+  onRegenerate?: () => void;
+  /** Whether a regeneration is currently in progress. */
+  isRegenerating?: boolean;
 }
 
-function BudgetSliderPanel({ maxFunds, value, onChange, onClose, onClear }: BudgetSliderPanelProps) {
+function BudgetSliderPanel({ maxFunds, value, onChange, onClose, onClear, onRegenerate, isRegenerating }: BudgetSliderPanelProps) {
   const [rawText, setRawText] = useState<string>(String(value));
   const step = Math.max(100, Math.round(maxFunds / 1000) * 100);
   const min = step;
@@ -169,6 +173,25 @@ function BudgetSliderPanel({ maxFunds, value, onChange, onClose, onClear }: Budg
       >
         Clear manual budget (use profile default)
       </button>
+
+      {/* Regenerate button — appears once the user has set a budget */}
+      {onRegenerate && (
+        <button
+          type="button"
+          onClick={onRegenerate}
+          disabled={isRegenerating}
+          className="w-full mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 hover:bg-primary-500 text-white text-sm font-semibold py-2.5 px-4 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isRegenerating ? (
+            <>
+              <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              Regenerating…
+            </>
+          ) : (
+            'Regenerate with this budget'
+          )}
+        </button>
+      )}
     </div>
   );
 }
@@ -304,7 +327,7 @@ export default function MarketingStrategyWidget({
 
         <div className="flex items-center gap-2 shrink-0">
           {/* Set Marketing Budget button — always visible when not loading */}
-          {!isLoading && !hideGenerateButton && (
+          {!isLoading && (
             <button
               type="button"
               onClick={() => setShowBudgetSlider((prev) => !prev)}
@@ -359,6 +382,8 @@ export default function MarketingStrategyWidget({
                 setManualBudget(null);
                 setShowBudgetSlider(false);
               }}
+              onRegenerate={manualBudget != null ? () => handleGenerate() : undefined}
+              isRegenerating={isLoading}
             />
           </div>
         )}

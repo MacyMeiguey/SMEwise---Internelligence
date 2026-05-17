@@ -4,28 +4,13 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { BusinessProfile, ChatMessage } from '../../types';
+import type { DashboardLiveContext } from '../Dashboard';
 import { MessageCircle, Send, X, ChevronsRight, ChevronsLeft } from 'lucide-react';
 import { API_BASE } from '../../lib/api';
+import { getAllWidgetCacheEntries } from '../../utils/widgetCache';
 import ChatAvatar3D from '../three/ChatAvatar3D';
 
 const MAX_WORDS = 200;
-
-function buildSystemPrompt(profile: BusinessProfile, focusLabel: string): string {
-  const focus =
-    focusLabel.trim() && focusLabel !== 'Overview'
-      ? ` The owner is currently looking at: ${focusLabel}. Prioritise actionable advice for that area when it fits; still use the full profile as ground truth.`
-      : ' The owner is on the high-level overview; keep guidance practical and stage-appropriate.';
-
-  return (
-    'You are SMEwise, a business advisor for Malaysian SMEs. You are not a lawyer or accountant; give general guidance and suggest professional help when needed.' +
-    ' Business profile: ' +
-    `Company: ${profile.companyName}. Industry: ${profile.industry}. City: ${profile.city}. ` +
-    `Target customer: ${profile.targetCustomer}. Main goal: ${profile.mainGoal?.trim() || 'not specified'}. ` +
-    `Funds available: RM ${profile.currentFunds.toLocaleString('en-MY')}. Stage: ${profile.businessStage}. Structure: ${profile.businessType}.` +
-    focus +
-    ` Keep replies under ${MAX_WORDS} words. Use RM, Malaysian examples where helpful, and short paragraphs.`
-  );
-}
 
 function trimToWordLimit(text: string, limit: number): string {
   const words = text.trim().split(/\s+/);
@@ -37,12 +22,40 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-async function streamBedrock(
-  body: object,
+/**
+ * Build the structured context payload sent alongside the user's question.
+ * The advisor agent uses this to ground its answer in:
+ *   - the full BusinessProfile (every field the user filled in)
+ *   - every cached widget result (Fund Allocation, Risk, Marketing Strategy, …)
+ *   - in-memory dashboard state that hasn't been cached (pricing inputs,
+ *     competitor analysis still in flight, marketing plan JSON, etc.)
+ *   - the section the user is currently looking at
+ */
+function buildAdvisorContext(
+  profile: BusinessProfile,
+  focusLabel: string,
+  liveContext: DashboardLiveContext | null,
+): Record<string, unknown> {
+  return {
+    currentSection: focusLabel,
+    profile,
+    cachedWidgetOutputs: getAllWidgetCacheEntries(),
+    ...(liveContext ? { liveDashboardState: liveContext } : {}),
+  };
+}
+
+/**
+ * Stream the assistant agent's reply via the /api/bedrock/assistant SSE
+ * endpoint. The wire format mirrors /converse/stream, so chunks arrive as
+ * `data: {"delta":"..."}` lines and the stream terminates with `data: [DONE]`.
+ */
+async function streamAssistant(
+  body: { message: string; context: Record<string, unknown>; sessionId: string },
   onChunk: (delta: string) => void,
-  signal?: AbortSignal
+  onError: (message: string) => void,
+  signal?: AbortSignal,
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/bedrock/converse/stream`, {
+  const res = await fetch(`${API_BASE}/api/bedrock/assistant`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -67,6 +80,7 @@ async function streamBedrock(
       try {
         const parsed = JSON.parse(data) as { delta?: string; error?: string };
         if (parsed.delta) onChunk(parsed.delta);
+        else if (parsed.error) onError(parsed.error);
       } catch {
         // ignore malformed SSE lines
       }
@@ -80,6 +94,38 @@ export interface AIAssistantPanelProps {
   /** Desktop-only collapse state. When omitted, the panel manages itself uncollapsed. */
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  /**
+   * Live (non-cached) Dashboard state — pricing inputs, in-flight competitor
+   * analysis, smart pricing result, marketing plan JSON, current budget
+   * allocation. Forwarded to the agent so it can answer with awareness of
+   * what the user is currently working on.
+   */
+  liveContext?: DashboardLiveContext | null;
+  /**
+   * Reports the current panel width (px) so the host can adjust main content
+   * padding. Fires on mount and whenever the user resizes.
+   */
+  onWidthChange?: (widthPx: number) => void;
+}
+
+const MIN_PANEL_WIDTH = 320;
+const MAX_PANEL_WIDTH = 700;
+const DEFAULT_PANEL_WIDTH = 384; // 24rem
+
+function loadPanelWidth(): number {
+  try {
+    const stored = localStorage.getItem('smewise:assistant-width');
+    if (stored) {
+      const n = parseInt(stored, 10);
+      if (n >= MIN_PANEL_WIDTH && n <= MAX_PANEL_WIDTH) return n;
+    }
+  } catch { /* ignore */ }
+  return DEFAULT_PANEL_WIDTH;
+}
+
+function savePanelWidth(w: number): void {
+  try { localStorage.setItem('smewise:assistant-width', String(w)); }
+  catch { /* ignore */ }
 }
 
 function getSuggestedPrompts(focus: string): string[] {
@@ -143,6 +189,8 @@ export default function AIAssistantPanel({
   currentSection = 'Overview',
   isCollapsed = false,
   onToggleCollapse,
+  liveContext = null,
+  onWidthChange,
 }: AIAssistantPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(() => [buildWelcomeMessage(profile)]);
@@ -150,6 +198,55 @@ export default function AIAssistantPanel({
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // One Bedrock agent session per chat lifetime so the agent can keep memory
+  // of prior turns without us repeating it ourselves.
+  const sessionIdRef = useRef<string>(generateId());
+
+  // ── Resizable width (desktop only) ──
+  const [panelWidth, setPanelWidth] = useState<number>(loadPanelWidth);
+  const isDraggingRef = useRef(false);
+
+  // Report width to host on mount and whenever it changes.
+  useEffect(() => {
+    if (!isCollapsed) onWidthChange?.(panelWidth);
+  }, [panelWidth, isCollapsed, onWidthChange]);
+
+  // Drag-to-resize handler (left edge of the panel).
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingRef.current = true;
+    const startX = e.clientX;
+    const startWidth = panelWidth;
+
+    const onMove = (ev: MouseEvent) => {
+      if (!isDraggingRef.current) return;
+      // Dragging left → wider panel (panel is right-anchored).
+      const delta = startX - ev.clientX;
+      const next = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, startWidth + delta));
+      setPanelWidth(next);
+    };
+
+    const onUp = () => {
+      isDraggingRef.current = false;
+      savePanelWidth(panelWidth);
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }, [panelWidth]);
+
+  // Persist width on change (debounced via the mouseup handler above, but
+  // also save when the component unmounts mid-drag).
+  useEffect(() => {
+    return () => { savePanelWidth(panelWidth); };
+  }, [panelWidth]);
 
   const focusLabel = currentSection?.trim() || 'Overview';
   const suggestedPrompts = getSuggestedPrompts(focusLabel);
@@ -187,19 +284,14 @@ export default function AIAssistantPanel({
       const controller = new AbortController();
       abortRef.current = controller;
 
-      const contextualHint =
-        focusLabel && focusLabel !== 'Overview'
-          ? ` [Screen context: the user is focused on "${focusLabel}".]`
-          : '';
-
       try {
         let accumulated = '';
 
-        await streamBedrock(
+        await streamAssistant(
           {
-            systemPrompt: buildSystemPrompt(profile, focusLabel),
-            userMessage: trimmed + contextualHint,
-            temperature: 0.5,
+            message: trimmed,
+            context: buildAdvisorContext(profile, focusLabel, liveContext),
+            sessionId: sessionIdRef.current,
           },
           (delta) => {
             accumulated += delta;
@@ -208,12 +300,24 @@ export default function AIAssistantPanel({
               prev.map((m) => (m.id === assistantId ? { ...m, content: display } : m))
             );
           },
-          controller.signal
+          (errorMessage) => {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId ? { ...m, content: `__ERROR__: ${errorMessage}` } : m,
+              ),
+            );
+          },
+          controller.signal,
         );
 
         const finalContent = trimToWordLimit(accumulated, MAX_WORDS);
+        // Don't overwrite an error message we may have set above.
         setMessages((prev) =>
-          prev.map((m) => (m.id === assistantId ? { ...m, content: finalContent } : m))
+          prev.map((m) => {
+            if (m.id !== assistantId) return m;
+            if (m.content.startsWith('__ERROR__:')) return m;
+            return { ...m, content: finalContent };
+          }),
         );
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;
@@ -227,7 +331,7 @@ export default function AIAssistantPanel({
         setIsTyping(false);
       }
     },
-    [profile, isTyping, focusLabel]
+    [profile, isTyping, focusLabel, liveContext]
   );
 
   const handleSuggestedPrompt = (prompt: string) => {
@@ -309,10 +413,22 @@ export default function AIAssistantPanel({
       {!isCollapsed && (
         <div
           id="ai-assistant-panel"
-          className="hidden lg:flex fixed top-20 right-5 bottom-6 w-[min(100%,22rem)] xl:w-96 flex-col z-40 rounded-2xl border bg-white border-neutral-200 shadow-[0_24px_48px_rgba(15,23,42,0.08)] dark:bg-neutral-900 dark:border-white/[0.10] dark:shadow-[0_24px_48px_rgba(0,0,0,0.6)]"
+          className="hidden lg:flex fixed top-20 right-5 bottom-6 flex-col z-40 rounded-2xl border bg-white border-neutral-200 shadow-[0_24px_48px_rgba(15,23,42,0.08)] dark:bg-neutral-900 dark:border-white/[0.10] dark:shadow-[0_24px_48px_rgba(0,0,0,0.6)]"
+          style={{ width: `${panelWidth}px` }}
           role="complementary"
           aria-label="Business advisor"
         >
+          {/* Drag handle — left edge */}
+          <div
+            onMouseDown={handleResizeStart}
+            className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize z-50 group"
+            aria-label="Resize advisor panel"
+            role="separator"
+            aria-orientation="vertical"
+          >
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 h-10 w-1 rounded-full bg-neutral-300 opacity-0 group-hover:opacity-100 transition-opacity dark:bg-neutral-600" />
+          </div>
+
           <AssistantContent
             profile={profile}
             focusLabel={focusLabel}
