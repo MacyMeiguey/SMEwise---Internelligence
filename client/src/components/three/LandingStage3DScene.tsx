@@ -15,6 +15,7 @@ import { useMemo, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Float, RoundedBox, Sparkles } from '@react-three/drei';
 import { Group, Mesh, PointLight, MathUtils, Vector3, PerspectiveCamera, type ColorRepresentation } from 'three';
+import { onGlCreatedAllowRecovery } from './glContextHandlers';
 
 /* ── Constants ─────────────────────────────────────────────────────────────── */
 const LAVENDER      = '#c4b5fd';
@@ -65,7 +66,7 @@ function useFloater(
 ) {
   useFrame((state) => {
     if (!ref.current) return;
-    const t = motion ? state.clock.getElapsedTime() : 0;
+    const t = motion ? state.clock.elapsedTime : 0;
     const r = scrollRef.current;
     const lin = scrollLinear(r);
 
@@ -407,7 +408,7 @@ function ScrollCamera({
 }) {
   useFrame((state) => {
     if (!motion) return;
-    const clock = state.clock.getElapsedTime();
+    const elapsed = state.clock.elapsedTime;
     const raw = scrollRef.current;
     const scroll = scrollLinear(raw);
 
@@ -415,8 +416,8 @@ function ScrollCamera({
     const azimuth = scroll * Math.PI * 1.08;
     const radius  = 8.55 - scroll * 3.85;
 
-    const driftX  = Math.sin(clock * 0.07) * 0.06;
-    const driftY  = Math.cos(clock * 0.055) * 0.05;
+    const driftX  = Math.sin(elapsed * 0.07) * 0.06;
+    const driftY  = Math.cos(elapsed * 0.055) * 0.05;
 
     const targetX = Math.sin(azimuth) * radius + driftX;
     const targetY = -scroll * 2.35 + driftY;
@@ -470,8 +471,15 @@ export default function LandingStage3DScene({ scrollRef, motion = true }: Landin
   return (
     <Canvas
       camera={{ position: [0, 0, 7.2], fov: 44 }}
-      dpr={[1, 1.6]}
-      gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+      dpr={[1, 1.35]}
+      gl={{
+        antialias: true,
+        alpha: true,
+        /* "default" is often more stable on hybrid GPUs than forcing discrete */
+        powerPreference: 'default',
+        stencil: false,
+      }}
+      onCreated={onGlCreatedAllowRecovery}
       style={{ width: '100%', height: '100%' }}
       frameloop={motion ? 'always' : 'demand'}
     >
@@ -510,7 +518,7 @@ export default function LandingStage3DScene({ scrollRef, motion = true }: Landin
       {motion && (
         <>
           <Sparkles
-            count={100}
+            count={70}
             scale={[18, 10, 8]}
             size={2.35}
             color={LAVENDER}
@@ -518,7 +526,7 @@ export default function LandingStage3DScene({ scrollRef, motion = true }: Landin
             opacity={0.62}
           />
           <Sparkles
-            count={40}
+            count={28}
             scale={[14, 6, 6]}
             position={[0, -4, 0]}
             size={1.85}

@@ -15,6 +15,7 @@
 import { useEffect, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Group, Mesh, MathUtils } from 'three';
+import { onGlCreatedAllowRecovery } from './glContextHandlers';
 
 const SKIN = '#fcd9b8';     // warm tan — reads as person, not robot
 const SKIN_SHADE = '#f0bfa6';
@@ -42,7 +43,7 @@ function AvatarFigure({ speaking, nodSignal }: { speaking: boolean; nodSignal: n
   }, [nodSignal]);
 
   useFrame((state, dt) => {
-    const t = state.clock.getElapsedTime();
+    const t = state.clock.elapsedTime;
 
     // Root: gentle bob
     if (rootRef.current) {
@@ -250,8 +251,9 @@ export default function ChatAvatar3DScene({ speaking, nodSignal = 0 }: ChatAvata
   return (
     <Canvas
       camera={{ position: [0, 0.05, 3.2], fov: 35 }}
-      dpr={[1, 1.5]}
-      gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+      dpr={[1, 1.35]}
+      gl={{ antialias: true, alpha: true, powerPreference: 'default', stencil: false }}
+      onCreated={onGlCreatedAllowRecovery}
       style={{ width: '100%', height: '100%' }}
     >
       <ambientLight intensity={0.7} />

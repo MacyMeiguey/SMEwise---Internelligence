@@ -88,12 +88,34 @@ export interface MarketingForecast {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmt(n: number): string {
-  return n.toLocaleString('en-MY');
+function toNum(n: unknown, fallback = 0): number {
+  if (n == null || n === '') return fallback;
+  const x = Number(n);
+  return Number.isFinite(x) ? x : fallback;
 }
 
-function fmtRM(n: number): string {
+/** Agent JSON may omit fields — never call `.toLocaleString` on undefined. */
+function fmt(n: unknown): string {
+  return toNum(n).toLocaleString('en-MY');
+}
+
+function fmtRM(n: unknown): string {
   return `RM ${fmt(n)}`;
+}
+
+function normalizeExecutiveSummary(
+  raw: Partial<ExecutiveSummary> | null | undefined,
+): ExecutiveSummary {
+  const r = raw ?? {};
+  return {
+    projectedTotalGrowth: toNum(r.projectedTotalGrowth),
+    averageMonthlySuccessRate: toNum(r.averageMonthlySuccessRate),
+    estimatedCAC: toNum(r.estimatedCAC),
+    estimatedROI: toNum(r.estimatedROI),
+    forecastConfidence: toNum(r.forecastConfidence),
+    projectedTotalRevenue: toNum(r.projectedTotalRevenue),
+    projectedTotalNewClients: toNum(r.projectedTotalNewClients),
+  };
 }
 
 const PHASE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#f43f5e'];
@@ -129,15 +151,16 @@ function StatCard({ label, value, sub, color }: { label: string; value: string; 
 }
 
 function ConfidenceBar({ value }: { value: number }) {
-  const color = value >= 70 ? '#10b981' : value >= 40 ? '#f59e0b' : '#f43f5e';
+  const v = Math.min(100, Math.max(0, toNum(value)));
+  const color = v >= 70 ? '#10b981' : v >= 40 ? '#f59e0b' : '#f43f5e';
   return (
     <div className="rounded-xl border border-neutral-200 dark:border-white/[0.09] bg-white dark:bg-[#101018] p-3 sm:p-4">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">Forecast Confidence</p>
       <div className="flex items-center gap-3">
         <div className="flex-1 h-2 rounded-full bg-neutral-100 dark:bg-white/[0.06] overflow-hidden">
-          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${value}%`, background: color }} />
+          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${v}%`, background: color }} />
         </div>
-        <span className="text-sm font-bold" style={{ color }}>{value}%</span>
+        <span className="text-sm font-bold" style={{ color }}>{v}%</span>
       </div>
     </div>
   );
@@ -153,22 +176,23 @@ function SectionHeading({ children }: { children: string }) {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function MarketingForecastView({ forecast }: { forecast: MarketingForecast }) {
-  const { executiveSummary: exec, timeSeriesData: ts, channelBreakdown, funnelMetrics, phaseProjections, benchmarking } = forecast;
+  const exec = normalizeExecutiveSummary(forecast.executiveSummary);
+  const { timeSeriesData: ts, channelBreakdown, funnelMetrics, phaseProjections, benchmarking } = forecast;
 
-  // Build time-series data array for Recharts
-  const timeData = ts.months.map((m, i) => ({
+  // Agent JSON may omit parallel arrays or whole timeSeries blocks — never index undefined.
+  const months = ts?.months ?? [];
+  const timeData = months.map((m, i) => ({
     month: `M${m}`,
-    newClients: ts.projectedNewClients[i] ?? 0,
-    cumulativeClients: ts.cumulativeClients[i] ?? 0,
-    growthRate: ts.growthRatePercentage[i] ?? 0,
-    reach: ts.marketingReachThousands[i] ?? 0,
-    budgetSpend: ts.monthlyBudgetSpend[i] ?? 0,
-    cumulativeBudget: ts.cumulativeBudgetSpend[i] ?? 0,
-    revenue: ts.projectedMonthlyRevenue[i] ?? 0,
-    cumulativeRevenue: ts.cumulativeRevenue[i] ?? 0,
+    newClients: ts?.projectedNewClients?.[i] ?? 0,
+    cumulativeClients: ts?.cumulativeClients?.[i] ?? 0,
+    growthRate: ts?.growthRatePercentage?.[i] ?? 0,
+    reach: ts?.marketingReachThousands?.[i] ?? 0,
+    budgetSpend: ts?.monthlyBudgetSpend?.[i] ?? 0,
+    cumulativeBudget: ts?.cumulativeBudgetSpend?.[i] ?? 0,
+    revenue: ts?.projectedMonthlyRevenue?.[i] ?? 0,
+    cumulativeRevenue: ts?.cumulativeRevenue?.[i] ?? 0,
   }));
 
   return (
@@ -279,7 +303,7 @@ export default function MarketingForecastView({ forecast }: { forecast: Marketin
                       {ch.channel}
                     </td>
                     <td className="py-2 px-2 text-right text-neutral-600 dark:text-neutral-300">{fmtRM(ch.allocatedBudget)}</td>
-                    <td className="py-2 px-2 text-right text-neutral-600 dark:text-neutral-300">{ch.budgetPercentage}%</td>
+                    <td className="py-2 px-2 text-right text-neutral-600 dark:text-neutral-300">{toNum(ch.budgetPercentage)}%</td>
                     <td className="py-2 px-2 text-right text-neutral-600 dark:text-neutral-300">{fmt(ch.projectedReach)}</td>
                     <td className="py-2 px-2 text-right text-neutral-600 dark:text-neutral-300">{fmt(ch.projectedConversions)}</td>
                     <td className="py-2 px-2 text-right font-semibold text-emerald-600 dark:text-emerald-400">{ch.estimatedROI}x</td>
@@ -308,7 +332,7 @@ export default function MarketingForecastView({ forecast }: { forecast: Marketin
               <p className="text-[10px] text-neutral-500">Leads</p>
             </div>
             <div className="text-center hidden sm:block">
-              <p className="text-xs font-semibold text-primary-600 dark:text-primary-300">→ {funnelMetrics.leadToConversionRate}%</p>
+              <p className="text-xs font-semibold text-primary-600 dark:text-primary-300">→ {toNum(funnelMetrics.leadToConversionRate)}%</p>
             </div>
             <div className="text-center">
               <p className="text-lg font-bold text-emerald-600 dark:text-emerald-300">{fmt(funnelMetrics.totalConversions)}</p>
@@ -348,25 +372,25 @@ export default function MarketingForecastView({ forecast }: { forecast: Marketin
                     </div>
                     <div>
                       <p className="text-[10px] text-neutral-500 mb-0.5">ROI</p>
-                      <p className="font-bold text-emerald-600 dark:text-emerald-400">{phase.estimatedROI}x</p>
+                      <p className="font-bold text-emerald-600 dark:text-emerald-400">{toNum(phase.estimatedROI)}x</p>
                     </div>
                     <div>
                       <p className="text-[10px] text-neutral-500 mb-0.5">Conversion</p>
-                      <p className="font-bold">{phase.expectedConversionRate}%</p>
+                      <p className="font-bold">{toNum(phase.expectedConversionRate)}%</p>
                     </div>
                     <div>
                       <p className="text-[10px] text-neutral-500 mb-0.5">Success Prob.</p>
-                      <p className="font-bold">{phase.successProbability}%</p>
+                      <p className="font-bold">{toNum(phase.successProbability)}%</p>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <div className="rounded-md bg-neutral-50 dark:bg-white/[0.03] border border-neutral-100 dark:border-white/[0.06] px-2.5 py-2">
                       <p className="text-[10px] font-semibold text-neutral-500 mb-0.5">Growth Driver</p>
-                      <p className="text-xs text-neutral-700 dark:text-neutral-300 leading-snug">{phase.primaryGrowthDriver}</p>
+                      <p className="text-xs text-neutral-700 dark:text-neutral-300 leading-snug">{phase.primaryGrowthDriver ?? '—'}</p>
                     </div>
                     <div className="rounded-md bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-800/30 px-2.5 py-2">
                       <p className="text-[10px] font-semibold text-rose-600 dark:text-rose-400 mb-0.5">Risk</p>
-                      <p className="text-xs text-rose-700 dark:text-rose-300 leading-snug">{phase.riskToGrowth}</p>
+                      <p className="text-xs text-rose-700 dark:text-rose-300 leading-snug">{phase.riskToGrowth ?? '—'}</p>
                     </div>
                   </div>
                 </div>
@@ -383,7 +407,7 @@ export default function MarketingForecastView({ forecast }: { forecast: Marketin
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-3">
             <div>
               <p className="text-[10px] text-neutral-500 mb-0.5">Industry Avg Growth</p>
-              <p className="text-sm font-bold">{benchmarking.malaysianIndustryAverageGrowth}%</p>
+              <p className="text-sm font-bold">{toNum(benchmarking.malaysianIndustryAverageGrowth)}%</p>
             </div>
             <div>
               <p className="text-[10px] text-neutral-500 mb-0.5">Your Growth</p>
@@ -399,7 +423,7 @@ export default function MarketingForecastView({ forecast }: { forecast: Marketin
             </div>
             <div>
               <p className="text-[10px] text-neutral-500 mb-0.5">Industry Avg ROI</p>
-              <p className="text-sm font-bold">{benchmarking.industryAverageROI}x</p>
+              <p className="text-sm font-bold">{toNum(benchmarking.industryAverageROI)}x</p>
             </div>
             <div>
               <p className="text-[10px] text-neutral-500 mb-0.5">vs Competitors</p>
