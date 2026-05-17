@@ -331,7 +331,7 @@ interface ToolkitSpec {
 const TOOLKITS: ToolkitSpec[] = [
   { key: 'money',      title: 'Money & Funding',  plain: 'Money',     section: 'Financial Planning', accent: '#fbbf24', Icon: CoinStackIcon, ctaLabel: 'Open money tools' },
   { key: 'operations', title: 'Operations',       plain: 'Ops',       section: 'Operations',         accent: '#34d399', Icon: ShopIcon,      ctaLabel: 'Open ops tools' },
-  { key: 'pricing',    title: 'Pricing Strategy', plain: 'Pricing',   section: 'Pricing Strategy',   accent: '#fb7185', Icon: CalculatorIcon,ctaLabel: 'Open pricing' },
+  { key: 'pricing',    title: 'Market Pricing Intelligence', plain: 'Pricing',   section: 'Pricing Strategy',   accent: '#fb7185', Icon: CalculatorIcon,ctaLabel: 'Open pricing' },
   { key: 'marketing',  title: 'Marketing',        plain: 'Marketing', section: 'Marketing',          accent: '#38bdf8', Icon: MegaphoneIcon, ctaLabel: 'Open marketing' },
   { key: 'reports',    title: 'Owner Reports',    plain: 'Reports',   section: 'Owner Tools',        accent: '#2dd4bf', Icon: BarChartIcon,  ctaLabel: 'Open reports' },
 ];
@@ -530,7 +530,7 @@ export default function InsightsDashboard({
                 : t.key === 'operations'
                   ? 'SSM-aligned checklists, premise, locality, and risk reminders.'
                   : t.key === 'pricing'
-                    ? 'Smart pricing, listing wording, and product visuals.'
+                    ? 'Scan competitors, benchmark prices, and make data-driven pricing decisions.'
                     : t.key === 'marketing'
                       ? 'Audience-first plan, then poster + caption assets.'
                       : 'Export-friendly outlines and dashboards for partners.';

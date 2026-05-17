@@ -63,16 +63,16 @@ function SnapshotPill({
   label, value, isLevel,
 }: { label: string; value: string; isLevel?: boolean }) {
   return (
-    <div className="rounded-xl p-3 flex flex-col gap-1.5 bg-neutral-50 border border-neutral-200 dark:bg-[#221f35] dark:border-[#3d3660]">
-      <span className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-[#6b6890]">
+    <div className="rounded-xl p-3 flex flex-col gap-1.5 min-w-0 bg-neutral-50 border border-neutral-200 dark:bg-[#221f35] dark:border-[#3d3660]">
+      <span className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-[#6b6890] whitespace-normal leading-snug">
         {label}
       </span>
       {isLevel ? (
-        <span className={`self-start rounded-full border px-2.5 py-0.5 text-xs font-semibold ${competitionBadgeClass(value)}`}>
+        <span className={`self-start rounded-full border px-2 py-0.5 text-xs font-semibold break-words ${competitionBadgeClass(value)}`}>
           {value}
         </span>
       ) : (
-        <span className="text-sm font-bold text-neutral-900 dark:text-white">{value}</span>
+        <span className="text-sm font-bold text-neutral-900 dark:text-white break-words leading-snug">{value}</span>
       )}
     </div>
   )
@@ -83,21 +83,21 @@ function CompetitorCard({
 }: { entry: NonNullable<CompetitorAnalysisResult['competitorOverview']>[0]; index: number }) {
   const pillClass = PRICE_PILL_CLASSES[index % PRICE_PILL_CLASSES.length]
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-4 hover:-translate-y-0.5 transition-transform duration-200 dark:border-[#3d3660] dark:bg-[#221f35]">
-      <div className="flex items-start justify-between gap-3 mb-2">
-        <span className="font-semibold text-neutral-900 dark:text-white text-sm leading-snug">
+    <div className="rounded-xl border border-neutral-200 bg-white p-4 min-w-0 overflow-hidden hover:-translate-y-0.5 transition-transform duration-200 dark:border-[#3d3660] dark:bg-[#221f35]">
+      <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
+        <span className="font-semibold text-neutral-900 dark:text-white text-sm leading-snug min-w-0 break-words">
           {entry.competitorType}
         </span>
         {entry.priceRange && (
-          <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${pillClass}`}>
+          <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold whitespace-normal break-words text-center max-w-[40%] ${pillClass}`}>
             {entry.priceRange}
           </span>
         )}
       </div>
       {entry.exampleNames && (
-        <p className="text-xs text-neutral-400 dark:text-[#6b6890] mb-2">e.g. {entry.exampleNames}</p>
+        <p className="text-xs text-neutral-400 dark:text-[#6b6890] mb-2 break-words">{entry.exampleNames}</p>
       )}
-      <p className="text-xs leading-relaxed">
+      <p className="text-xs leading-relaxed break-words">
         {entry.strength && (
           <span className="text-emerald-600 dark:text-emerald-400">
             <span className="font-bold">+</span> {entry.strength}
@@ -126,7 +126,7 @@ function AnalysisResult({ data }: { data: CompetitorAnalysisResult }) {
 
       {/* ── Market snapshot ── */}
       {snap && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 min-w-0">
           <SnapshotPill label="Market Range"   value={snap.typicalPriceRange} />
           <SnapshotPill label="Sweet Spot"     value={snap.expectedCustomerPrice} />
           <SnapshotPill label="Competition"    value={snap.competitionLevel} isLevel />

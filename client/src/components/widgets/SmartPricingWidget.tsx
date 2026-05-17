@@ -31,7 +31,7 @@ interface SmartPricingData {
   targetCustomer?: string
   pricingOverview?: {
     averageMarkup: string
-    blendedMargin: string
+    averageMargin: string
     projectedMonthlyRevenue: string
   }
   productPricing?: ProductPricingEntry[]
@@ -56,19 +56,19 @@ function SmartPricingResult({
 
       {/* ── Stat boxes ── */}
       {overview && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 min-w-0">
           {[
-            { label: 'Blended margin',   value: overview.blendedMargin },
-            { label: 'Avg markup',       value: overview.averageMarkup },
-            { label: 'Monthly revenue',  value: overview.projectedMonthlyRevenue },
+            { label: 'Avg Markup',       value: overview.averageMarkup },
+            { label: 'Avg Margin',       value: overview.averageMargin },
+            { label: 'Monthly Revenue',  value: overview.projectedMonthlyRevenue },
           ].map((s) => (
             <div key={s.label}
-              className="rounded-xl border border-neutral-200 bg-white p-3.5
+              className="rounded-xl border border-neutral-200 bg-white p-2.5 min-w-0
                          dark:border-white/[0.08] dark:bg-[#1a1728]">
-              <p className="text-[11px] text-neutral-400 dark:text-[#6b6890] mb-1.5 uppercase tracking-widest font-medium">
+              <p className="text-[10px] text-neutral-400 dark:text-[#6b6890] mb-1 uppercase tracking-widest font-medium whitespace-normal leading-snug">
                 {s.label}
               </p>
-              <p className="text-xl font-semibold text-neutral-900 dark:text-white leading-tight">
+              <p className="text-base font-semibold text-neutral-900 dark:text-white leading-tight break-words">
                 {s.value}
               </p>
             </div>
@@ -85,14 +85,14 @@ function SmartPricingResult({
           <div className="flex flex-col gap-3">
             {products.map((p, i) => (
               <div key={i}
-                className="rounded-xl border border-neutral-200 bg-white p-4
+                className="rounded-xl border border-neutral-200 bg-white p-3 min-w-0 overflow-hidden
                            dark:border-white/[0.08] dark:bg-[#1a1728]">
                 {/* Header */}
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <span className="font-semibold text-neutral-900 dark:text-white text-sm leading-snug">
+                <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
+                  <span className="font-semibold text-neutral-900 dark:text-white text-sm leading-snug min-w-0 break-words">
                     {p.productName}
                   </span>
-                  <span className="shrink-0 rounded-full px-3 py-0.5 text-xs font-semibold
+                  <span className="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold whitespace-normal break-words text-center max-w-[45%]
                                    bg-emerald-100 text-emerald-700
                                    dark:bg-emerald-500/20 dark:text-emerald-300">
                     {p.marketPosition}
@@ -100,13 +100,13 @@ function SmartPricingResult({
                 </div>
 
                 {/* Price row */}
-                <div className="flex flex-wrap items-center gap-1.5 text-sm mb-2">
+                <div className="flex flex-wrap items-center gap-1 text-xs mb-2">
                   <span className="text-neutral-500 dark:text-[#6b6890]">Cost {p.cost}</span>
-                  <span className="text-neutral-300 dark:text-[#3d3660]">→</span>
+                  <span className="font-black text-lg text-emerald-400 mx-1">→</span>
                   <span className="font-bold text-emerald-600 dark:text-emerald-400">
                     {p.recommendedPrice}
                   </span>
-                  <span className="text-neutral-300 dark:text-[#3d3660]">·</span>
+                  <span className="font-black text-lg text-emerald-400 mx-1">·</span>
                   <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                     {p.marginPercentage} margin
                   </span>
@@ -117,7 +117,7 @@ function SmartPricingResult({
                 </div>
 
                 {/* Pricing method */}
-                <p className="text-xs text-neutral-400 dark:text-[#6b6890]">
+                <p className="text-xs text-neutral-400 dark:text-[#6b6890] break-words">
                   Method: <span className="font-medium text-neutral-600 dark:text-neutral-300">{p.pricingMethod}</span>
                 </p>
               </div>
@@ -195,6 +195,8 @@ interface SmartPricingWidgetProps {
   onGenerateRef?: (fn: () => Promise<void>) => void
   /** Competitor analysis result — passed from CompetitorPricingWidget */
   competitorResult?: CompetitorAnalysisResult | null
+  /** Called with the parsed JSON after successful generation */
+  onPricingComplete?: (result: SmartPricingData) => void
 }
 
 export default function SmartPricingWidget({
@@ -202,6 +204,7 @@ export default function SmartPricingWidget({
   pricingInputs,
   onGenerateRef,
   competitorResult,
+  onPricingComplete,
 }: SmartPricingWidgetProps) {
   const { state, generate } = useWidgetState()
   const [data, setData]               = useState<SmartPricingData | null>(null)
@@ -270,7 +273,9 @@ export default function SmartPricingWidget({
       if (start !== -1 && end !== -1) cleaned = cleaned.slice(start, end + 1)
 
       try {
-        setData(JSON.parse(cleaned) as SmartPricingData)
+        const parsed = JSON.parse(cleaned) as SmartPricingData
+        setData(parsed)
+        onPricingComplete?.(parsed)
       } catch {
         console.warn('[SmartPricing] JSON parse failed — showing raw text')
         setRawFallback(json.content)

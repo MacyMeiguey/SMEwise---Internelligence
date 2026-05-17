@@ -17,6 +17,8 @@ export type SectionHeroArtKey = 'operations' | 'financial' | 'pricing' | 'market
 export interface WorkspaceSectionMeta {
   /** Short line under the title */
   tagline: string;
+  /** Optional display title override — shown in the heading instead of the section key */
+  displayTitle?: string;
   Icon: LucideIcon;
   /** CSS color for hero glow only (stays in brand violet family) */
   glow: string;
@@ -58,16 +60,17 @@ export const WORKSPACE_SECTION_META: Record<string, WorkspaceSectionMeta> = {
     heroArt: 'financial',
   },
   'Pricing Strategy': {
-    tagline: 'Benchmark peers, tune shelf prices, then shape listing copy and a simple product visual.',
+    displayTitle: 'Market Pricing Intelligence',
+    tagline: 'Scan the market, benchmark competitors, and set data-driven prices for your products.',
     Icon: Tags,
     glow: 'rgba(167, 139, 250, 0.28)',
     highlights: [
-      'Optional fields above sharpen every output — worth 60 seconds.',
-      'Competitor pass + smart pricing give you a defendable range, not a guess.',
-      'Poster-style visual keeps your offer legible on a phone screen.',
+      'Real-time competitor price scanning gives you market context.',
+      'Smart pricing engine recommends a defensible price range.',
+      'Cached product results let you compare and act fast.',
     ],
-    runAllLabel: 'Refresh pricing desk',
-    runAllHint: 'Runs competitor scan, smart pricing, then product visual in one sweep.',
+    runAllLabel: 'Run Market Intelligence Scan',
+    runAllHint: 'Scans competitors, calculates smart pricing, caches results.',
     heroArt: 'pricing',
   },
   Marketing: {

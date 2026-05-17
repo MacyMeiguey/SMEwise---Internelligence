@@ -1132,7 +1132,7 @@ router.post('/competitor-pricing', async (req: Request, res: Response) => {
 // ─── POST /api/bedrock/smart-pricing ─────────────────────────────────────────
 //
 // Invokes the smart pricing suggestions Bedrock agent.
-// Agent IDs: MBTQYPGAAU / EZE9HANHTU
+// Agent IDs: MBTQYPGAAU / EKWPIHADSF
 //
 // The smart pricing agent requires competitor analysis JSON as part of its input.
 // Request body:
@@ -1169,7 +1169,7 @@ router.post('/smart-pricing', async (req: Request, res: Response) => {
     }
 
     const SMART_AGENT_ID       = process.env.BEDROCK_SMART_PRICING_AGENT_ID       ?? 'MBTQYPGAAU'
-    const SMART_AGENT_ALIAS_ID = process.env.BEDROCK_SMART_PRICING_AGENT_ALIAS_ID ?? 'JFUKABLUCL'
+    const SMART_AGENT_ALIAS_ID = process.env.BEDROCK_SMART_PRICING_AGENT_ALIAS_ID ?? 'EKWPIHADSF'
 
     const productLines = products && products.length > 0
         ? [

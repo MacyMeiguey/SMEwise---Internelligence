@@ -16,9 +16,9 @@ import LoansFundingWidget from './widgets/LoansFundingWidget';
 import InvestorFundingWidget from './widgets/InvestorFundingWidget';
 
 import PricingOptionalInputsComponent from './PricingOptionalInputs';
-import CompetitorPricingWidget from './widgets/CompetitorPricingWidget';
+import CompetitorPricingWidget, { type CompetitorAnalysisResult } from './widgets/CompetitorPricingWidget';
 import SmartPricingWidget from './widgets/SmartPricingWidget';
-import ProductVisualWidget from './widgets/ProductVisualWidget';
+import PricingHistoryWidget from './widgets/PricingHistoryWidget';
 
 import MarketingStrategyWidget from './widgets/MarketingStrategyWidget';
 import MarketingGuidelinesWidget from './widgets/MarketingGuidelinesWidget';
@@ -70,6 +70,8 @@ export default function Dashboard({
   onFundAllocationSummary,
 }: DashboardProps) {
   const [pricingInputs, setPricingInputs] = useState<PricingOptionalInputs>(DEFAULT_PRICING_INPUTS);
+  const [competitorResult, setCompetitorResult] = useState<CompetitorAnalysisResult | null>(null);
+  const [smartPricingResult, setSmartPricingResult] = useState<Record<string, unknown> | null>(null);
   const [marketingPlanJson, setMarketingPlanJson] = useState<string | null>(null);
   const [budgetAllocation, setBudgetAllocation] = useState<string | undefined>(undefined);
   const marketingPlanJsonRef = useRef<string | null>(null);
@@ -319,28 +321,35 @@ export default function Dashboard({
                 {section === 'Pricing Strategy' && profile && (
                   <div className="flex flex-col gap-4 lg:gap-5">
                     <PricingOptionalInputsComponent value={pricingInputs} onChange={setPricingInputs} />
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
+                    <div
+                      className="grid grid-cols-2 gap-4 lg:gap-5 min-w-0"
+                    >
+                      <div className="min-w-0">
                       <CompetitorPricingWidget
                         profile={profile}
                         pricingInputs={pricingInputs}
                         onGenerateRef={(fn) => {
                           competitorPricingRef.current = fn;
                         }}
+                        onAnalysisComplete={(result) => setCompetitorResult(result)}
                       />
+                      </div>
+                      <div className="min-w-0">
                       <SmartPricingWidget
                         profile={profile}
                         pricingInputs={pricingInputs}
                         onGenerateRef={(fn) => {
                           smartPricingRef.current = fn;
                         }}
+                        competitorResult={competitorResult}
+                        onPricingComplete={(result) => setSmartPricingResult(result as Record<string, unknown>)}
                       />
+                      </div>
                     </div>
-                    <ProductVisualWidget
-                      profile={profile}
+                    <PricingHistoryWidget
                       pricingInputs={pricingInputs}
-                      onGenerateRef={(fn) => {
-                        productVisualRef.current = fn;
-                      }}
+                      competitorResult={competitorResult}
+                      smartPricingResult={smartPricingResult as Parameters<typeof PricingHistoryWidget>[0]['smartPricingResult']}
                     />
                   </div>
                 )}

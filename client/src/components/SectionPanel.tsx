@@ -33,6 +33,7 @@ export default function SectionPanel({
   const id = title.replace(/\s+/g, '-').toLowerCase();
   const meta = getSectionMeta(title);
   const { Icon, tagline, glow, highlights, runAllLabel, runAllHint, heroArt } = meta;
+  const displayTitle = meta.displayTitle ?? title;
 
   // ── Compact variant ──
   // Used when the dashboard auto-generates every widget. We strip the hero band
@@ -58,7 +59,7 @@ export default function SectionPanel({
             <Icon className="h-5 w-5" aria-hidden />
           </div>
           <h2 className="text-lg font-semibold leading-snug tracking-tight text-neutral-900 sm:text-xl dark:text-white">
-            {title}
+            {displayTitle}
           </h2>
         </div>
 
@@ -155,7 +156,7 @@ export default function SectionPanel({
                   </button>
                   <div className="min-w-0">
                     <h2 className="text-lg font-semibold leading-snug tracking-tight text-neutral-900 sm:text-xl dark:text-white">
-                      {title}
+                      {displayTitle}
                     </h2>
                     <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
                       {tagline}

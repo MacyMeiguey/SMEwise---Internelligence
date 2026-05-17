@@ -59,7 +59,7 @@ export default function PricingOptionalInputsComponent({
           className={fieldClass}
         >
           {REVENUE_OPTIONS.map((opt) => (
-            <option key={opt} value={opt}>
+            <option key={opt} value={opt} style={{ color: '#111827', backgroundColor: '#ffffff' }}>
               {opt === '' ? 'Select a range…' : opt}
             </option>
           ))}
