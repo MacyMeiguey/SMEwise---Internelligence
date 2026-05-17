@@ -44,6 +44,40 @@ const MAX_RETRIES = 5
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+
+/**
+ * Returns true if the error is an AWS throttling / rate-limit error.
+ * Checks both the message string and AWS SDK error name/code fields.
+ */
+function isThrottleError(err: unknown): boolean {
+    if (err == null) return false
+    const e = err as Record<string, unknown>
+
+    // Check AWS SDK error name / code
+    const name = String(e.name ?? '').toLowerCase()
+    const code = String(e.code ?? '').toLowerCase()
+    if (
+        name.includes('throttling') ||
+        name.includes('toomanyrequests') ||
+        code.includes('throttling') ||
+        code.includes('toomanyrequests')
+    ) return true
+
+    // Check message string
+    if (err instanceof Error) {
+        const msg = err.message.toLowerCase()
+        return (
+            msg.includes('too many requests') ||
+            msg.includes('request rate is too high') ||
+            msg.includes('throttlingexception') ||
+            msg.includes('toomanyrequestsexception') ||
+            msg.includes('reduce the frequency')
+        )
+    }
+    return false
+}
+
 /**
  * Strip markdown code fences and extract the JSON object from a raw string.
  * Returns the cleaned string (may or may not be valid JSON).
@@ -71,6 +105,8 @@ function extractJsonString(raw: string): string {
 
 /**
  * Invoke a Bedrock agent and return the raw response string.
+ * Automatically retries up to 3 times on throttle errors with exponential backoff.
+ * Handles throttle errors that occur both during client.send() AND during stream iteration.
  */
 async function invokeAgent(
     inputText: string,
@@ -78,31 +114,55 @@ async function invokeAgent(
     agentId: string,
     agentAliasId: string,
 ): Promise<string> {
-    const command = new InvokeAgentCommand({
-        agentId,
-        agentAliasId,
-        sessionId,
-        inputText,
-    })
+    const THROTTLE_RETRIES = 3
+    for (let t = 1; t <= THROTTLE_RETRIES; t++) {
+        try {
+            const command = new InvokeAgentCommand({
+                agentId,
+                agentAliasId,
+                sessionId,
+                inputText,
+            })
 
-    const agentResponse = await client.send(command)
+            const agentResponse = await client.send(command)
 
-    let raw = ''
-    for await (const chunk of agentResponse.completion ?? []) {
-        if (chunk.chunk?.bytes) {
-            raw += new TextDecoder().decode(chunk.chunk.bytes)
-        }
-        // Log any trace or error events from the agent stream
-        if (chunk.trace) {
-            console.log(`[Bedrock agent trace] agentId=${agentId}`, JSON.stringify(chunk.trace).slice(0, 300))
+            let raw = ''
+            try {
+                for await (const chunk of agentResponse.completion ?? []) {
+                    if (chunk.chunk?.bytes) {
+                        raw += new TextDecoder().decode(chunk.chunk.bytes)
+                    }
+                    if (chunk.trace) {
+                        console.log(`[Bedrock agent trace] agentId=${agentId}`, JSON.stringify(chunk.trace).slice(0, 300))
+                    }
+                }
+            } catch (streamErr) {
+                // Throttle errors often surface here during stream iteration
+                if (isThrottleError(streamErr) && t < THROTTLE_RETRIES) {
+                    const delay = 8000 * t  // 8s, 16s
+                    console.warn(`[Bedrock] Throttled during stream on attempt ${t}/${THROTTLE_RETRIES}. Waiting ${delay}ms...`)
+                    await sleep(delay)
+                    continue
+                }
+                throw streamErr
+            }
+
+            if (raw.length === 0) {
+                console.warn(`[Bedrock] agentId=${agentId} aliasId=${agentAliasId} returned EMPTY response.`)
+            }
+
+            return raw
+        } catch (err) {
+            if (isThrottleError(err) && t < THROTTLE_RETRIES) {
+                const delay = 8000 * t  // 8s, 16s
+                console.warn(`[Bedrock] Throttled on attempt ${t}/${THROTTLE_RETRIES}. Waiting ${delay}ms before retry...`)
+                await sleep(delay)
+                continue
+            }
+            throw err
         }
     }
-
-    if (raw.length === 0) {
-        console.warn(`[Bedrock] agentId=${agentId} aliasId=${agentAliasId} returned EMPTY response. Check: 1) alias is PREPARED in AWS console, 2) agent has correct region, 3) action groups are enabled.`)
-    }
-
-    return raw
+    throw new Error('invokeAgent: all throttle retries exhausted')
 }
 
 // ─── POST /api/bedrock/marketing ─────────────────────────────────────────────
@@ -726,7 +786,7 @@ router.post('/revenue-projection', async (req: Request, res: Response) => {
     }
 
     const REVENUE_AGENT_ID = process.env.BEDROCK_REVENUE_AGENT_ID ?? 'B2WJZPIFMU'
-    const REVENUE_AGENT_ALIAS_ID = process.env.BEDROCK_REVENUE_AGENT_ALIAS_ID ?? 'ZXGWJBOBUT'
+    const REVENUE_AGENT_ALIAS_ID = process.env.BEDROCK_REVENUE_AGENT_ALIAS_ID ?? 'O3XJLAUA27'
 
     const inputText = [
         `Company: ${companyName}`,
@@ -752,6 +812,11 @@ router.post('/revenue-projection', async (req: Request, res: Response) => {
             console.log(
                 `[revenue-projection] Attempt ${attempt}/${MAX_RETRIES} — response length: ${raw.length} chars`,
             )
+            if (raw.length < 5000) {
+                console.log(`[revenue-projection] Raw response:\n${raw}`)
+            } else {
+                console.log(`[revenue-projection] Raw preview (first 500):\n${raw.slice(0, 500)}`)
+            }
 
             const jsonString = extractJsonString(raw)
             JSON.parse(jsonString) // validate
@@ -763,8 +828,9 @@ router.post('/revenue-projection', async (req: Request, res: Response) => {
             if (err instanceof SyntaxError) {
                 console.warn(
                     `[revenue-projection] Attempt ${attempt}/${MAX_RETRIES} did NOT return valid JSON. ` +
-                    (attempt < MAX_RETRIES ? 'Retrying...' : 'No retries left.'),
+                    (attempt < MAX_RETRIES ? 'Retrying in 3s...' : 'No retries left.'),
                 )
+                if (attempt < MAX_RETRIES) await sleep(3000)
                 continue
             }
 

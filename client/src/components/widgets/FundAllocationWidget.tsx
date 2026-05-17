@@ -98,19 +98,6 @@ function AllocationTable({ plan }: { plan: FundAllocationPlan }) {
   return (
     <div className="space-y-4">
       {/* Summary header */}
-      <div className="flex flex-wrap gap-3 text-sm">
-        <span className="rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-neutral-300">
-          <span className="font-semibold text-white">{plan.company}</span>
-          <span className="mx-1.5 text-neutral-500">·</span>
-          {plan.industry}
-        </span>
-        <span className="rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-neutral-300">
-          {plan.location}
-        </span>
-        <span className="rounded-lg border border-primary-500/30 bg-primary-500/10 px-3 py-1.5 font-semibold text-primary-200">
-          {plan.currency} {fmt(plan.currentFunds)} total
-        </span>
-      </div>
 
       {/* Desktop table */}
       <div className="hidden sm:block overflow-x-auto rounded-xl border border-white/[0.08]">

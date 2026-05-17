@@ -146,7 +146,7 @@ export default function WidgetCard({
         {status === 'success' && (
           <div className="flex flex-col gap-3">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Result</p>
-            <div className="rounded-xl border border-neutral-200 bg-neutral-50 max-h-[min(70vh,28rem)] overflow-y-auto overscroll-contain dark:border-white/[0.08] dark:bg-black/40">
+            <div className="rounded-xl border border-neutral-200 bg-neutral-50 dark:border-white/[0.08] dark:bg-black/40">
               <div className="p-4 text-sm text-neutral-800 leading-relaxed dark:text-neutral-200 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mt-1 [&_p+p]:mt-2 [&_strong]:text-neutral-950 dark:[&_strong]:text-white [&_a]:text-primary-600 dark:[&_a]:text-primary-300 [&_a]:underline">
                 {children}
               </div>

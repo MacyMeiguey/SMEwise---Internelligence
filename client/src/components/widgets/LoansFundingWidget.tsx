@@ -121,47 +121,63 @@ function useFadeIn() {
 function SectionHeading({
   icon,
   label,
+  description,
 }: {
   icon: React.ReactNode;
   label: string;
+  description?: string;
 }) {
   return (
-    <div className="flex items-center gap-2 mb-3">
-      <span className="text-primary-300">{icon}</span>
-      <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-400">
-        {label}
-      </h3>
+    <div className="mb-3">
+      <div className="flex items-center gap-2">
+        <span className="text-primary-300">{icon}</span>
+        <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-400">
+          {label}
+        </h3>
+      </div>
+      {description && (
+        <p className="text-xs text-neutral-500 mt-1 ml-6 leading-relaxed">{description}</p>
+      )}
     </div>
   );
 }
 
-function LinkCard({
+function SchemeCard({
   name,
   url,
   delay,
+  badge,
 }: {
   name: string;
   url: string;
   delay: number;
+  badge?: string;
 }) {
   const ref = useFadeIn();
   return (
     <div
       ref={ref}
-      className="loans-fade-up rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] transition-colors p-3 flex items-center justify-between gap-3 group"
+      className="loans-fade-up rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] transition-colors p-3.5 flex flex-col gap-2.5"
       style={{ animationDelay: `${delay}ms` }}
     >
-      <span className="text-sm font-medium text-neutral-200 leading-snug">{name}</span>
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-sm font-semibold text-neutral-200 leading-snug">{name}</span>
+        {badge && (
+          <span className="shrink-0 rounded-full border border-primary-500/30 bg-primary-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary-300">
+            {badge}
+          </span>
+        )}
+      </div>
       <a
         href={url}
         target="_blank"
         rel="noopener noreferrer"
         aria-label={`Visit ${name}`}
-        className="shrink-0 flex items-center gap-1 text-xs font-semibold text-primary-300 hover:text-primary-200 transition-colors"
+        className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary-400 hover:text-primary-200 transition-colors w-fit"
         onClick={(e) => e.stopPropagation()}
       >
-        <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-        <span className="hidden sm:inline">Visit</span>
+        <ExternalLink className="h-3 w-3" aria-hidden />
+        Apply / Learn more
       </a>
     </div>
   );
@@ -174,18 +190,75 @@ function LoansPlanView({ plan }: { plan: LoansFundingPlan }) {
   const reqRef      = useFadeIn();
   const timelineRef = useFadeIn();
 
+  // Find the URL for the best fit scheme by matching against known schemes/banks
+  const bestFitUrl = [
+    ...plan.governmentSchemes.map(s => ({ name: s.name, url: s.url })),
+    ...plan.commercialBanks.map(b => ({ name: b.bank, url: b.url })),
+  ].find(item =>
+    plan.bestFit.scheme.toLowerCase().includes(item.name.toLowerCase()) ||
+    item.name.toLowerCase().includes(plan.bestFit.scheme.toLowerCase())
+  )?.url;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
+
+      {/* ── Best Fit — shown first as the primary recommendation ── */}
+      <section>
+        <SectionHeading
+          icon={<Star className="h-4 w-4" />}
+          label="Best Fit Recommendation"
+          description="The most suitable funding option based on your business profile."
+        />
+        <div
+          ref={bestFitRef}
+          className="loans-fade-up rounded-xl border border-amber-400/30 bg-amber-400/[0.05] p-4 space-y-3"
+          style={{ animationDelay: "60ms" }}
+        >
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-400/20 border border-amber-400/30">
+              <Star className="h-4 w-4 text-amber-300" aria-hidden />
+            </span>
+            <div className="min-w-0 space-y-1">
+              <div className="flex items-start justify-between gap-2 flex-wrap">
+                <p className="text-sm font-bold text-amber-200">{plan.bestFit.scheme}</p>
+                {bestFitUrl && (
+                  <a
+                    href={bestFitUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-300 hover:text-amber-100 transition-colors shrink-0"
+                    aria-label={`Apply for ${plan.bestFit.scheme}`}
+                  >
+                    <ExternalLink className="h-3 w-3" aria-hidden />
+                    Apply / Learn more
+                  </a>
+                )}
+              </div>
+              <p className="text-sm text-neutral-300 leading-relaxed">{plan.bestFit.reason}</p>
+            </div>
+          </div>
+          <div className="rounded-lg border border-white/[0.07] bg-white/[0.04] px-3 py-2.5 flex items-start gap-2.5">
+            <span className="shrink-0 rounded-full border border-neutral-600 bg-neutral-800 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400 mt-0.5">
+              Alt
+            </span>
+            <div>
+              <p className="text-[10px] text-neutral-500 uppercase tracking-wider mb-0.5">Alternative Option</p>
+              <p className="text-sm text-neutral-300">{plan.bestFit.alternative}</p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* ── Government Schemes ── */}
       <section>
         <SectionHeading
           icon={<Landmark className="h-4 w-4" />}
           label="Government Schemes"
+          description="Subsidised loans and grants from Malaysian government agencies — typically lower interest rates and more flexible eligibility."
         />
-        <div className="grid sm:grid-cols-2 gap-2">
+        <div className="grid sm:grid-cols-2 gap-2.5">
           {plan.governmentSchemes.map((s, i) => (
-            <LinkCard key={s.name} name={s.name} url={s.url} delay={i * 60} />
+            <SchemeCard key={s.name} name={s.name} url={s.url} delay={i * 60} badge="Gov" />
           ))}
         </div>
       </section>
@@ -195,44 +268,18 @@ function LoansPlanView({ plan }: { plan: LoansFundingPlan }) {
         <SectionHeading
           icon={<Building2 className="h-4 w-4" />}
           label="Commercial Banks"
+          description="SME loan products from licensed Malaysian banks — faster processing but typically require stronger financials."
         />
-        <div className="grid sm:grid-cols-2 gap-2">
+        <div className="grid sm:grid-cols-2 gap-2.5">
           {plan.commercialBanks.map((b, i) => (
-            <LinkCard
+            <SchemeCard
               key={b.bank}
               name={b.bank}
               url={b.url}
               delay={i * 60 + 120}
+              badge="Bank"
             />
           ))}
-        </div>
-      </section>
-
-      {/* ── Best Fit ── */}
-      <section>
-        <SectionHeading icon={<Star className="h-4 w-4" />} label="Best Fit" />
-        <div
-          ref={bestFitRef}
-          className="loans-fade-up rounded-xl border border-primary-500/30 bg-primary-500/[0.07] p-4 space-y-3"
-          style={{ animationDelay: "240ms" }}
-        >
-          <div className="flex items-start gap-3">
-            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary-500/20 border border-primary-400/30">
-              <Star className="h-3.5 w-3.5 text-primary-300" aria-hidden />
-            </span>
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-primary-200">{plan.bestFit.scheme}</p>
-              <p className="text-sm text-neutral-300 mt-1 leading-relaxed">
-                {plan.bestFit.reason}
-              </p>
-            </div>
-          </div>
-          <div className="rounded-lg bg-white/[0.04] border border-white/[0.06] px-3 py-2 flex items-start gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 shrink-0 mt-0.5">
-              Alt
-            </span>
-            <p className="text-sm text-neutral-400">{plan.bestFit.alternative}</p>
-          </div>
         </div>
       </section>
 
@@ -240,21 +287,19 @@ function LoansPlanView({ plan }: { plan: LoansFundingPlan }) {
       <section>
         <SectionHeading
           icon={<ClipboardList className="h-4 w-4" />}
-          label="Requirements"
+          label="Required Documents"
+          description="Prepare these documents before applying to any scheme or bank."
         />
         <div
           ref={reqRef}
           className="loans-fade-up rounded-xl border border-white/[0.08] bg-white/[0.03] p-4"
           style={{ animationDelay: "300ms" }}
         >
-          <ul className="space-y-2">
+          <ul className="space-y-2.5">
             {plan.requirements.map((req, i) => (
-              <li key={i} className="flex items-start gap-2.5 text-sm text-neutral-300">
-                <CheckCircle2
-                  className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5"
-                  aria-hidden
-                />
-                {req}
+              <li key={i} className="flex items-start gap-2.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" aria-hidden />
+                <span className="text-sm text-neutral-300 leading-relaxed">{req}</span>
               </li>
             ))}
           </ul>
@@ -263,13 +308,17 @@ function LoansPlanView({ plan }: { plan: LoansFundingPlan }) {
 
       {/* ── Timeline ── */}
       <section>
-        <SectionHeading icon={<Clock className="h-4 w-4" />} label="Timeline" />
+        <SectionHeading
+          icon={<Clock className="h-4 w-4" />}
+          label="Approval Timeline"
+          description="Estimated time from application to fund disbursement."
+        />
         <div
           ref={timelineRef}
-          className="loans-fade-up rounded-xl border border-amber-500/20 bg-amber-500/[0.05] px-4 py-3 flex items-start gap-3"
+          className="loans-fade-up rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] px-4 py-3.5 flex items-start gap-3"
           style={{ animationDelay: "360ms" }}
         >
-          <Clock className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" aria-hidden />
+          <Clock className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" aria-hidden />
           <p className="text-sm text-neutral-300 leading-relaxed">{plan.timeline}</p>
         </div>
       </section>

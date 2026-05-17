@@ -123,31 +123,41 @@ function useFadeUp(delayMs = 0) {
 
 // ─── Pill link ────────────────────────────────────────────────────────────────
 
-function ItemPill({
+function ItemCard({
   item,
-  accent,
+  borderColour,
+  badgeLabel,
+  badgeColour,
   delay,
 }: {
   item: FundingItem;
-  accent: string;   // tailwind border + text classes
+  borderColour: string;
+  badgeLabel: string;
+  badgeColour: string;
   delay: number;
 }) {
   const ref = useFadeUp(delay);
   return (
-    <div ref={ref}>
+    <div
+      ref={ref}
+      className={`rounded-xl border ${borderColour} bg-white/[0.03] hover:bg-white/[0.06] transition-colors p-3.5 flex flex-col gap-2.5`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-sm font-semibold text-neutral-200 leading-snug">{item.name}</span>
+        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${badgeColour}`}>
+          {badgeLabel}
+        </span>
+      </div>
       <a
         href={item.url}
         target="_blank"
         rel="noopener noreferrer"
-        className={`group flex items-center justify-between gap-3 rounded-xl border ${accent} bg-white/[0.03] hover:bg-white/[0.07] transition-all duration-200 px-4 py-3`}
+        aria-label={`Visit ${item.name}`}
+        className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary-400 hover:text-primary-200 transition-colors w-fit"
+        onClick={e => e.stopPropagation()}
       >
-        <span className="text-sm font-medium text-neutral-200 leading-snug group-hover:text-white transition-colors">
-          {item.name}
-        </span>
-        <ExternalLink
-          className="h-3.5 w-3.5 shrink-0 text-neutral-500 group-hover:text-primary-300 transition-colors"
-          aria-hidden
-        />
+        <ExternalLink className="h-3 w-3" aria-hidden />
+        Apply / Learn more
       </a>
     </div>
   );
@@ -158,33 +168,42 @@ function ItemPill({
 function CategoryBlock({
   icon,
   label,
+  description,
   iconColour,
-  accent,
+  borderColour,
+  badgeLabel,
+  badgeColour,
   items,
   baseDelay,
 }: {
   icon: React.ReactNode;
   label: string;
+  description: string;
   iconColour: string;
-  accent: string;
+  borderColour: string;
+  badgeLabel: string;
+  badgeColour: string;
   items: FundingItem[];
   baseDelay: number;
 }) {
   const headRef = useFadeUp(baseDelay);
   return (
     <div>
-      {/* Heading */}
-      <div ref={headRef} className="flex items-center gap-2 mb-3">
-        <span className={iconColour}>{icon}</span>
-        <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-400">{label}</h3>
+      <div ref={headRef} className="mb-3">
+        <div className="flex items-center gap-2">
+          <span className={iconColour}>{icon}</span>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-400">{label}</h3>
+        </div>
+        <p className="text-xs text-neutral-500 mt-1 ml-6 leading-relaxed">{description}</p>
       </div>
-      {/* Items */}
-      <div className="grid sm:grid-cols-2 gap-2">
+      <div className="grid sm:grid-cols-2 gap-2.5">
         {items.map((item, i) => (
-          <ItemPill
+          <ItemCard
             key={item.name}
             item={item}
-            accent={accent}
+            borderColour={borderColour}
+            badgeLabel={badgeLabel}
+            badgeColour={badgeColour}
             delay={baseDelay + 60 + i * 70}
           />
         ))}
@@ -196,20 +215,17 @@ function CategoryBlock({
 // ─── Full plan view ───────────────────────────────────────────────────────────
 
 function InvestorFundingView({ plan }: { plan: InvestorFundingPlan }) {
-  const bestRef    = useFadeUp(0);
-  const headerRef  = useFadeUp(60);
+  const bestRef = useFadeUp(0);
+
+  // Try to find a URL for the best recommendation by matching against all items
+  const allItems = [...plan.grants, ...plan.investors, ...plan.accelerators];
+  const bestUrl = allItems.find(item =>
+    plan.bestRecommendation.source.toLowerCase().includes(item.name.toLowerCase()) ||
+    item.name.toLowerCase().includes(plan.bestRecommendation.source.toLowerCase())
+  )?.url;
 
   return (
     <div className="space-y-7">
-
-      {/* Company / industry strip */}
-      <div ref={headerRef} className="flex flex-wrap gap-2 text-sm">
-        <span className="rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-neutral-300">
-          <span className="font-semibold text-white">{plan.company}</span>
-          <span className="mx-1.5 text-neutral-500">·</span>
-          {plan.industry}
-        </span>
-      </div>
 
       {/* ── Best Recommendation ── */}
       <div
@@ -225,7 +241,22 @@ function InvestorFundingView({ plan }: { plan: InvestorFundingPlan }) {
           </span>
         </div>
 
-        <p className="text-base font-bold text-white">{plan.bestRecommendation.source}</p>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <p className="text-base font-bold text-white">{plan.bestRecommendation.source}</p>
+          {bestUrl && (
+            <a
+              href={bestUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-300 hover:text-amber-100 transition-colors shrink-0"
+              aria-label={`Apply for ${plan.bestRecommendation.source}`}
+            >
+              <ExternalLink className="h-3 w-3" aria-hidden />
+              Apply / Learn more
+            </a>
+          )}
+        </div>
+
         <p className="text-sm text-neutral-300 leading-relaxed">{plan.bestRecommendation.reason}</p>
 
         <div className="flex items-start gap-2.5 rounded-lg bg-white/[0.05] border border-white/[0.07] px-3 py-2.5">
@@ -241,8 +272,11 @@ function InvestorFundingView({ plan }: { plan: InvestorFundingPlan }) {
       <CategoryBlock
         icon={<Award className="h-4 w-4" />}
         label="Government Grants"
+        description="Non-dilutive funding from Malaysian government bodies — no equity given up, ideal for early-stage businesses."
         iconColour="text-emerald-300"
-        accent="border-emerald-500/20 hover:border-emerald-400/40"
+        borderColour="border-emerald-500/20 hover:border-emerald-400/40"
+        badgeLabel="Grant"
+        badgeColour="border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
         items={plan.grants}
         baseDelay={120}
       />
@@ -251,8 +285,11 @@ function InvestorFundingView({ plan }: { plan: InvestorFundingPlan }) {
       <CategoryBlock
         icon={<Users className="h-4 w-4" />}
         label="Angel Investors & VC"
+        description="Equity investors who provide capital in exchange for ownership — suitable for high-growth startups seeking scale."
         iconColour="text-violet-300"
-        accent="border-violet-500/20 hover:border-violet-400/40"
+        borderColour="border-violet-500/20 hover:border-violet-400/40"
+        badgeLabel="Investor"
+        badgeColour="border-violet-500/30 bg-violet-500/10 text-violet-300"
         items={plan.investors}
         baseDelay={260}
       />
@@ -261,8 +298,11 @@ function InvestorFundingView({ plan }: { plan: InvestorFundingPlan }) {
       <CategoryBlock
         icon={<Rocket className="h-4 w-4" />}
         label="Accelerators & Crowdfunding"
+        description="Structured programs offering mentorship, networks, and funding — plus community-backed crowdfunding platforms."
         iconColour="text-blue-300"
-        accent="border-blue-500/20 hover:border-blue-400/40"
+        borderColour="border-blue-500/20 hover:border-blue-400/40"
+        badgeLabel="Program"
+        badgeColour="border-blue-500/30 bg-blue-500/10 text-blue-300"
         items={plan.accelerators}
         baseDelay={400}
       />
