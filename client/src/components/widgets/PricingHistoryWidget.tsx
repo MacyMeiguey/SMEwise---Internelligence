@@ -190,7 +190,7 @@ function SmartPricingPanel({ data }: { data: SmartPricingSnapshot }) {
       {/* Product pricing rows */}
       {products.length > 0 && (
         <div className="flex flex-col gap-2">
-          <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-neutral-500">SKU Price Ladder</p>
+          <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-neutral-500">Pricing Recommendation</p>
           {products.map((p, i) => (
             <div key={i} className="rounded-lg border border-neutral-200 bg-white p-3 dark:border-white/[0.08] dark:bg-white/[0.03]">
               <div className="flex items-start justify-between gap-2 mb-2">

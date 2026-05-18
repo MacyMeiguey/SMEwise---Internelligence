@@ -121,7 +121,7 @@ const PricingOptionalInputsComponent = forwardRef<
           Context for stronger pricing
         </p>
         <p className="text-xs text-neutral-600 mt-1 leading-relaxed dark:text-neutral-500">
-          Revenue band, SKUs, and costs help the widgets below stay specific to your business.
+          Revenue range, product/services, and costs help the widgets below stay specific to your business.
         </p>
       </div>
 
