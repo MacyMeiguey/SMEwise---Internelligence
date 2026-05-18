@@ -28,8 +28,8 @@ interface SmartPricingEntry {
 interface SmartPricingSnapshot {
   pricingOverview?: {
     averageMarkup: string
-    blendedMargin: string
-    projectedMonthlyRevenue: string
+    averageMargin: string
+    marginVsMarket: string
   }
   productPricing?: SmartPricingEntry[]
   pricingRisks?: string
@@ -175,9 +175,9 @@ function SmartPricingPanel({ data }: { data: SmartPricingSnapshot }) {
       {overview && (
         <div className="grid grid-cols-3 gap-2">
           {[
-            { label: 'Blended Margin', value: overview.blendedMargin },
             { label: 'Avg Markup', value: overview.averageMarkup },
-            { label: 'Monthly Revenue', value: overview.projectedMonthlyRevenue },
+            { label: 'Avg Markup', value: overview.averageMarkup },
+            { label: 'Margin vs Market', value: overview.marginVsMarket },
           ].map((s) => (
             <div key={s.label} className="rounded-lg border border-neutral-200 bg-neutral-50 p-2.5 dark:border-white/[0.08] dark:bg-white/[0.04]">
               <p className="text-[10px] uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-1">{s.label}</p>

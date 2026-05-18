@@ -118,10 +118,10 @@ const PricingOptionalInputsComponent = forwardRef<
     <div className="rounded-xl border border-neutral-200 bg-white px-5 py-5 flex flex-col gap-4 shadow-sm dark:border-white/[0.1] dark:bg-[#101018] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
       <div>
         <p className="text-sm font-medium text-neutral-900 dark:text-white">
-          Optional context for stronger pricing
+          Context for stronger pricing
         </p>
         <p className="text-xs text-neutral-600 mt-1 leading-relaxed dark:text-neutral-500">
-          Revenue band, SKUs, and costs help the widgets below stay specific to your shop.
+          Revenue band, SKUs, and costs help the widgets below stay specific to your business.
         </p>
       </div>
 

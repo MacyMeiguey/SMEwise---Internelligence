@@ -127,22 +127,22 @@ export default function SectionPanel({
 
         <div className="relative z-10 px-4 sm:px-6 lg:px-7 py-5 sm:py-7">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
-            <div className="flex min-w-0 flex-1 gap-4 sm:items-start sm:gap-5">
+            <div className="flex min-w-0 flex-1 gap-4 sm:items-center sm:gap-5">
               <div className="shrink-0 rounded-xl border border-primary-300/50 bg-primary-50 p-3 text-primary-700 shadow-sm dark:border-primary-400/25 dark:bg-primary-500/10 dark:text-primary-200 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-                <Icon className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden />
+                <Icon className={`${meta.noHeroArt ? 'h-5 w-5' : 'h-7 w-7 sm:h-8 sm:w-8'}`} aria-hidden />
               </div>
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-start gap-2">
                   <button
-                    type="button"
-                    onClick={() => !isLocked && setIsExpanded((prev) => !prev)}
-                    className="mt-0.5 -ml-1 shrink-0 rounded-md p-1 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 dark:hover:bg-white/[0.06] dark:hover:text-white"
-                    aria-expanded={isExpanded}
-                    aria-controls={`section-content-${id}`}
-                    disabled={isLocked}
-                    aria-label={isExpanded ? 'Collapse section' : 'Expand section'}
-                  >
+                      type="button"
+                      onClick={() => !isLocked && setIsExpanded((prev) => !prev)}
+                      className={`mt-0.5 -ml-1 shrink-0 rounded-md p-1 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 dark:hover:bg-white/[0.06] dark:hover:text-white ${meta.noHeroArt ? 'hidden' : ''}`}
+                      aria-expanded={isExpanded}
+                      aria-controls={`section-content-${id}`}
+                      disabled={isLocked}
+                      aria-label={isExpanded ? 'Collapse section' : 'Expand section'}
+                    >
                     <svg
                       className={`h-4 w-4 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
                       fill="none"
@@ -158,43 +158,49 @@ export default function SectionPanel({
                     <h2 className="text-lg font-semibold leading-snug tracking-tight text-neutral-900 sm:text-xl dark:text-white">
                       {displayTitle}
                     </h2>
-                    <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
-                      {tagline}
-                    </p>
-                    <ul className="mt-4 space-y-2.5" aria-label="What you get in this section">
-                      {highlights.map((line) => (
-                        <li key={line} className="flex gap-2.5 text-sm leading-snug text-neutral-700 dark:text-neutral-300">
-                          <Check
-                            className="mt-0.5 h-4 w-4 shrink-0 text-primary-600 dark:text-primary-400"
-                            strokeWidth={2.5}
-                            aria-hidden
-                          />
-                          <span>{line}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    {tagline && (
+  <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
+                {tagline}
+              </p>
+            )}
+            {highlights.length > 0 && (
+              <ul className="mt-4 space-y-2.5" aria-label="What you get in this section">
+                {highlights.map((line) => (
+                  <li key={line} className="flex gap-2.5 text-sm leading-snug text-neutral-700 dark:text-neutral-300">
+                    <Check
+                      className="mt-0.5 h-4 w-4 shrink-0 text-primary-600 dark:text-primary-400"
+                      strokeWidth={2.5}
+                      aria-hidden
+                    />
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex w-full shrink-0 flex-col gap-3 sm:max-w-md lg:max-w-[min(100%,17.5rem)] lg:items-end">
-              <SectionHeroArt variant={heroArt} className="w-full lg:max-w-none" />
-              <div className="flex w-full flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3 lg:flex-col lg:items-stretch">
-                <button
-                  type="button"
-                  onClick={onGenerateAll}
-                  disabled={isLocked || !isExpanded}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-xs font-semibold text-white shadow-[0_0_0_1px_rgba(255,255,255,0.06)] transition-colors hover:bg-primary-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-35 dark:focus-visible:ring-offset-[#0a0a10] sm:text-sm"
-                  aria-label={`${runAllLabel} — ${title}`}
-                >
-                  {runAllLabel}
-                </button>
-                <p className="text-center text-[11px] leading-snug text-neutral-500 sm:flex-1 sm:text-left lg:text-right dark:text-neutral-500">
-                  {runAllHint}
-                </p>
+            {!meta.noHeroArt && (
+              <div className="flex w-full shrink-0 flex-col gap-3 sm:max-w-md lg:max-w-[min(100%,17.5rem)] lg:items-end">
+                <SectionHeroArt variant={heroArt} className="w-full lg:max-w-none" />
+                <div className="flex w-full flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3 lg:flex-col lg:items-stretch">
+                  <button
+                    type="button"
+                    onClick={onGenerateAll}
+                    disabled={isLocked || !isExpanded}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-xs font-semibold text-white shadow-[0_0_0_1px_rgba(255,255,255,0.06)] transition-colors hover:bg-primary-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-35 dark:focus-visible:ring-offset-[#0a0a10] sm:text-sm"
+                    aria-label={`${runAllLabel} — ${title}`}
+                  >
+                    {runAllLabel}
+                  </button>
+                  <p className="text-center text-[11px] leading-snug text-neutral-500 sm:flex-1 sm:text-left lg:text-right dark:text-neutral-500">
+                    {runAllHint}
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
