@@ -292,3 +292,25 @@ html.app-deep-scrollbar ::-webkit-scrollbar-thumb:hover { background: #a78bfa; }
 .hover-scale:active {
   transform: scale(0.98);
 }
+
+/* ── Confetti particle animation ───────────────────────────────────────────── */
+@keyframes confetti-fall {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--confetti-x, 50px), var(--confetti-y, 200px)) rotate(var(--confetti-spin, 360deg));
+  }
+}
+
+/* ── Toast slide up ────────────────────────────────────────────────────────── */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease both;
+}

@@ -2,8 +2,9 @@
  * WidgetCard — dark-native toolkit card on #07070b workspace (readable, on-brand).
  */
 
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import type { WidgetState } from '../types';
+import { useToast } from './shared/Toast';
 
 function LoadingState() {
   return (
@@ -121,6 +122,17 @@ export default function WidgetCard({
 }: WidgetCardProps) {
   const { status, errorMessage } = state;
   const isLoading = status === 'loading';
+  const { addToast } = useToast();
+  const prevStatusRef = useRef(status);
+
+  // Fire toast when widget transitions to success
+  useEffect(() => {
+    if (prevStatusRef.current === 'loading' && status === 'success') {
+      addToast('success', `✓ ${title} complete`);
+    }
+    prevStatusRef.current = status;
+  }, [status, title, addToast]);
+
   const showHeaderGenerate =
     !hideGenerateButton &&
     !isLoading &&

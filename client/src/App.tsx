@@ -29,6 +29,8 @@ import BackToTop from './components/hero/BackToTop';
 import LogoWordmark from './components/shared/LogoWordmark';
 import { LoadingProvider } from './context/LoadingContext';
 import { useTheme, useWorkspaceHtmlTheme } from './context/ThemeContext';
+import { ToastProvider, useToast } from './components/shared/Toast';
+import Confetti from './components/shared/Confetti';
 
 // Map workspace tab id → Dashboard section title
 const TAB_TO_SECTION: Record<WorkspaceTab, string> = {
@@ -59,6 +61,8 @@ function AppContent() {
   const [headerEl, setHeaderEl] = useState<HTMLElement | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [splashDone, setSplashDone] = useState<boolean>(() => hasShownSplash());
+  const [showConfetti, setShowConfetti] = useState(false);
+  const { addToast } = useToast();
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     try { return window.localStorage.getItem('smewise:sidebar-collapsed') === '1'; }
     catch { return false; }
@@ -152,6 +156,8 @@ function AppContent() {
   const handleProfileSubmit = (submitted: BusinessProfile) => {
     saveProfile(submitted);
     setProfile(submitted);
+    setShowConfetti(true);
+    addToast('success', '🎉 Profile saved! Generating your workspace…');
     goWorkspace('overview');
   };
 
@@ -220,6 +226,7 @@ function AppContent() {
             : 'bg-white'
     }`}>
       {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
+      {showConfetti && <Confetti active={showConfetti} onDone={() => setShowConfetti(false)} />}
 
       {isLanding && <ScrollProgressBar />}
       {isLanding && <LandingStage3D />}
@@ -455,7 +462,9 @@ function LandingFooter() {
 export default function App() {
   return (
     <LoadingProvider>
-      <AppContent />
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
     </LoadingProvider>
   );
 }

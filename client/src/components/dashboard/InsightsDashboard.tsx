@@ -27,9 +27,11 @@ import {
   Download,
   Check,
   Minus,
+  Activity,
   type LucideIcon,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import AnimatedCounter from '../shared/AnimatedCounter';
 import {
   CoinStackIcon,
   ShopIcon,
@@ -91,9 +93,13 @@ interface KpiTileProps {
   trend?: { delta: string; positive: boolean };
   dim?: boolean;
   big?: boolean;
+  /** When provided, shows an animated counter instead of static value */
+  animatedValue?: number;
+  animatedPrefix?: string;
+  animatedSuffix?: string;
 }
 
-function KpiTile({ icon: Icon, label, value, hint, accent, spark, trend, dim, big }: KpiTileProps) {
+function KpiTile({ icon: Icon, label, value, hint, accent, spark, trend, dim, big, animatedValue, animatedPrefix, animatedSuffix }: KpiTileProps) {
   const { effective } = useTheme();
   return (
     <div
@@ -165,7 +171,11 @@ function KpiTile({ icon: Icon, label, value, hint, accent, spark, trend, dim, bi
         }
         title={value}
       >
-        {value}
+        {animatedValue != null ? (
+          <AnimatedCounter value={animatedValue} prefix={animatedPrefix} suffix={animatedSuffix} duration={1500} />
+        ) : (
+          value
+        )}
       </p>
 
       {hint && (
@@ -434,6 +444,8 @@ export default function InsightsDashboard({
             spark={sparkCapital}
             trend={{ delta: '+12%', positive: true }}
             big
+            animatedValue={profile.currentFunds}
+            animatedPrefix="RM "
           />
           <KpiTile
             icon={Sparkles}
@@ -443,6 +455,8 @@ export default function InsightsDashboard({
             accent="#a78bfa"
             spark={sparkReadiness}
             trend={{ delta: `${readiness}%`, positive: readiness >= 75 }}
+            animatedValue={readiness}
+            animatedSuffix="%"
           />
           <KpiTile
             icon={Target}
@@ -503,6 +517,25 @@ export default function InsightsDashboard({
 
       {/* ─── 3. Topic toolkits bento ────────────────────────────────────────── */}
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+        {/* Activity ticker */}
+        <div className="mb-6 rounded-xl border border-neutral-200/80 bg-white/60 backdrop-blur-sm px-4 py-3 flex items-center gap-3 overflow-hidden dark:border-white/[0.06] dark:bg-white/[0.02]">
+          <Activity className="h-4 w-4 text-primary-500 shrink-0 motion-safe:animate-pulse" aria-hidden />
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <div className="flex gap-8 animate-marquee whitespace-nowrap">
+              <span className="text-xs text-neutral-600 dark:text-neutral-400">✓ Operations toolkit ready</span>
+              <span className="text-xs text-neutral-600 dark:text-neutral-400">✓ Financial planning auto-generated</span>
+              <span className="text-xs text-neutral-600 dark:text-neutral-400">✓ Marketing strategy queued</span>
+              <span className="text-xs text-neutral-600 dark:text-neutral-400">✓ AI advisor online for {profile.companyName}</span>
+              <span className="text-xs text-neutral-600 dark:text-neutral-400">✓ {profile.industry} benchmarks loaded</span>
+              <span className="text-xs text-neutral-600 dark:text-neutral-400">✓ Operations toolkit ready</span>
+              <span className="text-xs text-neutral-600 dark:text-neutral-400">✓ Financial planning auto-generated</span>
+              <span className="text-xs text-neutral-600 dark:text-neutral-400">✓ Marketing strategy queued</span>
+              <span className="text-xs text-neutral-600 dark:text-neutral-400">✓ AI advisor online for {profile.companyName}</span>
+              <span className="text-xs text-neutral-600 dark:text-neutral-400">✓ {profile.industry} benchmarks loaded</span>
+            </div>
+          </div>
+        </div>
+
         <div className="flex items-baseline justify-between gap-4 mb-4">
           <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">Topic toolkits</h3>
           <span className="text-[11px] text-neutral-600 hidden sm:inline">Tap any card to open its tools</span>
