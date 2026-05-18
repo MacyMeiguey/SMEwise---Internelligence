@@ -28,6 +28,8 @@ import {
 
 import { extractBalancedJsonObject } from '../utils/extractBalancedJson'
 
+import { extractBalancedJsonObject } from '../utils/extractBalancedJson'
+
 const router = Router()
 
 const client = new BedrockAgentRuntimeClient({
