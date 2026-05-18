@@ -297,7 +297,7 @@ export default function SmartPricingWidget({
       ) : rawFallback ? (
         <pre className="whitespace-pre-wrap font-sans text-sm text-[#a78bfa] leading-relaxed">
           {rawFallback}
-        </pre>
+      </pre>
       ) : null}
     </WidgetCard>
   )

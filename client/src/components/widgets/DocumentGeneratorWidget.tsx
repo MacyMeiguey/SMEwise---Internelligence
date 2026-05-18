@@ -5,7 +5,7 @@
  * Supports PDF and .docx export.
  */
 
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo, useSyncExternalStore } from "react";
 import { jsPDF } from "jspdf";
 import {
   Document,
@@ -23,7 +23,11 @@ import type { BusinessProfile } from "../../types";
 import { useWidgetState } from "../../hooks/useWidgetState";
 import { API_BASE } from "../../lib/api";
 import { checkCache, writeCache, hashInputs } from "../../utils/widgetCache";
-import { extractBalancedJsonObject } from "../../utils/extractBalancedJson";
+import {
+  extractBalancedJsonObject,
+  escapeControlCharsInJsonStrings,
+  stripTrailingJsonCommas,
+} from "../../utils/extractBalancedJson";
 import {
   BarChart,
   Bar,
@@ -246,8 +250,10 @@ const SECTION_STYLE = [
   { bar: "bg-slate-600", badge: "bg-slate-600" },
 ] as const;
 
-const CHART_AXIS = { tick: { fill: "#64748b", fontSize: 11 } };
-const CHART_GRID = { stroke: "#e2e8f0", strokeDasharray: "3 3" };
+const CHART_AXIS_LIGHT = { tick: { fill: "#64748b", fontSize: 11 } };
+const CHART_GRID_LIGHT = { stroke: "#e2e8f0", strokeDasharray: "3 3" };
+const CHART_AXIS_DARK = { tick: { fill: "#cbd5e1", fontSize: 11 } };
+const CHART_GRID_DARK = { stroke: "#475569", strokeDasharray: "3 3" };
 
 function ReportPreviewRibbon() {
   return (
@@ -360,37 +366,50 @@ function SectionChartPanel({
   subtitle: string;
 }) {
   const data = spec.series.map((s) => ({ name: s.label, value: s.value }));
-  const fill = "#1e40af";
+  const isDark = useDocumentDarkClass();
+  const axisTick = isDark ? CHART_AXIS_DARK.tick : CHART_AXIS_LIGHT.tick;
+  const gridProps = isDark ? CHART_GRID_DARK : CHART_GRID_LIGHT;
+  const fill = isDark ? "#60a5fa" : "#1e40af";
+  const tooltipStyle = isDark
+    ? {
+        backgroundColor: "#1e293b",
+        border: "1px solid #475569",
+        borderRadius: "8px",
+        fontSize: "12px",
+        color: "#f1f5f9",
+      }
+    : {
+        backgroundColor: "#f8fafc",
+        border: "1px solid #e2e8f0",
+        borderRadius: "8px",
+        fontSize: "12px",
+      };
   const isLine = spec.type === "line";
 
   return (
     <div
-      className="mt-4 rounded-lg border border-slate-200/90 bg-slate-50/70 p-3 dark:border-white/[0.08] dark:bg-black/25"
+      className="mt-4 rounded-lg border border-slate-200/90 bg-slate-50/70 p-3 dark:border-white/[0.14] dark:bg-white/[0.06]"
       role="img"
       aria-label={`Chart: ${subtitle}`}
     >
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
           Figure
         </p>
         {spec.yAxisLabel ? (
-          <span className="text-[10px] text-slate-500 dark:text-slate-500">Value — {spec.yAxisLabel}</span>
+          <span className="text-[10px] text-slate-500 dark:text-slate-300">Value — {spec.yAxisLabel}</span>
         ) : null}
       </div>
       <div className="h-[196px] w-full min-w-0">
         <ResponsiveContainer width="100%" height="100%">
           {isLine ? (
             <LineChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
-              <CartesianGrid {...CHART_GRID} />
-              <XAxis dataKey="name" tick={CHART_AXIS.tick} interval={0} angle={-18} textAnchor="end" height={48} />
-              <YAxis tick={CHART_AXIS.tick} width={44} />
+              <CartesianGrid {...gridProps} />
+              <XAxis dataKey="name" tick={axisTick} interval={0} angle={-18} textAnchor="end" height={48} />
+              <YAxis tick={axisTick} width={44} />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: "#f8fafc",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "8px",
-                  fontSize: "12px",
-                }}
+                contentStyle={tooltipStyle}
+                labelStyle={isDark ? { color: "#e2e8f0" } : { color: "#0f172a" }}
                 formatter={(value: number | string) => {
                   const n = typeof value === "number" ? value : Number(value);
                   return [
@@ -403,16 +422,12 @@ function SectionChartPanel({
             </LineChart>
           ) : (
             <BarChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 28 }}>
-              <CartesianGrid {...CHART_GRID} />
-              <XAxis dataKey="name" tick={CHART_AXIS.tick} interval={0} angle={-20} textAnchor="end" height={52} />
-              <YAxis tick={CHART_AXIS.tick} width={48} />
+              <CartesianGrid {...gridProps} />
+              <XAxis dataKey="name" tick={axisTick} interval={0} angle={-20} textAnchor="end" height={52} />
+              <YAxis tick={axisTick} width={48} />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: "#f8fafc",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "8px",
-                  fontSize: "12px",
-                }}
+                contentStyle={tooltipStyle}
+                labelStyle={isDark ? { color: "#e2e8f0" } : { color: "#0f172a" }}
                 formatter={(value: number | string) => {
                   const n = typeof value === "number" ? value : Number(value);
                   return [
@@ -430,19 +445,40 @@ function SectionChartPanel({
   );
 }
 
+function looksLikeReportJsonPayload(text: string): boolean {
+  const t = text.trim();
+  return (
+    t.startsWith("{") &&
+    t.includes('"documentType"') &&
+    t.includes('"sections"') &&
+    t.includes('"companyName"')
+  );
+}
+
 function parseDocumentResponse(raw: string): GeneratedDocument | null {
-  try {
-    let cleaned = raw.trim();
-    if (cleaned.startsWith("```")) {
-      cleaned = cleaned.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/, "").trim();
-    }
-    const jsonStr = extractBalancedJsonObject(cleaned);
-    if (!jsonStr) return null;
-    const parsed: unknown = JSON.parse(jsonStr);
-    return normalizeGeneratedDocument(parsed);
-  } catch {
-    return null;
+  let cleaned = raw.trim();
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/, "").trim();
   }
+  const jsonStr = extractBalancedJsonObject(cleaned);
+  if (!jsonStr) return null;
+
+  const candidates = [
+    jsonStr,
+    escapeControlCharsInJsonStrings(jsonStr),
+    stripTrailingJsonCommas(escapeControlCharsInJsonStrings(jsonStr)),
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      const parsed: unknown = JSON.parse(candidate);
+      const doc = normalizeGeneratedDocument(parsed);
+      if (doc) return doc;
+    } catch {
+      // try next repair pass
+    }
+  }
+  return null;
 }
 
 /** Accept agent JSON even with small shape drift; ensures UI never shows raw JSON when parseable. */
@@ -494,198 +530,455 @@ function normalizeGeneratedDocument(parsed: unknown): GeneratedDocument | null {
   };
 }
 
+/** Actual generation timestamp for UI/PDF — avoids stale model dates like “May 2023”. */
+function formatReportGeneratedAt(date = new Date()): string {
+  return date.toLocaleString("en-MY", {
+    weekday: "short",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function withFreshGeneratedAt(doc: GeneratedDocument): GeneratedDocument {
+  return { ...doc, generatedAt: formatReportGeneratedAt() };
+}
+
+function subscribeHtmlDarkClass(onStoreChange: () => void): () => void {
+  const el = document.documentElement;
+  const mo = new MutationObserver(onStoreChange);
+  mo.observe(el, { attributes: true, attributeFilter: ["class"] });
+  return () => mo.disconnect();
+}
+
+function getHtmlDarkClassSnapshot(): boolean {
+  return document.documentElement.classList.contains("dark");
+}
+
+function useDocumentDarkClass(): boolean {
+  return useSyncExternalStore(subscribeHtmlDarkClass, getHtmlDarkClassSnapshot, () => false);
+}
+
 // ─── PDF download ─────────────────────────────────────────────────────────────
 
-const PDF_PRIMARY: [number, number, number] = [37, 99, 235];
-const PDF_TEAL: [number, number, number] = [20, 184, 166];
+async function loadImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    const blob = await resp.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+// RGB colour palette
+const PDF_NAVY: [number, number, number] = [10, 20, 40];
+const PDF_BLUE: [number, number, number] = [37, 99, 235];
+const PDF_TEAL: [number, number, number] = [13, 148, 136];
+const PDF_VIOLET: [number, number, number] = [109, 40, 217];
+const PDF_SLATE: [number, number, number] = [71, 85, 105];
 const PDF_BORDER: [number, number, number] = [203, 213, 225];
-
-function pdfPageHeight(pdf: jsPDF): number {
-  return pdf.internal.pageSize.getHeight();
-}
-
-function pdfNewPageBreak(pdf: jsPDF, y: number, needMm: number, margin: number): number {
-  if (y + needMm <= pdfPageHeight(pdf) - 12) return y;
-  pdf.addPage();
-  return margin + 8;
-}
+const PDF_LIGHT: [number, number, number] = [248, 250, 252];
+const PDF_WHITE: [number, number, number] = [255, 255, 255];
+const PDF_SECTION_ACCENTS: [number, number, number][] = [
+  PDF_BLUE,
+  PDF_TEAL,
+  PDF_VIOLET,
+  [51, 65, 85],
+];
 
 function pdfRowHeights(texts: string[], colWmm: number[], pdf: jsPDF, fontSize: number): number {
   pdf.setFontSize(fontSize);
   let maxH = 8;
   for (let i = 0; i < texts.length; i++) {
-    const w = pdf.splitTextToSize(texts[i] ?? " ", colWmm[i]! - 4) as string[];
-    maxH = Math.max(maxH, w.length * 4.6 + 3);
+    const w = pdf.splitTextToSize(texts[i] ?? " ", Math.max(colWmm[i]! - 6, 10)) as string[];
+    maxH = Math.max(maxH, w.length * 4.6 + 4);
   }
   return maxH;
 }
 
-function downloadAsPdf(doc: GeneratedDocument): void {
+async function downloadAsPdf(doc: GeneratedDocument): Promise<void> {
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
   const pageWidth = pdf.internal.pageSize.getWidth();
-  const margin = 14;
+  const pageH = pdf.internal.pageSize.getHeight();
+  const margin = 16;
   const contentW = pageWidth - margin * 2;
+  const footerY = pageH - 9;
+  const headerBandH = 48;
 
-  pdf.setFillColor(PDF_PRIMARY[0], PDF_PRIMARY[1], PDF_PRIMARY[2]);
-  pdf.rect(0, 0, pageWidth, 34, "F");
+  const logoBase64 = await loadImageAsBase64("/smewise-logo.png");
 
-  pdf.setDrawColor(PDF_TEAL[0], PDF_TEAL[1], PDF_TEAL[2]);
-  pdf.setLineWidth(0.35);
-  pdf.line(margin, 30, pageWidth - margin, 30);
+  let currentPage = 1;
 
-  pdf.setTextColor(255, 255, 255);
+  // ── Watermark (faint diagonal text) ─────────────────────────────
+  function addWatermark(): void {
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(58);
+    pdf.setTextColor(232, 235, 242);
+    pdf.text(doc.companyName, pageWidth / 2, pageH / 2 + 8, {
+      align: "center",
+      angle: 45,
+    });
+  }
+
+  // ── Footer (every page) ───────────────────────────────────────────
+  function addFooter(): void {
+    pdf.setDrawColor(...PDF_BORDER);
+    pdf.setLineWidth(0.25);
+    pdf.line(margin, footerY - 3, pageWidth - margin, footerY - 3);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(7);
+    pdf.setTextColor(...PDF_SLATE);
+    pdf.text(
+      `${doc.companyName}  ·  ${doc.generatedAt}`,
+      margin,
+      footerY,
+    );
+    pdf.text(`Page ${currentPage}`, pageWidth - margin, footerY, { align: "right" });
+  }
+
+  // ── Running header (pages 2+) ─────────────────────────────────────
+  function addRunningHeader(): void {
+    pdf.setFillColor(...PDF_NAVY);
+    pdf.rect(0, 0, pageWidth, 12, "F");
+    pdf.setFillColor(...PDF_BLUE);
+    pdf.rect(0, 0, 3, 12, "F");
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(...PDF_WHITE);
+    pdf.text(doc.documentType, margin, 8);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(doc.companyName, pageWidth - margin, 8, { align: "right" });
+  }
+
+  // ── Cover header (page 1) ─────────────────────────────────────────
+  // Navy gradient band
+  pdf.setFillColor(...PDF_NAVY);
+  pdf.rect(0, 0, pageWidth, headerBandH, "F");
+  // Left accent bar
+  pdf.setFillColor(...PDF_BLUE);
+  pdf.rect(0, 0, 4, headerBandH, "F");
+  // Teal bottom rule
+  pdf.setDrawColor(...PDF_TEAL);
+  pdf.setLineWidth(1);
+  pdf.line(4, headerBandH, pageWidth, headerBandH);
+  // Decorative right circle
+  pdf.setFillColor(20, 30, 60);
+  pdf.circle(pageWidth - 6, 0, 38, "F");
+
+  // Logo — constrained width with aspect-ratio preserved
+  const logoX = margin + 2;
+  const logoY = 12;
+  if (logoBase64) {
+    // Max 28mm wide, 11mm tall — keeps it proportional and not oversized
+    pdf.addImage(logoBase64, "PNG", logoX, logoY, 28, 11);
+  } else {
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(13);
+    pdf.setTextColor(...PDF_TEAL);
+    pdf.text(doc.companyName, logoX, logoY + 8);
+  }
+
+  // Document title — starts after logo with breathing room
+  const titleX = logoX + 34;
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(17);
-  const titleLines = pdf.splitTextToSize(doc.documentType, contentW - 52) as string[];
-  let y = 12;
+  pdf.setFontSize(15);
+  pdf.setTextColor(...PDF_WHITE);
+  const titleLines = pdf.splitTextToSize(doc.documentType, contentW - 50) as string[];
+  let titleY = 14;
   for (const ln of titleLines) {
-    pdf.text(ln, margin + 54, y);
-    y += 7;
+    pdf.text(ln, titleX, titleY);
+    titleY += 6.2;
   }
   pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(9);
-  pdf.text(`${doc.companyName} · ${doc.generatedAt}`, margin + 54, 28);
+  pdf.setFontSize(8);
+  pdf.setTextColor(148, 163, 184);
+  pdf.text(`${doc.companyName}  ·  ${doc.generatedAt}`, titleX, headerBandH - 8);
 
+  // "AI-Generated Report" badge
   pdf.setFillColor(...PDF_TEAL);
-  pdf.circle(margin + 18, 16, 6, "F");
+  pdf.roundedRect(pageWidth - margin - 38, headerBandH - 16, 38, 8, 1, 1, "F");
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(11);
-  pdf.setTextColor(255, 255, 255);
-  pdf.text("RPT", margin + 12.3, 18);
+  pdf.setFontSize(6.5);
+  pdf.setTextColor(...PDF_WHITE);
+  pdf.text("AI-GENERATED REPORT", pageWidth - margin - 19, headerBandH - 11, { align: "center" });
 
-  pdf.setTextColor(30, 41, 59);
-  pdf.setFont("helvetica", "normal");
-  y = 42;
+  addWatermark();
+  addFooter();
 
+  let y = headerBandH + 10;
+
+  // ── Section content helpers ───────────────────────────────────────
+
+  function ensureSpace(need: number): void {
+    if (y + need > footerY - 6) {
+      pdf.addPage();
+      currentPage++;
+      addWatermark();
+      addRunningHeader();
+      addFooter();
+      y = 18;
+    }
+  }
+
+  // Draw a simple bar chart with jsPDF primitives
+  function drawBarChart(spec: SectionChartSpec, accent: [number, number, number]): void {
+    const chartH = 54;
+    const labelAreaW = 22;
+    const innerW = contentW - labelAreaW;
+    const innerH = chartH - 14;
+    const barCount = spec.series.length;
+    const maxVal = Math.max(...spec.series.map((s) => s.value), 1);
+    const slotW = innerW / barCount;
+    const barW = Math.min(slotW * 0.6, 18);
+    const axisX = margin + labelAreaW;
+    const axisBaseY = y + chartH - 10;
+
+    ensureSpace(chartH + 6);
+
+    // Chart background
+    pdf.setFillColor(...PDF_LIGHT);
+    pdf.setDrawColor(...PDF_BORDER);
+    pdf.setLineWidth(0.2);
+    pdf.roundedRect(margin, y, contentW, chartH, 2, 2, "FD");
+
+    // Chart label
+    if (spec.yAxisLabel) {
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(6.5);
+      pdf.setTextColor(...PDF_SLATE);
+      pdf.text(spec.yAxisLabel, margin + 2, y + chartH / 2, { angle: 90, align: "center" });
+    }
+
+    // Horizontal gridlines + Y tick labels (3 levels)
+    for (let t = 0; t <= 2; t++) {
+      const val = Math.round((maxVal / 2) * t);
+      const tickY = axisBaseY - (innerH * t) / 2;
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(6.5);
+      pdf.setTextColor(...PDF_SLATE);
+      pdf.text(val.toLocaleString("en-MY"), axisX - 2, tickY + 1, { align: "right" });
+      pdf.setDrawColor(218, 224, 235);
+      pdf.setLineWidth(0.2);
+      pdf.line(axisX, tickY, axisX + innerW - 2, tickY);
+    }
+
+    // Axes
+    pdf.setDrawColor(...PDF_SLATE);
+    pdf.setLineWidth(0.4);
+    pdf.line(axisX, y + 4, axisX, axisBaseY);
+    pdf.line(axisX, axisBaseY, axisX + innerW - 2, axisBaseY);
+
+    // Bars
+    spec.series.forEach((s, i) => {
+      const barX = axisX + i * slotW + (slotW - barW) / 2;
+      const barHeight = (s.value / maxVal) * innerH;
+      const barTop = axisBaseY - barHeight;
+
+      // Main bar
+      pdf.setFillColor(...accent);
+      pdf.rect(barX, barTop, barW, barHeight, "F");
+      // Top highlight strip
+      const [r, g, b] = accent;
+      pdf.setFillColor(Math.min(r + 50, 255), Math.min(g + 50, 255), Math.min(b + 60, 255));
+      pdf.rect(barX, barTop, barW, 2, "F");
+
+      // X-axis label
+      const label = s.label.length > 12 ? s.label.slice(0, 11) + "…" : s.label;
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(6);
+      pdf.setTextColor(...PDF_SLATE);
+      pdf.text(label, barX + barW / 2, axisBaseY + 5.5, { align: "center", angle: -28 });
+    });
+
+    y += chartH + 6;
+  }
+
+  // ── Main sections loop ────────────────────────────────────────────
   for (let si = 0; si < doc.sections.length; si++) {
     const section = doc.sections[si]!;
     const layout = analyzeSectionLayout(section);
+    const agentChart = normalizeAgentChart(section.chart as unknown);
+    const pipeChart =
+      layout.type === "pipe" ? deriveChartFromPipeTable(layout.headers, layout.rows) : null;
+    const chartSpec = agentChart ?? pipeChart;
+    const accent = PDF_SECTION_ACCENTS[si % PDF_SECTION_ACCENTS.length]!;
 
-    pdf.setFillColor(
-      PDF_PRIMARY[0],
-      PDF_PRIMARY[1],
-      PDF_PRIMARY[2],
-    );
-    if (si % 4 === 1) pdf.setFillColor(124, 58, 237);
-    if (si % 4 === 2) pdf.setFillColor(...PDF_TEAL);
-    if (si % 4 === 3) pdf.setFillColor(51, 65, 85);
+    ensureSpace(22);
 
-    y = pdfNewPageBreak(pdf, y, 24, margin);
-    pdf.rect(margin, y - 6, contentW, 2, "F");
+    // Section header: numbered badge + colour bar + title
+    pdf.setFillColor(...accent);
+    pdf.rect(margin, y, 7, 10, "F");
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(7);
+    pdf.setTextColor(...PDF_WHITE);
+    pdf.text(String(si + 1).padStart(2, "0"), margin + 1.5, y + 6.5);
 
     pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(11.5);
-    pdf.text(section.title.toUpperCase(), margin, y);
-    y += 10;
+    pdf.setFontSize(10.5);
+    pdf.setTextColor(...PDF_NAVY);
+    const headText = section.title.toUpperCase();
+    pdf.text(headText, margin + 10, y + 7);
 
+    // Underline matching accent colour
+    pdf.setDrawColor(...accent);
+    pdf.setLineWidth(0.5);
+    const headTextW = Math.min(pdf.getTextWidth(headText) + 1, contentW - 10);
+    pdf.line(margin + 10, y + 8.5, margin + 10 + headTextW, y + 8.5);
+
+    y += 14;
+
+    // Prose
     if (layout.type === "prose") {
       pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(10);
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(30, 41, 59);
       for (const p of layout.paragraphs) {
-        const wrapped = pdf.splitTextToSize(p, contentW) as string[];
+        const wrapped = pdf.splitTextToSize(p, contentW - 4) as string[];
         for (const line of wrapped) {
-          y = pdfNewPageBreak(pdf, y, 7, margin);
+          ensureSpace(6);
           pdf.text(line, margin + 4, y);
-          y += 5.2;
+          y += 5;
         }
-        y += 2;
+        y += 2.5;
       }
     }
 
+    // Indexed (numbered list)
     if (layout.type === "indexed") {
-      const colWidths = [10, contentW - 10];
-      y = pdfNewPageBreak(pdf, y, 12, margin);
-      pdf.setFillColor(...PDF_PRIMARY);
+      const col0 = 12;
+      const col1 = contentW - col0;
+      ensureSpace(12);
+      pdf.setFillColor(...accent);
       pdf.rect(margin, y, contentW, 8, "F");
-      pdf.setTextColor(255, 255, 255);
+      pdf.setTextColor(...PDF_WHITE);
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(9);
-      pdf.text("#", margin + 2, y + 5.5);
-      pdf.text("Point", margin + colWidths[0]! + 2, y + 5.5);
+      pdf.setFontSize(8.5);
+      pdf.text("#", margin + 3.5, y + 5.5);
+      pdf.text("Detail", margin + col0 + 3, y + 5.5);
       y += 8;
+
       pdf.setTextColor(30, 41, 59);
       pdf.setFont("helvetica", "normal");
       layout.points.forEach((pt, i) => {
         const rowTexts = [(i + 1).toString(), pt];
-        const h = pdfRowHeights(rowTexts, colWidths, pdf, 10);
-        y = pdfNewPageBreak(pdf, y, h + 1, margin);
+        const rh = pdfRowHeights(rowTexts, [col0, col1], pdf, 9.5);
+        ensureSpace(rh + 1);
         if (i % 2 === 0) {
-          pdf.setFillColor(248, 250, 252);
-          pdf.rect(margin, y, contentW, h, "F");
+          pdf.setFillColor(...PDF_LIGHT);
+          pdf.rect(margin, y, contentW, rh, "F");
         }
         pdf.setDrawColor(...PDF_BORDER);
-        pdf.rect(margin, y, contentW, h, "S");
-        pdf.setFontSize(9.5);
-        pdf.text(`${i + 1}`, margin + 2, y + h / 2 + 2);
-        const wraps = pdf.splitTextToSize(pt, colWidths[1]! - 4) as string[];
+        pdf.setLineWidth(0.2);
+        pdf.rect(margin, y, contentW, rh, "S");
+        pdf.setFontSize(8.5);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(...accent);
+        pdf.text(`${i + 1}`, margin + 3.5, y + rh / 2 + 1.5);
+        pdf.setFont("helvetica", "normal");
+        pdf.setTextColor(30, 41, 59);
+        const wraps = pdf.splitTextToSize(pt, col1 - 6) as string[];
         let yy = y + 4;
         for (const w of wraps) {
-          pdf.text(w, margin + colWidths[0]! + 2, yy);
-          yy += 4.6;
+          pdf.text(w, margin + col0 + 3, yy);
+          yy += 4.5;
         }
-        y += h;
+        y += rh;
       });
       y += 4;
     }
 
+    // Pipe (table)
     if (layout.type === "pipe") {
       const cols = layout.headers.length;
-      const cw = cols > 0 ? contentW / cols : contentW;
-
-      pdf.setFillColor(...PDF_PRIMARY);
-      pdf.rect(margin, y, contentW, 8.5, "F");
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(9);
-      layout.headers.forEach((h, i) => {
-        const truncated = h.length > 44 ? `${h.slice(0, 41)}…` : h;
-        pdf.text(truncated, margin + i * cw + 2, y + 6);
-      });
-      y += 9;
-
-      pdf.setTextColor(30, 41, 59);
-      pdf.setFont("helvetica", "normal");
-      layout.rows.forEach((row, ri) => {
-        const widths = Array.from({ length: cols }, () => cw);
-        const rowTexts = row.slice(0, cols).map((c) => c ?? "");
-        while (rowTexts.length < cols) rowTexts.push("");
-        const h = pdfRowHeights(rowTexts, widths, pdf, 9);
-        y = pdfNewPageBreak(pdf, y, h + 1, margin);
-        if (ri % 2 === 0) {
-          pdf.setFillColor(246, 250, 255);
-          pdf.rect(margin, y, contentW, h, "F");
-        }
-        pdf.setDrawColor(...PDF_BORDER);
-        pdf.rect(margin, y, contentW, h, "S");
-        rowTexts.forEach((cell, ci) => {
-          const wraps = pdf.splitTextToSize(cell || " ", cw - 4) as string[];
-          let yy = y + 4;
-          for (const w of wraps) {
-            pdf.text(w, margin + ci * cw + 2, yy);
-            yy += 4.4;
-          }
+      if (cols > 0) {
+        const cw = contentW / cols;
+        ensureSpace(12);
+        pdf.setFillColor(...accent);
+        pdf.rect(margin, y, contentW, 9, "F");
+        pdf.setTextColor(...PDF_WHITE);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(8.5);
+        layout.headers.forEach((h, i) => {
+          const trunc = h.length > 34 ? h.slice(0, 32) + "…" : h;
+          pdf.text(trunc, margin + i * cw + 3, y + 6);
         });
-        y += h;
-      });
-      y += 4;
+        y += 9;
+
+        pdf.setTextColor(30, 41, 59);
+        pdf.setFont("helvetica", "normal");
+        layout.rows.forEach((row, ri) => {
+          const widths = Array.from({ length: cols }, () => cw);
+          const rowTexts = row.slice(0, cols).map((c) => c ?? "");
+          while (rowTexts.length < cols) rowTexts.push("");
+          const rh = pdfRowHeights(rowTexts, widths, pdf, 9);
+          ensureSpace(rh + 1);
+          if (ri % 2 === 0) {
+            pdf.setFillColor(239, 246, 255);
+            pdf.rect(margin, y, contentW, rh, "F");
+          }
+          pdf.setDrawColor(...PDF_BORDER);
+          pdf.setLineWidth(0.2);
+          pdf.rect(margin, y, contentW, rh, "S");
+          rowTexts.forEach((cell, ci) => {
+            const wraps = pdf.splitTextToSize(cell || " ", cw - 6) as string[];
+            let yy = y + 4;
+            for (const w of wraps) {
+              pdf.text(w, margin + ci * cw + 3, yy);
+              yy += 4.4;
+            }
+          });
+          y += rh;
+        });
+        y += 4;
+      }
     }
+
+    // Chart
+    if (chartSpec && chartSpec.series.length >= 2) {
+      ensureSpace(64);
+      drawBarChart(chartSpec, accent);
+    }
+
+    y += 3;
   }
 
-  y = pdfNewPageBreak(pdf, y, 16, margin);
+  // ── Disclaimer ────────────────────────────────────────────────────
+  ensureSpace(22);
   pdf.setDrawColor(...PDF_BORDER);
+  pdf.setLineWidth(0.4);
   pdf.line(margin, y, pageWidth - margin, y);
-  y += 6;
-  pdf.setFontSize(8.5);
+  y += 5;
+  pdf.setFillColor(...PDF_LIGHT);
+  pdf.setDrawColor(...PDF_BORDER);
+  pdf.setLineWidth(0.2);
+  pdf.roundedRect(margin, y, contentW, 6, 1, 1, "FD");
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(7.5);
+  pdf.setTextColor(...PDF_SLATE);
+  pdf.text("DISCLAIMER", margin + 3, y + 4);
+  y += 8;
   pdf.setFont("helvetica", "italic");
-  pdf.setTextColor(100, 116, 139);
+  pdf.setFontSize(8);
+  pdf.setTextColor(...PDF_SLATE);
   const disclaim = pdf.splitTextToSize(doc.disclaimer, contentW) as string[];
   for (const line of disclaim) {
-    y = pdfNewPageBreak(pdf, y, 6, margin);
-    pdf.text(line, margin + 4, y);
+    ensureSpace(5.5);
+    pdf.text(line, margin, y);
     y += 4.8;
   }
 
-  pdf.save(`${doc.documentType.replace(/\s+/g, "_")}.pdf`);
+  const safeCompanyName = doc.companyName.replace(/[^a-zA-Z0-9\s\-_]/g, "").replace(/\s+/g, "_");
+  pdf.save(`${doc.documentType.replace(/\s+/g, "_")}_${safeCompanyName}.pdf`);
 }
 
 // ─── .docx download ───────────────────────────────────────────────────────────
@@ -724,23 +1017,68 @@ function docxParagraph(
 async function downloadAsDocx(doc: GeneratedDocument): Promise<void> {
   type DocChild = Paragraph | Table;
 
+  // ── Cover block ──────────────────────────────────────────────────
   const children: DocChild[] = [
-    new Paragraph({ text: doc.documentType, heading: HeadingLevel.TITLE }),
+    // Company name (small caps label)
     new Paragraph({
       children: [
         new TextRun({
-          text: `${doc.companyName} — ${doc.generatedAt}`,
+          text: doc.companyName.toUpperCase(),
+          bold: true,
+          size: 20,
+          color: "2563EB",
+          characterSpacing: 80,
+        }),
+      ],
+      spacing: { before: 0, after: 80 },
+    }),
+    // Document title
+    new Paragraph({
+      text: doc.documentType,
+      heading: HeadingLevel.TITLE,
+      spacing: { before: 0, after: 120 },
+    }),
+    // Generated at
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: `Generated ${doc.generatedAt}`,
           italics: true,
+          size: 18,
           color: "64748B",
         }),
       ],
+      spacing: { before: 0, after: 480 },
     }),
-    new Paragraph({ spacing: { after: 120 } }),
+    // Divider (empty paragraph with bottom border)
+    new Paragraph({
+      children: [new TextRun({ text: "" })],
+      border: {
+        bottom: { style: BorderStyle.SINGLE, size: 6, color: "2563EB" },
+      },
+      spacing: { before: 0, after: 480 },
+    }),
   ];
 
   for (const section of doc.sections) {
     const layout = analyzeSectionLayout(section);
-    children.push(docxParagraph(section.title, { heading: HeadingLevel.HEADING_2 }));
+    // Section heading with accent colour
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: section.title,
+            bold: true,
+            size: 26,
+            color: "1E3A5F",
+          }),
+        ],
+        border: {
+          bottom: { style: BorderStyle.SINGLE, size: 4, color: "2563EB" },
+        },
+        spacing: { before: 360, after: 160 },
+      }),
+    );
 
     if (layout.type === "prose") {
       for (const p of layout.paragraphs)
@@ -852,8 +1190,33 @@ async function downloadAsDocx(doc: GeneratedDocument): Promise<void> {
     }
   }
 
+  children.push(new Paragraph({ text: "" }));
+  // Disclaimer box
   children.push(
-    docxParagraph(`Disclaimer: ${doc.disclaimer}`, { color: "#64748B" }),
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: "DISCLAIMER  ",
+          bold: true,
+          size: 16,
+          color: "64748B",
+          characterSpacing: 60,
+        }),
+        new TextRun({
+          text: doc.disclaimer,
+          italics: true,
+          size: 16,
+          color: "64748B",
+        }),
+      ],
+      border: {
+        top: { style: BorderStyle.SINGLE, size: 4, color: "CBD5E1" },
+        bottom: { style: BorderStyle.SINGLE, size: 4, color: "CBD5E1" },
+        left: { style: BorderStyle.SINGLE, size: 12, color: "94A3B8" },
+        right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+      },
+      spacing: { before: 480, after: 160 },
+    }),
   );
 
   const wordDoc = new Document({ sections: [{ properties: {}, children }] });
@@ -861,7 +1224,8 @@ async function downloadAsDocx(doc: GeneratedDocument): Promise<void> {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${doc.documentType.replace(/\s+/g, "_")}.docx`;
+  const safeCompanyName = doc.companyName.replace(/[^a-zA-Z0-9\s\-_]/g, "").replace(/\s+/g, "_");
+  a.download = `${doc.documentType.replace(/\s+/g, "_")}_${safeCompanyName}.docx`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -884,7 +1248,7 @@ function ReportSectionBlock({
 
   return (
     <div
-      className="relative overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm dark:border-white/[0.10] dark:bg-[#14141c]"
+      className="relative overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm dark:border-white/[0.14] dark:bg-[#1c1c26]"
       role="group"
       aria-label={section.title}
     >
@@ -909,8 +1273,8 @@ function ReportSectionBlock({
             <p className="text-sm font-semibold leading-snug text-slate-800 dark:text-slate-100">
               {section.title}
             </p>
-            <p className="mt-1 flex gap-1.5 text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-500">
-              <span className="rounded border border-slate-200/90 bg-slate-50 px-1.5 py-0.5 dark:border-white/[0.08] dark:bg-white/[0.05]">
+            <p className="mt-1 flex gap-1.5 text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <span className="rounded border border-slate-200/90 bg-slate-50 px-1.5 py-0.5 dark:border-white/[0.12] dark:bg-white/[0.08] dark:text-slate-200">
                 {layout.type === "pipe" ? "Table" : layout.type === "indexed" ? "List" : "Narrative"}
               </span>
             </p>
@@ -922,16 +1286,16 @@ function ReportSectionBlock({
             layout.paragraphs.map((p, pi) => (
               <div
                 key={pi}
-                className="rounded-lg border border-slate-200/80 border-l-[3px] border-l-slate-400 bg-white px-3.5 py-2.5 text-sm leading-relaxed text-slate-700 dark:border-white/[0.07] dark:border-l-slate-500 dark:bg-transparent dark:text-slate-200"
+                className="rounded-lg border border-slate-200/80 border-l-[3px] border-l-slate-500 bg-slate-50/60 px-3.5 py-2.5 text-sm leading-relaxed text-slate-800 dark:border-white/[0.10] dark:border-l-slate-400 dark:bg-white/[0.06] dark:text-slate-100"
               >
                 {p}
               </div>
             ))}
 
           {layout.type === "indexed" && (
-            <div className="overflow-x-auto rounded-lg border border-slate-200/85 dark:border-white/[0.08]">
+            <div className="overflow-x-auto rounded-lg border border-slate-200/85 dark:border-white/[0.12]">
               <table className="min-w-[260px] w-full border-collapse [caption-side:bottom] text-left text-sm">
-                <caption className="caption-bottom border-b border-slate-100 bg-slate-50 px-3 py-2 text-left text-[11px] font-medium text-slate-500 dark:border-white/[0.06] dark:bg-white/[0.04] dark:text-slate-400">
+                <caption className="caption-bottom border-b border-slate-100 bg-slate-50 px-3 py-2 text-left text-[11px] font-medium text-slate-500 dark:border-white/[0.08] dark:bg-white/[0.06] dark:text-slate-300">
                   {layout.points.length} item{layout.points.length === 1 ? "" : "s"}
                 </caption>
                 <thead>
@@ -945,7 +1309,7 @@ function ReportSectionBlock({
                     <tr
                       key={i}
                       className={`border-t border-slate-200/85 dark:border-white/[0.07] ${
-                        i % 2 === 0 ? "bg-slate-50/90 dark:bg-white/[0.03]" : "bg-white dark:bg-transparent"
+                        i % 2 === 0 ? "bg-slate-50/90 dark:bg-white/[0.05]" : "bg-white dark:bg-transparent"
                       }`}
                     >
                       <td className="align-top px-3 py-2 font-semibold tabular-nums text-slate-600 dark:text-slate-400">
@@ -960,9 +1324,9 @@ function ReportSectionBlock({
           )}
 
           {layout.type === "pipe" && (
-            <div className="overflow-x-auto rounded-lg border border-slate-200/85 dark:border-white/[0.08]">
+            <div className="overflow-x-auto rounded-lg border border-slate-200/85 dark:border-white/[0.12]">
               <table className="min-w-max w-full border-collapse [caption-side:bottom] text-left text-sm">
-                <caption className="caption-bottom border-b border-slate-100 bg-slate-50 px-3 py-2 text-left text-[11px] font-medium text-slate-600 dark:border-white/[0.06] dark:bg-white/[0.04] dark:text-slate-400">
+                <caption className="caption-bottom border-b border-slate-100 bg-slate-50 px-3 py-2 text-left text-[11px] font-medium text-slate-600 dark:border-white/[0.08] dark:bg-white/[0.06] dark:text-slate-300">
                   {layout.rows.length} × {layout.headers.length} data
                 </caption>
                 <thead>
@@ -979,13 +1343,13 @@ function ReportSectionBlock({
                     <tr
                       key={ri}
                       className={`border-t border-slate-200/85 dark:border-white/[0.07] ${
-                        ri % 2 === 0 ? "bg-slate-50/80 dark:bg-white/[0.03]" : "bg-white dark:bg-transparent"
+                        ri % 2 === 0 ? "bg-slate-50/80 dark:bg-white/[0.05]" : "bg-white dark:bg-transparent"
                       }`}
                     >
                       {layout.headers.map((_, ci) => (
                         <td
                           key={ci}
-                          className="max-w-[16rem] whitespace-pre-wrap px-3 py-2 align-top text-slate-700 dark:text-slate-200 sm:max-w-none"
+                          className="max-w-[16rem] whitespace-pre-wrap px-3 py-2 align-top text-slate-700 dark:text-slate-100 sm:max-w-none"
                         >
                           {row[ci]?.trim() || "—"}
                         </td>
@@ -1070,8 +1434,17 @@ export function DocumentGeneratorWidgetWithControls({
       cacheInputs,
     );
     if (cached) {
-      setParsedDoc(cached.result.parsedDoc);
-      setRawFallback(cached.result.rawFallback ?? "");
+      let doc = cached.result.parsedDoc;
+      let raw = cached.result.rawFallback ?? "";
+      if (!doc && raw) {
+        const reparsed = parseDocumentResponse(raw);
+        if (reparsed) {
+          doc = reparsed;
+          raw = "";
+        }
+      }
+      setParsedDoc(doc);
+      setRawFallback(raw);
       restoreSuccess();
     }
     // Mount-only hydrate; per-request cache is checked in handleGenerate
@@ -1116,8 +1489,17 @@ export function DocumentGeneratorWidgetWithControls({
             restoreSuccess();
             return;
           }
-          setParsedDoc(cached.result.parsedDoc);
-          setRawFallback(cachedRaw);
+          let doc = cached.result.parsedDoc;
+          let raw = cachedRaw;
+          if (!doc && raw) {
+            const reparsed = parseDocumentResponse(raw);
+            if (reparsed) {
+              doc = withFreshGeneratedAt(reparsed);
+              raw = "";
+            }
+          }
+          setParsedDoc(doc);
+          setRawFallback(raw);
           restoreSuccess();
           return;
         }
@@ -1163,10 +1545,11 @@ export function DocumentGeneratorWidgetWithControls({
           Boolean(data.agentAskedForInput) || looksLikeAgentClarification(data.content);
 
         if (parsed) {
-          setParsedDoc(parsed);
+          const stamped = withFreshGeneratedAt(parsed);
+          setParsedDoc(stamped);
           setRawFallback("");
           writeCache(DOCUMENT_GENERATOR_CACHE_KEY, hashInputs(cacheKeyInputs), {
-            parsedDoc: parsed,
+            parsedDoc: stamped,
             rawFallback: "",
           });
           return;
@@ -1211,12 +1594,12 @@ export function DocumentGeneratorWidgetWithControls({
     "w-full px-4 py-2.5 rounded-xl border text-sm font-medium shadow-sm " +
     "border-neutral-400 bg-white text-neutral-900 " +
     "focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-500 transition-all duration-150 " +
-    "dark:border-primary-400/55 dark:bg-[#1a1a26] dark:text-white dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] " +
-    "dark:focus:ring-primary-400/50 dark:focus:border-primary-300 " +
+    "dark:border-neutral-500 dark:bg-[#1e1e2a] dark:text-neutral-100 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] " +
+    "dark:focus:ring-primary-400/55 dark:focus:border-primary-300 " +
     "[color-scheme:light] dark:[color-scheme:dark]";
 
   const optionClass =
-    "bg-white text-neutral-900 dark:bg-[#1a1a26] dark:text-neutral-100";
+    "bg-white text-neutral-900 dark:bg-[#1e1e2a] dark:text-neutral-100";
 
   const hasResult = state.status === "success" && (parsedDoc !== null || rawFallback !== "");
   const needsMoreInfo =
@@ -1373,17 +1756,17 @@ export function DocumentGeneratorWidgetWithControls({
         {/* Success — structured JSON */}
         {state.status === "success" && parsedDoc && (
           <div className="flex flex-col gap-5">
-            <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white dark:border-white/[0.09] dark:bg-[#12121a]">
+            <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white dark:border-white/[0.14] dark:bg-[#17171f]">
               <ReportPreviewRibbon />
               <div className="relative z-[1] flex flex-col gap-4 px-4 pb-5 pt-12 sm:flex-row sm:items-end sm:justify-between sm:gap-6 sm:px-6 sm:pb-6 sm:pt-14">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-600 dark:text-slate-400">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-600 dark:text-slate-300">
                     {parsedDoc.companyName}
                   </p>
                   <h4 className="mt-1.5 text-xl font-semibold tracking-tight text-slate-900 dark:text-white">
                     {parsedDoc.documentType}
                   </h4>
-                  <p className="mt-1 text-xs font-medium text-slate-600 dark:text-slate-400">
+                  <p className="mt-1 text-xs font-medium text-slate-600 dark:text-slate-300">
                     Generated {parsedDoc.generatedAt}
                   </p>
                 </div>
@@ -1394,10 +1777,10 @@ export function DocumentGeneratorWidgetWithControls({
                     <ReportPreviewTrendGraphic className="h-[3.35rem] w-[7.85rem]" />
                   </div>
                   <div className="flex flex-wrap gap-2 sm:justify-end">
-                    <span className="inline-flex items-center rounded-full border border-slate-200/90 bg-white px-3 py-1 text-[11px] font-medium text-slate-700 shadow-sm dark:border-white/[0.10] dark:bg-white/[0.06] dark:text-slate-200">
+                    <span className="inline-flex items-center rounded-full border border-slate-200/90 bg-white px-3 py-1 text-[11px] font-medium text-slate-700 shadow-sm dark:border-white/[0.14] dark:bg-white/[0.09] dark:text-slate-100">
                       {parsedDoc.sections.length} sections
                     </span>
-                    <span className="inline-flex items-center rounded-full border border-slate-200/90 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-700 dark:border-white/[0.10] dark:bg-white/[0.06] dark:text-slate-200">
+                    <span className="inline-flex items-center rounded-full border border-slate-200/90 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-700 dark:border-white/[0.14] dark:bg-white/[0.07] dark:text-slate-100">
                       PDF &amp; Word
                     </span>
                   </div>
@@ -1406,7 +1789,7 @@ export function DocumentGeneratorWidgetWithControls({
             </div>
 
             <div className="flex flex-col gap-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-500">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Report body
               </p>
               {parsedDoc.sections.map((section, si) => (
@@ -1414,32 +1797,38 @@ export function DocumentGeneratorWidgetWithControls({
               ))}
             </div>
 
-            <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3.5 py-2.5 dark:border-white/[0.06] dark:bg-white/[0.03]">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-slate-600 dark:text-slate-400">
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3.5 py-2.5 dark:border-white/[0.12] dark:bg-white/[0.05]">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-slate-600 dark:text-slate-300">
                 Disclaimer
               </p>
-              <p className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400 italic">
+              <p className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 italic">
                 {parsedDoc.disclaimer}
               </p>
             </div>
 
             {/* Export buttons */}
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2.5">
               <button
                 type="button"
-                onClick={() => downloadAsPdf(parsedDoc)}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-800 hover:border-neutral-400 hover:bg-neutral-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-white/[0.12] dark:bg-white/[0.05] dark:text-neutral-200 dark:hover:bg-white/[0.09] dark:focus-visible:ring-offset-[#101018]"
+                onClick={() => void downloadAsPdf(parsedDoc)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-800 hover:border-neutral-400 hover:bg-neutral-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-white/[0.15] dark:bg-white/[0.06] dark:text-neutral-100 dark:hover:bg-white/[0.10] dark:focus-visible:ring-offset-[#101018]"
                 aria-label="Download report as PDF"
               >
-                ↓ PDF
+                <svg className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+                  <path d="M4 16h12M10 4v9m0 0-3-3m3 3 3-3" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Download PDF
               </button>
               <button
                 type="button"
-                onClick={() => downloadAsDocx(parsedDoc)}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#101018]"
+                onClick={() => void downloadAsDocx(parsedDoc)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-800 hover:border-neutral-400 hover:bg-neutral-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-white/[0.15] dark:bg-white/[0.06] dark:text-neutral-100 dark:hover:bg-white/[0.10] dark:focus-visible:ring-offset-[#101018]"
                 aria-label="Download report as Word .docx"
               >
-                ↓ Word (.docx)
+                <svg className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+                  <path d="M4 16h12M10 4v9m0 0-3-3m3 3 3-3" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Download Word
               </button>
             </div>
           </div>
@@ -1494,41 +1883,62 @@ export function DocumentGeneratorWidgetWithControls({
           </div>
         )}
 
-        {/* Success — raw text fallback (non-clarification) */}
+        {/* Success — could not format as report (non-clarification) */}
         {state.status === "success" && !parsedDoc && rawFallback && !needsMoreInfo && (
           <div className="flex flex-col gap-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
-              Result
-            </p>
-            <div className="rounded-xl border border-neutral-200 bg-neutral-50 dark:border-white/[0.08] dark:bg-black/40">
-              <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed p-4 text-neutral-800 dark:text-neutral-200">
-                {rawFallback}
-              </pre>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  const pdf = new jsPDF({ unit: "mm", format: "a4" });
-                  const lines = rawFallback.split("\n");
-                  let y = 20;
-                  pdf.setFontSize(11);
-                  for (const line of lines) {
-                    const wrapped = pdf.splitTextToSize(line || " ", 180) as string[];
-                    for (const w of wrapped) {
-                      if (y > 275) { pdf.addPage(); y = 20; }
-                      pdf.text(w, 15, y);
-                      y += 7;
-                    }
-                  }
-                  pdf.save(`${documentType.replace(/\s+/g, "_")}.pdf`);
-                }}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 dark:border-white/[0.12] dark:bg-white/[0.05] dark:text-neutral-200"
-                aria-label="Download as PDF"
-              >
-                ↓ PDF
-              </button>
-            </div>
+            {looksLikeReportJsonPayload(rawFallback) ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-500/35 dark:bg-amber-950/30">
+                <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                  Report data was received but could not be formatted
+                </p>
+                <p className="mt-1.5 text-sm text-amber-800/90 dark:text-amber-200/90 leading-relaxed">
+                  The model returned JSON with invalid formatting (often line breaks inside text fields).
+                  Click <strong>Regenerate</strong> to try again.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void runGenerate({ bypassCache: true })}
+                  className="mt-3 inline-flex items-center justify-center rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 transition-colors"
+                >
+                  Regenerate report
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
+                  Result
+                </p>
+                <div className="rounded-xl border border-neutral-200 bg-neutral-50 dark:border-white/[0.08] dark:bg-black/40">
+                  <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed p-4 text-neutral-800 dark:text-neutral-200">
+                    {rawFallback}
+                  </pre>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const pdf = new jsPDF({ unit: "mm", format: "a4" });
+                      const lines = rawFallback.split("\n");
+                      let y = 20;
+                      pdf.setFontSize(11);
+                      for (const line of lines) {
+                        const wrapped = pdf.splitTextToSize(line || " ", 180) as string[];
+                        for (const w of wrapped) {
+                          if (y > 275) { pdf.addPage(); y = 20; }
+                          pdf.text(w, 15, y);
+                          y += 7;
+                        }
+                      }
+                      pdf.save(`${documentType.replace(/\s+/g, "_")}.pdf`);
+                    }}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 dark:border-white/[0.12] dark:bg-white/[0.05] dark:text-neutral-200"
+                    aria-label="Download as PDF"
+                  >
+                    ↓ PDF
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
 

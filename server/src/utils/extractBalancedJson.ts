@@ -42,3 +42,44 @@ export function extractBalancedJsonObject(raw: string): string | null {
     }
     return null
 }
+
+/** Escape literal newlines/tabs inside JSON string values (invalid in strict JSON). */
+export function escapeControlCharsInJsonStrings(json: string): string {
+    let result = ''
+    let inString = false
+    let escape = false
+
+    for (let i = 0; i < json.length; i++) {
+        const c = json[i]!
+        if (escape) {
+            result += c
+            escape = false
+            continue
+        }
+        if (inString) {
+            if (c === '\\') {
+                escape = true
+                result += c
+            } else if (c === '"') {
+                inString = false
+                result += c
+            } else if (c === '\n') {
+                result += '\\n'
+            } else if (c === '\r') {
+                result += '\\r'
+            } else if (c === '\t') {
+                result += '\\t'
+            } else {
+                result += c
+            }
+            continue
+        }
+        if (c === '"') inString = true
+        result += c
+    }
+    return result
+}
+
+export function stripTrailingJsonCommas(json: string): string {
+    return json.replace(/,(\s*[}\]])/g, '$1')
+}

@@ -415,10 +415,10 @@ export default function LoansFundingWidget({
         }
       `}</style>
 
-      <WidgetCard
-        title="Loans & Funding Panel"
-        onGenerate={handleGenerate}
-        state={state}
+    <WidgetCard
+      title="Loans & Funding Panel"
+      onGenerate={handleGenerate}
+      state={state}
         idleHint="Government schemes, commercial banks, best-fit recommendation, requirements and timeline — all in one place."
         idleButtonLabel="Map funding"
         regenerateLabel="Remap funding"
@@ -429,7 +429,7 @@ export default function LoansFundingWidget({
         ) : plan ? (
           <LoansPlanView plan={plan} />
         ) : null}
-      </WidgetCard>
+    </WidgetCard>
     </>
   );
 }

@@ -26,7 +26,11 @@ import {
     InvokeAgentCommand,
 } from '@aws-sdk/client-bedrock-agent-runtime'
 
-import { extractBalancedJsonObject } from '../utils/extractBalancedJson'
+import {
+    extractBalancedJsonObject,
+    escapeControlCharsInJsonStrings,
+    stripTrailingJsonCommas,
+} from '../utils/extractBalancedJson'
 
 const router = Router()
 
@@ -162,8 +166,9 @@ function buildDocumentGeneratorInputText(fields: {
         '- Do NOT ask for more information. Never reply with clarifying questions.',
         '- Use professional English suitable for banks, grants, or internal planning.',
         `JSON schema: ${DOCUMENT_JSON_SCHEMA_HINT}`,
-        '- Prefer bullet string[] for lists. For KPIs, timelines, or comparisons, use pipe-separated rows in a string: first line = column headers separated by |, following lines = data rows (the app renders this as a styled table in PDF/Word/UI).',
-        '- Optional per section: include "chart" only when you have at least two numeric data points (e.g. revenue by month, cost breakdown). Use type "bar" for categories, "line" for time series. Keep labels short. Omit "chart" when not needed — figures must look purposeful, not decorative.',
+        '- Prefer string[] for bullet lists (one bullet per array item). Never put literal line breaks inside a JSON string — use \\n only if you must use a single string.',
+        '- For tables or timelines use ONE string with pipe-separated rows: "Col A | Col B\\nrow1a | row1b" (no raw newlines breaking JSON).',
+        '- Optional per section: include "chart" only when you have at least two numeric data points. Use type "bar" for categories, "line" for time series. Omit "chart" when not needed.',
     ]
 
     if (fields.forceAssumeDefaults) {
@@ -260,7 +265,7 @@ function extractJsonString(raw: string): string {
         }
     }
 
-    return cleaned
+    return stripTrailingJsonCommas(escapeControlCharsInJsonStrings(cleaned))
 }
 
 /**
