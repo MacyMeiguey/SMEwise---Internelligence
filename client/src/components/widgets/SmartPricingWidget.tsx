@@ -80,7 +80,7 @@ function SmartPricingResult({
       {products.length > 0 && (
         <>
           <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-[#6b6890] -mb-3">
-            SKU Price Ladder
+            Pricing Recommendation
           </p>
           <div className="flex flex-col gap-3">
             {products.map((p, i) => (
