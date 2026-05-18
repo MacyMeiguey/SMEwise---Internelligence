@@ -28,8 +28,6 @@ import {
 
 import { extractBalancedJsonObject } from '../utils/extractBalancedJson'
 
-import { extractBalancedJsonObject } from '../utils/extractBalancedJson'
-
 const router = Router()
 
 const client = new BedrockAgentRuntimeClient({
@@ -202,8 +200,6 @@ function buildDocumentGeneratorInputText(fields: {
 
     return blocks.join('\n')
 }
-
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 /**
  * Returns true if the error is an AWS throttling / rate-limit error.
@@ -1400,7 +1396,7 @@ router.post('/smart-pricing', async (req: Request, res: Response) => {
         return
     }
 
-    const SMART_AGENT_ID       = process.env.BEDROCK_SMART_PRICING_AGENT_ID       ?? 'MBTQYPGAAU'
+    const SMART_AGENT_ID = process.env.BEDROCK_SMART_PRICING_AGENT_ID ?? 'MBTQYPGAAU'
     const SMART_AGENT_ALIAS_ID = process.env.BEDROCK_SMART_PRICING_AGENT_ALIAS_ID ?? 'EVH8JQ9YQ4'
 
     const productLines = products && products.length > 0
@@ -1746,7 +1742,7 @@ router.post('/document-generator', async (req: Request, res: Response) => {
             return
         }
 
-        const AGENT_ID       = process.env.BEDROCK_DOCUMENT_AGENT_ID       ?? '4K4BZVI9F8'
+        const AGENT_ID = process.env.BEDROCK_DOCUMENT_AGENT_ID ?? '4K4BZVI9F8'
         const AGENT_ALIAS_ID = process.env.BEDROCK_DOCUMENT_AGENT_ALIAS_ID ?? 'TCYVOZAWOA'
 
         const inputText = buildDocumentGeneratorInputText({

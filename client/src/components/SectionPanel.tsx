@@ -35,6 +35,16 @@ export default function SectionPanel({
   const { Icon, tagline, glow, highlights, runAllLabel, runAllHint, heroArt } = meta;
   const displayTitle = meta.displayTitle ?? title;
 
+  // Map section titles to their banner images in /public
+  const SECTION_BANNERS: Record<string, string> = {
+    'Operations': '/operation_banner.jpeg',
+    'Financial Planning': '/finance_banner.png',
+    'Pricing Strategy': '/pricing_banner.png',
+    'Marketing': '/marketing_banner.png',
+    'Owner Tools': '/owner_tools_banner.png',
+  };
+  const bannerSrc = SECTION_BANNERS[title];
+
   // ── Compact variant ──
   // Used when the dashboard auto-generates every widget. We strip the hero band
   // (description, highlights, run-all button, hero art) and just keep the
@@ -54,6 +64,17 @@ export default function SectionPanel({
         style={{ animationDelay: `${index * 70}ms` }}
         aria-disabled={isLocked}
       >
+        {/* Section banner */}
+        {bannerSrc && (
+          <div className="flex justify-center pt-5 px-4">
+            <img
+              src={bannerSrc}
+              alt={`${title} banner`}
+              className="w-[600px] max-w-full h-auto rounded-xl"
+            />
+          </div>
+        )}
+
         <div className="flex items-center gap-3 px-4 sm:px-6 lg:px-7 py-4">
           <div className="shrink-0 rounded-xl border border-primary-300/50 bg-primary-50 p-2.5 text-primary-700 shadow-sm dark:border-primary-400/25 dark:bg-primary-500/10 dark:text-primary-200 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
             <Icon className="h-5 w-5" aria-hidden />
@@ -89,6 +110,17 @@ export default function SectionPanel({
       style={{ animationDelay: `${index * 70}ms` }}
       aria-disabled={isLocked}
     >
+      {/* Section banner */}
+      {bannerSrc && (
+        <div className="flex justify-center pt-5 pb-6 px-4">
+          <img
+            src={bannerSrc}
+            alt={`${title} banner`}
+            className="w-[600px] max-w-full h-auto rounded-xl"
+          />
+        </div>
+      )}
+
       <div className="relative overflow-hidden border-b border-neutral-200 dark:border-white/[0.06]">
         <div
           aria-hidden

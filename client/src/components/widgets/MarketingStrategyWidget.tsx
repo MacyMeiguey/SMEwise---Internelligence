@@ -18,10 +18,40 @@ import { formatRM } from "../../utils/formatRM";
 
 // ─── API call ─────────────────────────────────────────────────────────────────
 
+/**
+ * Extract the marketing-specific budget from the full fund allocation string.
+ * The allocation format is like:
+ *   "Operations: 25% (RM 50,000), Marketing & Sales: 20% (RM 40,000), ..."
+ *
+ * We look for a segment containing "marketing" (case-insensitive), extract its
+ * percentage and amount, and return a marketing-only allocation string.
+ * Falls back to the full string if no marketing segment is found.
+ */
+function extractMarketingBudget(fullAllocation: string): string {
+  // Match patterns like "Marketing & Sales: 20% (RM 40,000)" or "Marketing: 15% (RM 30,000)"
+  const match = fullAllocation.match(
+    /marketing[^:]*:\s*(\d+(?:\.\d+)?)%\s*\(RM\s*([\d,]+)\)/i
+  );
+  if (match) {
+    const pct = match[1];
+    const amount = match[2];
+    return `${pct}% (RM ${amount}) allocated to marketing`;
+  }
+  // Fallback: return the full string if we can't find a marketing segment
+  return fullAllocation;
+}
+
 async function fetchMarketingPlan(profile: BusinessProfile, manualBudget?: number): Promise<string> {
-  const fundAllocation = manualBudget != null
-    ? `RM ${manualBudget.toLocaleString("en-MY")} allocated to marketing`
-    : profile.fundAllocation;
+  let fundAllocation: string | undefined;
+
+  if (manualBudget != null) {
+    // User explicitly set a budget via the slider — use that directly.
+    fundAllocation = `RM ${manualBudget.toLocaleString("en-MY")} allocated to marketing`;
+  } else if (profile.fundAllocation) {
+    // Profile has a fund allocation from the Fund Allocation widget —
+    // extract only the marketing portion.
+    fundAllocation = extractMarketingBudget(profile.fundAllocation);
+  }
 
   const payload = {
     companyName:    profile.companyName,

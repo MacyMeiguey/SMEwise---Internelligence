@@ -62,12 +62,15 @@ export interface RevenueProjectionPlan {
   assumptions: {
     industryGrowthRate: string;
     marketCondition: string;
+    monthlyBurnEstimate?: number;
     mainCostDrivers: string[];
   };
   financialProjection: FinancialPeriod[];
   breakEvenMonth: number;
   estimatedYearEndProfitMargin: number;
   milestones: RevenueProjectionMilestone[];
+  risks?: string[];
+  actionSteps?: string[];
 }
 
 // ─── API ──────────────────────────────────────────────────────────────────────
