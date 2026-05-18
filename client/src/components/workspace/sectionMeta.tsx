@@ -30,6 +30,12 @@ export interface WorkspaceSectionMeta {
   runAllHint: string;
   /** Pass-through to SectionHeroArt (unique art per section) */
   heroArt: SectionHeroArtKey;
+  /**
+   * When true, hides the right-side hero art panel and places the run-all
+   * button inline below the bullet points. Matches the Financial Planning
+   * compact-left layout.
+   */
+  noHeroArt?: boolean;
 }
 
 export const WORKSPACE_SECTION_META: Record<string, WorkspaceSectionMeta> = {
@@ -60,19 +66,16 @@ export const WORKSPACE_SECTION_META: Record<string, WorkspaceSectionMeta> = {
     heroArt: 'financial',
   },
   'Pricing Strategy': {
-    displayTitle: 'Market Pricing Intelligence',
-    tagline: 'Scan the market, benchmark competitors, and set data-driven prices for your products.',
-    Icon: Tags,
-    glow: 'rgba(167, 139, 250, 0.28)',
-    highlights: [
-      'Real-time competitor price scanning gives you market context.',
-      'Smart pricing engine recommends a defensible price range.',
-      'Cached product results let you compare and act fast.',
-    ],
-    runAllLabel: 'Run Market Intelligence Scan',
-    runAllHint: 'Scans competitors, calculates smart pricing, caches results.',
-    heroArt: 'pricing',
-  },
+  displayTitle: 'Market Pricing Intelligence',
+  tagline: '',
+  Icon: Tags,
+  glow: 'rgba(167, 139, 250, 0.28)',
+  highlights: [],
+  runAllLabel: 'Run Market Intelligence Scan',
+  runAllHint: 'Scans competitors, calculates smart pricing, caches results.',
+  heroArt: 'pricing',
+  noHeroArt: true,
+ },
   Marketing: {
     tagline: 'Start with a channel-smart plan, then ship poster-ready creative you can tweak in Canva.',
     Icon: Megaphone,
