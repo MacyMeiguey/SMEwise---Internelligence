@@ -54,10 +54,10 @@ export default function OwnerToolsWorkspace({ snapshotSlot, documentsSlot }: Own
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500 dark:text-neutral-400">
                 Exports
               </p>
-              <h3 className="text-base font-semibold text-neutral-900 dark:text-white">Structured documents</h3>
+              <h3 className="text-base font-semibold text-neutral-900 dark:text-white">Generated reports</h3>
             </div>
             <p className="max-w-xl text-xs text-neutral-600 dark:text-neutral-400">
-              Pick a template, optionally add a text file, then download PDF or Word — all from your saved profile.
+              Pick a report brief to generate, optionally add a reference file, then download as PDF or Word.
             </p>
           </div>
           {documentsSlot}

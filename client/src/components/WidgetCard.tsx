@@ -93,6 +93,16 @@ export interface WidgetCardProps {
    * Used by auto-generate mode where the workspace runs widgets without user input.
    */
   hideGenerateButton?: boolean;
+  /**
+   * When true, hides only the secondary "Regenerate" link below the success result.
+   * Header generate/regenerate stays visible unless hideGenerateButton is set.
+   */
+  hideFooterRegenerate?: boolean;
+  /**
+   * When true, the header action is shown only while idle (e.g. "Generate Dashboard").
+   * After success, the header regenerate control is hidden — use with Owner Tools auto-run / Generate All.
+   */
+  hideRegenerateInHeader?: boolean;
 }
 
 export default function WidgetCard({
@@ -106,9 +116,15 @@ export default function WidgetCard({
   regenerateLabel = 'Regenerate',
   generateDisabled = false,
   hideGenerateButton = false,
+  hideFooterRegenerate = false,
+  hideRegenerateInHeader = false,
 }: WidgetCardProps) {
   const { status, errorMessage } = state;
   const isLoading = status === 'loading';
+  const showHeaderGenerate =
+    !hideGenerateButton &&
+    !isLoading &&
+    !(hideRegenerateInHeader && status === 'success');
 
   return (
     <article
@@ -118,7 +134,7 @@ export default function WidgetCard({
       <header className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50/80 px-4 sm:px-5 py-3 min-h-[3rem] dark:border-white/[0.08] dark:bg-white/[0.03]">
         <h3 className="text-sm font-semibold text-neutral-900 tracking-tight pr-2 leading-snug dark:text-white">{title}</h3>
 
-        {!isLoading && !hideGenerateButton && (
+        {!showHeaderGenerate ? null : (
           <button
             type="button"
             onClick={onGenerate}
@@ -151,7 +167,7 @@ export default function WidgetCard({
                 {children}
               </div>
             </div>
-            {!hideGenerateButton && <RegenerateButton onClick={onGenerate} label={regenerateLabel} />}
+            {!hideGenerateButton && !hideFooterRegenerate && <RegenerateButton onClick={onGenerate} label={regenerateLabel} />}
           </div>
         )}
 

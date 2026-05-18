@@ -26,6 +26,8 @@ import {
     InvokeAgentCommand,
 } from '@aws-sdk/client-bedrock-agent-runtime'
 
+import { extractBalancedJsonObject } from '../utils/extractBalancedJson'
+
 const router = Router()
 
 const client = new BedrockAgentRuntimeClient({
@@ -42,7 +44,162 @@ const client = new BedrockAgentRuntimeClient({
 
 const MAX_RETRIES = 5
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/** Bedrock may surface throttling as ThrottlingException or a generic Error message. */
+function isThrottlingError(err: unknown): boolean {
+    const e = err as { name?: string; message?: string; $metadata?: { httpStatusCode?: number } }
+    const msg = (e.message ?? '').toLowerCase()
+    return (
+        e.name === 'ThrottlingException' ||
+        e.name === 'TooManyRequestsException' ||
+        e.$metadata?.httpStatusCode === 429 ||
+        msg.includes('rate is too high') ||
+        msg.includes('throttl') ||
+        msg.includes('too many requests')
+    )
+}
+
+function throttleBackoffMs(attempt: number): number {
+    const base = Math.min(45_000, 5_000 * 2 ** (attempt - 1))
+    return base + Math.floor(Math.random() * 600)
+}
+
+const THROTTLE_USER_MESSAGE =
+    'Our AI service is busy right now. Please wait a moment and try again.'
+
+/** Max Bedrock InvokeAgent calls per HTTP request (document generator). */
+const DOCUMENT_GENERATOR_MAX_INVOCATIONS = 3
+
+/** Serialize document-generator calls so Owner Tools + manual clicks don't stack TPS. */
+let documentGeneratorQueue: Promise<void> = Promise.resolve()
+
+function enqueueDocumentGenerator<T>(fn: () => Promise<T>): Promise<T> {
+    const run = documentGeneratorQueue.then(fn, fn)
+    documentGeneratorQueue = run.then(
+        () => undefined,
+        () => undefined,
+    )
+    return run
+}
+
+function looksLikeJsonObject(raw: string): boolean {
+    const t = raw.trim()
+    return t.includes('{') && t.includes('}')
+}
+
+function shouldRetryAfterInvalidJson(raw: string): boolean {
+    if (!looksLikeJsonObject(raw)) return false
+    const t = raw.trim()
+    // Likely truncated JSON — worth one slow retry; short prose/errors are not.
+    return t.length > 400 || (t.startsWith('{') && !t.endsWith('}'))
+}
+
+function looksLikeAgentClarification(raw: string): boolean {
+    const t = raw.trim().toLowerCase()
+    return (
+        (t.includes('?') &&
+            (t.includes('can you provide') ||
+                t.includes('could you provide') ||
+                t.includes('more details') ||
+                t.includes('what type of') ||
+                t.includes('please provide'))) ||
+        t.startsWith('can you ') ||
+        t.startsWith('could you ')
+    )
+}
+
+const DOCUMENT_JSON_SCHEMA_HINT = `{
+  "documentType": string,
+  "companyName": string,
+  "generatedAt": string,
+  "sections": [{
+    "title": string,
+    "content": string | string[],
+    "chart"?: { "type": "bar" | "line", "yAxisLabel"?: string, "series": [{ "label": string, "value": number }] }
+  }],
+  "disclaimer": string
+}`
+
+function buildDocumentGeneratorInputText(fields: {
+    documentType: string
+    companyName: string
+    businessType: string
+    industry: string
+    businessStage: string
+    city: string
+    targetCustomer?: string
+    mainGoal?: string
+    currentFunds?: number
+    templateText?: string
+    additionalContext?: string
+    forceAssumeDefaults?: boolean
+    priorAgentQuestion?: string
+}): string {
+    const profileLines = [
+        `Report brief to generate: ${fields.documentType}`,
+        `Company: ${fields.companyName}`,
+        `Business Type: ${fields.businessType}`,
+        `Industry: ${fields.industry}`,
+        `Business Stage: ${fields.businessStage}`,
+        `Location: ${fields.city}, Malaysia`,
+        fields.targetCustomer
+            ? `Target Customer: ${fields.targetCustomer}`
+            : null,
+        fields.mainGoal ? `Main Business Goal: ${fields.mainGoal}` : null,
+        fields.currentFunds != null
+            ? `Current Funds: RM ${Number(fields.currentFunds).toLocaleString('en-MY')}`
+            : null,
+        fields.templateText ? `Template Reference:\n${fields.templateText}` : null,
+    ].filter((line): line is string => line != null && line !== '')
+
+    const outputRules = [
+        'TASK: Write the full business report requested below for a Malaysian SME.',
+        'OUTPUT RULES (mandatory):',
+        '- Return ONLY valid JSON matching the schema — no markdown fences, no preamble, no questions to the user.',
+        '- Do NOT ask for more information. Never reply with clarifying questions.',
+        '- Use professional English suitable for banks, grants, or internal planning.',
+        `JSON schema: ${DOCUMENT_JSON_SCHEMA_HINT}`,
+        '- Prefer bullet string[] for lists. For KPIs, timelines, or comparisons, use pipe-separated rows in a string: first line = column headers separated by |, following lines = data rows (the app renders this as a styled table in PDF/Word/UI).',
+        '- Optional per section: include "chart" only when you have at least two numeric data points (e.g. revenue by month, cost breakdown). Use type "bar" for categories, "line" for time series. Keep labels short. Omit "chart" when not needed — figures must look purposeful, not decorative.',
+    ]
+
+    if (fields.forceAssumeDefaults) {
+        outputRules.push(
+            '- The user chose to proceed without more detail: invent plausible product/service assumptions for this industry and city, label them clearly in one section, then complete the full report.',
+        )
+    } else if (fields.additionalContext?.trim()) {
+        outputRules.push(
+            '- The user supplied additional detail below — treat it as authoritative and complete the report without asking anything else.',
+        )
+    } else {
+        outputRules.push(
+            '- If product/menu specifics are missing (e.g. generic F&B), assume a plausible offering for the industry and city, label assumptions in one section, then complete the report.',
+        )
+    }
+
+    const blocks: string[] = [...outputRules, '', '--- BUSINESS PROFILE ---', ...profileLines]
+
+    if (fields.additionalContext?.trim()) {
+        blocks.push(
+            '',
+            '--- ADDITIONAL DETAILS FROM USER (use directly; do not ask again) ---',
+            fields.additionalContext.trim(),
+        )
+    }
+
+    if (fields.priorAgentQuestion?.trim()) {
+        blocks.push(
+            '',
+            '--- PRIOR AGENT MESSAGE (already answered above; do not repeat this question) ---',
+            fields.priorAgentQuestion.trim(),
+        )
+    }
+
+    return blocks.join('\n')
+}
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
@@ -93,11 +250,16 @@ function extractJsonString(raw: string): string {
             .trim()
     }
 
-    // Try to isolate the first { ... } block if there's surrounding text
-    const start = cleaned.indexOf('{')
-    const end = cleaned.lastIndexOf('}')
-    if (start !== -1 && end !== -1 && end > start) {
-        cleaned = cleaned.slice(start, end + 1)
+    // Isolate the first complete JSON object (respects `}` inside strings)
+    const balanced = extractBalancedJsonObject(cleaned)
+    if (balanced) {
+        cleaned = balanced
+    } else {
+        const start = cleaned.indexOf('{')
+        const end = cleaned.lastIndexOf('}')
+        if (start !== -1 && end !== -1 && end > start) {
+            cleaned = cleaned.slice(start, end + 1)
+        }
     }
 
     return cleaned
@@ -1383,14 +1545,24 @@ router.post('/analytics-dashboard', async (req: Request, res: Response) => {
                 continue
             }
 
+            if (isThrottlingError(err) && attempt < MAX_RETRIES) {
+                const waitMs = throttleBackoffMs(attempt)
+                console.warn(
+                    `[analytics-dashboard] Throttled on attempt ${attempt}/${MAX_RETRIES}. Waiting ${waitMs}ms...`,
+                )
+                await sleep(waitMs)
+                continue
+            }
+
             const awsErr = err as { name?: string; message?: string }
             console.error(`[SMEwise] /api/bedrock/analytics-dashboard error on attempt ${attempt}:`, {
                 name: awsErr.name,
                 message: awsErr.message,
-                full: err,
             })
-            res.status(500).json({
-                error: `Agent error: ${awsErr.name ?? 'Unknown'} — ${awsErr.message ?? 'No message'}`,
+            res.status(isThrottlingError(err) ? 429 : 500).json({
+                error: isThrottlingError(err)
+                    ? THROTTLE_USER_MESSAGE
+                    : `Agent error: ${awsErr.name ?? 'Unknown'} — ${awsErr.message ?? 'No message'}`,
             })
             return
         }
@@ -1530,96 +1702,168 @@ router.post('/assistant', async (req: Request, res: Response) => {
 })
 
 // ─── POST /api/bedrock/document-generator ────────────────────────────────────
-// Invokes the ReportandDocumentGenerator Bedrock agent (4K4BZVI9F8 / G0Q3I9R5KX).
+// Invokes the ReportandDocumentGenerator Bedrock agent (4K4BZVI9F8 / TCYVOZAWOA).
 // Accepts a business profile + document type, returns structured JSON.
 
 router.post('/document-generator', async (req: Request, res: Response) => {
-    const {
-        companyName,
-        businessType,
-        industry,
-        businessStage,
-        city,
-        targetCustomer,
-        mainGoal,
-        documentType,
-        templateText,
-    } = req.body as {
-        companyName: string
-        businessType: string
-        industry: string
-        businessStage: string
-        city: string
-        targetCustomer?: string
-        mainGoal?: string
-        documentType: string
-        templateText?: string
-    }
+    await enqueueDocumentGenerator(async () => {
+        const {
+            companyName,
+            businessType,
+            industry,
+            businessStage,
+            city,
+            targetCustomer,
+            mainGoal,
+            documentType,
+            templateText,
+            currentFunds,
+            additionalContext,
+            forceAssumeDefaults,
+            priorAgentQuestion,
+        } = req.body as {
+            companyName: string
+            businessType: string
+            industry: string
+            businessStage: string
+            city: string
+            targetCustomer?: string
+            mainGoal?: string
+            documentType: string
+            templateText?: string
+            currentFunds?: number
+            additionalContext?: string
+            forceAssumeDefaults?: boolean
+            priorAgentQuestion?: string
+        }
 
-    if (!companyName || !businessType || !industry || !businessStage || !city || !documentType) {
-        res.status(400).json({
-            error: 'companyName, businessType, industry, businessStage, city, and documentType are required.',
-        })
-        return
-    }
-
-    const AGENT_ID       = process.env.BEDROCK_DOCUMENT_AGENT_ID       ?? '4K4BZVI9F8'
-    const AGENT_ALIAS_ID = process.env.BEDROCK_DOCUMENT_AGENT_ALIAS_ID ?? 'G0Q3I9R5KX'
-
-    const inputText = [
-        `Document Type: ${documentType}`,
-        `Company: ${companyName}`,
-        `Business Type: ${businessType}`,
-        `Industry: ${industry}`,
-        `Business Stage: ${businessStage}`,
-        `Location: ${city}, Malaysia`,
-        targetCustomer ? `Target Customer: ${targetCustomer}` : null,
-        mainGoal       ? `Main Business Goal: ${mainGoal}`    : null,
-        templateText   ? `Template Reference:\n${templateText}` : null,
-    ].filter(Boolean).join('\n')
-
-    console.log('=== [document-generator] inputText sent to Bedrock agent ===\n', inputText)
-
-    let lastRaw = ''
-
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        const sessionId = `doc-gen-${Date.now()}-${Math.random().toString(36).slice(2)}`
-
-        try {
-            const raw = await invokeAgent(inputText, sessionId, AGENT_ID, AGENT_ALIAS_ID)
-            lastRaw = raw
-
-            console.log(`[document-generator] Attempt ${attempt}/${MAX_RETRIES} — ${raw.length} chars`)
-
-            const jsonString = extractJsonString(raw)
-            JSON.parse(jsonString) // validate
-
-            console.log(`[document-generator] Attempt ${attempt} returned valid JSON`)
-            res.status(200).json({ content: raw })
-            return
-        } catch (err) {
-            if (err instanceof SyntaxError) {
-                console.warn(
-                    `[document-generator] Attempt ${attempt}/${MAX_RETRIES} invalid JSON.` +
-                    (attempt < MAX_RETRIES ? ' Retrying...' : ' No retries left.'),
-                )
-                continue
-            }
-
-            const awsErr = err as { name?: string; message?: string }
-            console.error(`[SMEwise] /api/bedrock/document-generator error on attempt ${attempt}:`, {
-                name: awsErr.name,
-                message: awsErr.message,
-            })
-            res.status(500).json({
-                error: `Agent error: ${awsErr.name ?? 'Unknown'} — ${awsErr.message ?? 'No message'}`,
+        if (!companyName || !businessType || !industry || !businessStage || !city || !documentType) {
+            res.status(400).json({
+                error: 'companyName, businessType, industry, businessStage, city, and documentType are required.',
             })
             return
         }
-    }
 
-    console.error(`[document-generator] All ${MAX_RETRIES} attempts failed. Returning last raw response.`)
-    res.status(200).json({ content: lastRaw })
+        const AGENT_ID       = process.env.BEDROCK_DOCUMENT_AGENT_ID       ?? '4K4BZVI9F8'
+        const AGENT_ALIAS_ID = process.env.BEDROCK_DOCUMENT_AGENT_ALIAS_ID ?? 'TCYVOZAWOA'
+
+        const inputText = buildDocumentGeneratorInputText({
+            documentType,
+            companyName,
+            businessType,
+            industry,
+            businessStage,
+            city,
+            targetCustomer,
+            mainGoal,
+            currentFunds,
+            templateText,
+            additionalContext,
+            forceAssumeDefaults: Boolean(forceAssumeDefaults),
+            priorAgentQuestion,
+        })
+
+        console.log('=== [document-generator] inputText sent to Bedrock agent ===\n', inputText)
+
+        let lastRaw = ''
+
+        for (let attempt = 1; attempt <= DOCUMENT_GENERATOR_MAX_INVOCATIONS; attempt++) {
+            const sessionId = `doc-gen-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+            try {
+                const raw = await invokeAgent(inputText, sessionId, AGENT_ID, AGENT_ALIAS_ID)
+                lastRaw = raw
+
+                console.log(
+                    `[document-generator] Invocation ${attempt}/${DOCUMENT_GENERATOR_MAX_INVOCATIONS} — ${raw.length} chars`,
+                )
+
+                if (!looksLikeJsonObject(raw)) {
+                    const clarification = looksLikeAgentClarification(raw)
+                    console.warn(
+                        clarification
+                            ? '[document-generator] Agent asked for clarification instead of JSON.'
+                            : '[document-generator] Agent reply is not JSON; returning as plain text.',
+                    )
+                    console.warn('[document-generator] preview:', raw.slice(0, 280))
+                    res.status(200).json({
+                        content: raw,
+                        ...(clarification ? { agentAskedForInput: true } : {}),
+                    })
+                    return
+                }
+
+                const jsonString = extractJsonString(raw)
+                JSON.parse(jsonString)
+
+                console.log(`[document-generator] Invocation ${attempt} returned valid JSON`)
+                res.status(200).json({ content: raw })
+                return
+            } catch (err) {
+                if (err instanceof SyntaxError) {
+                    console.warn(
+                        `[document-generator] Invocation ${attempt} invalid JSON. preview:`,
+                        lastRaw.slice(0, 280),
+                    )
+
+                    if (!shouldRetryAfterInvalidJson(lastRaw)) {
+                        res.status(200).json({ content: lastRaw })
+                        return
+                    }
+
+                    if (attempt < DOCUMENT_GENERATOR_MAX_INVOCATIONS) {
+                        const waitMs = 4_000
+                        console.warn(`[document-generator] Waiting ${waitMs}ms before JSON retry...`)
+                        await sleep(waitMs)
+                        continue
+                    }
+
+                    res.status(200).json({ content: lastRaw })
+                    return
+                }
+
+                if (isThrottlingError(err) && attempt < DOCUMENT_GENERATOR_MAX_INVOCATIONS) {
+                    const waitMs = throttleBackoffMs(attempt)
+                    console.warn(
+                        `[document-generator] Throttled on invocation ${attempt}/${DOCUMENT_GENERATOR_MAX_INVOCATIONS}. Waiting ${waitMs}ms...`,
+                    )
+                    await sleep(waitMs)
+                    continue
+                }
+
+                const awsErr = err as { name?: string; message?: string }
+                console.error(`[SMEwise] /api/bedrock/document-generator error on invocation ${attempt}:`, {
+                    name: awsErr.name,
+                    message: awsErr.message,
+                })
+
+                if (isThrottlingError(err) && lastRaw) {
+                    res.status(200).json({
+                        content: lastRaw,
+                        warning: THROTTLE_USER_MESSAGE,
+                    })
+                    return
+                }
+
+                res.status(isThrottlingError(err) ? 429 : 500).json({
+                    error: isThrottlingError(err)
+                        ? THROTTLE_USER_MESSAGE
+                        : `Agent error: ${awsErr.name ?? 'Unknown'} — ${awsErr.message ?? 'No message'}`,
+                })
+                return
+            }
+        }
+
+        if (lastRaw) {
+            console.warn('[document-generator] Max invocations reached; returning last raw response.')
+            res.status(200).json({ content: lastRaw })
+            return
+        }
+
+        res.status(502).json({
+            error: 'Document generation failed after several attempts. Please try again in a minute.',
+        })
+    })
 })
 
 export default router

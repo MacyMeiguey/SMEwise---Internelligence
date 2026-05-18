@@ -141,6 +141,8 @@ export default function AnalyticsDashboardWidget({
       idleHint="Generate realistic analytics data based on your business profile — ideal for pitch decks and planning."
       idleButtonLabel="Generate Dashboard"
       regenerateLabel="Regenerate"
+      hideFooterRegenerate
+      hideRegenerateInHeader
     >
       {dashboardData && (
         <div className="space-y-6">

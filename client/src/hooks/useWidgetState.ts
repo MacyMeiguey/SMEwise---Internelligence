@@ -20,7 +20,13 @@ function classifyError(err: unknown): string {
     const msg = err.message.toLowerCase();
 
     // Rate limit
-    if (msg.includes("429") || msg.includes("rate limit") || msg.includes("too many requests")) {
+    if (
+      msg.includes("429") ||
+      msg.includes("rate limit") ||
+      msg.includes("rate is too high") ||
+      msg.includes("too many requests") ||
+      msg.includes("busy right now")
+    ) {
       return "Our AI service is busy right now. Please wait a moment and try again.";
     }
 

@@ -232,7 +232,10 @@ export default function Dashboard({
         ]);
       }
     } else if (section === 'Owner Tools') {
-      await Promise.all([analyticsRef.current?.(), documentRef.current?.()]);
+      // Run one Bedrock agent at a time — parallel calls often hit account TPS limits.
+      await (analyticsRef.current?.() ?? Promise.resolve());
+      await new Promise((r) => setTimeout(r, 4000));
+      await (documentRef.current?.() ?? Promise.resolve());
     }
   }
 
@@ -248,10 +251,11 @@ export default function Dashboard({
 
     const timer = window.setTimeout(() => {
       ownerToolsAutoRanRef.current = true;
-      void Promise.all([
-        analyticsRef.current?.() ?? Promise.resolve(),
-        documentRef.current?.() ?? Promise.resolve(),
-      ]);
+      void (async () => {
+        await (analyticsRef.current?.() ?? Promise.resolve());
+        await new Promise((r) => setTimeout(r, 4000));
+        await (documentRef.current?.() ?? Promise.resolve());
+      })();
     }, 400);
 
     return () => window.clearTimeout(timer);

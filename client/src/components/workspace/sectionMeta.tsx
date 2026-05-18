@@ -97,7 +97,7 @@ export const WORKSPACE_SECTION_META: Record<string, WorkspaceSectionMeta> = {
       'Downloads stay on this device until you choose to share — good hygiene for drafts.',
     ],
     runAllLabel: 'Build owner bundle',
-    runAllHint: 'Runs dashboard snapshot and document generator together.',
+    runAllHint: 'Runs dashboard snapshot and report generator together.',
     heroArt: 'owner',
   },
 };
