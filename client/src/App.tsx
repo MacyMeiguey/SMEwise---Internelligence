@@ -21,6 +21,7 @@ import Dashboard, { type DashboardLiveContext } from './components/Dashboard';
 import AIAssistantPanel from './components/assistant/AIAssistantPanel';
 import WorkspaceSidebar from './components/workspace/WorkspaceSidebar';
 import LandingStage3D from './components/three/LandingStage3D';
+import CursorGlow from './components/hero/CursorGlow';
 import SplashScreen, { hasShownSplash } from './components/SplashScreen';
 import ScrollProgressBar from './components/hero/ScrollProgressBar';
 import SectionDotNav from './components/hero/SectionDotNav';
@@ -222,6 +223,7 @@ function AppContent() {
 
       {isLanding && <ScrollProgressBar />}
       {isLanding && <LandingStage3D />}
+      {isLanding && <CursorGlow />}
       {isLanding && <SectionDotNav />}
       {isLanding && <BackToTop />}
 

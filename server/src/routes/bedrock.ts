@@ -26,11 +26,15 @@ import {
     InvokeAgentCommand,
 } from '@aws-sdk/client-bedrock-agent-runtime'
 
+<<<<<<< Updated upstream
+import { extractBalancedJsonObject } from '../utils/extractBalancedJson'
+=======
 import {
     extractBalancedJsonObject,
     escapeControlCharsInJsonStrings,
     stripTrailingJsonCommas,
 } from '../utils/extractBalancedJson'
+>>>>>>> Stashed changes
 
 const router = Router()
 

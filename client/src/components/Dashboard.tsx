@@ -293,7 +293,7 @@ export default function Dashboard({
                 compact={isCompactSection}
               >
                 {section === 'Operations' && profile && (
-                  <div className="grid grid-cols-1 gap-4 lg:gap-5">
+                  <div className="grid grid-cols-1 gap-4 lg:gap-5 stagger-children">
                     <StartupRegistrationWidget
                       profile={profile}
                       onGenerateRef={(fn) => {
@@ -319,7 +319,7 @@ export default function Dashboard({
                 )}
 
                 {section === 'Financial Planning' && profile && (
-                  <div className="flex flex-col gap-4 lg:gap-5">
+                  <div className="flex flex-col gap-4 lg:gap-5 stagger-children">
                     {/* Row 1 — Fund Allocation full width */}
                     <FundAllocationWidget
                       profile={profile}
@@ -399,7 +399,7 @@ export default function Dashboard({
                 )}
 
                 {section === 'Marketing' && profile && (
-                  <div className="flex flex-col gap-4 lg:gap-5">
+                  <div className="flex flex-col gap-4 lg:gap-5 stagger-children">
                     {/* Row 1: Strategy + Guidelines */}
                     <div className="grid grid-cols-1 xl:grid-cols-10 items-stretch gap-4 lg:gap-5">
                       <div className="xl:col-span-5 min-w-0 flex flex-col">

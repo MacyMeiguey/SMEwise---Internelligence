@@ -5,7 +5,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { BusinessProfile, ChatMessage } from '../../types';
 import type { DashboardLiveContext } from '../Dashboard';
-import { MessageCircle, Send, X, ChevronsRight, ChevronsLeft } from 'lucide-react';
+import { MessageCircle, Send, X, ChevronsRight, Mic } from 'lucide-react';
 import { API_BASE } from '../../lib/api';
 import { getAllWidgetCacheEntries } from '../../utils/widgetCache';
 import ChatAvatar3D from '../three/ChatAvatar3D';
@@ -385,27 +385,33 @@ export default function AIAssistantPanel({
         </div>
       )}
 
-      {/* Desktop — collapsed launcher (rail edge) */}
+      {/* Desktop — collapsed launcher at bottom-right with floating animation */}
       {isCollapsed && (
         <button
           type="button"
           onClick={onToggleCollapse}
-          className="hidden lg:flex fixed top-24 right-4 z-40 flex-col items-center gap-2 bg-white hover:bg-neutral-50 text-neutral-900 rounded-2xl border border-neutral-200 px-2.5 py-3 group transition-colors dark:bg-neutral-900 dark:hover:bg-neutral-800 dark:text-white dark:border-white/[0.12]"
-          style={{ boxShadow: '0 0 0 1px rgba(167,139,250,0.15), 0 8px 24px rgba(0,0,0,0.12)', transitionProperty: 'color, background-color, border-color' }}
+          className="hidden lg:flex fixed bottom-6 right-6 z-40 flex-col items-center gap-1 rounded-2xl px-2 py-2 group transition-all motion-safe:animate-hero-float"
+          style={{ transitionProperty: 'color, background-color, border-color' }}
           aria-label="Open business advisor"
           aria-expanded={false}
           aria-controls="ai-assistant-panel"
         >
-          <ChatAvatar3D speaking={isTyping} nodSignal={userMessageCount} size={48} />
-          <span className="flex flex-col items-center leading-tight gap-0.5 mt-1">
-            <span className="text-[9px] font-bold uppercase tracking-widest text-primary-600 dark:text-primary-200">
-              Advisor
-            </span>
-            <span className="text-[11px] font-semibold text-neutral-800 dark:text-white">
-              {isTyping ? 'Thinking…' : 'Ask'}
-            </span>
+          {/* Pulse ring when typing */}
+          {isTyping && (
+            <span className="absolute inset-2 rounded-full border-2 border-primary-400 animate-ping opacity-30" />
+          )}
+          <ChatAvatar3D speaking={isTyping} nodSignal={userMessageCount} size={72} borderless />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-primary-600 dark:text-primary-200 opacity-0 group-hover:opacity-100 transition-opacity">
+            {isTyping ? 'Thinking…' : 'Ask me'}
           </span>
-          <ChevronsLeft className="h-4 w-4 opacity-70 group-hover:opacity-100 mt-1" aria-hidden />
+
+          {/* Speech bubble hint */}
+          {!isTyping && userMessageCount === 0 && (
+            <div className="absolute -left-36 bottom-12 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+              <p className="text-xs text-neutral-700 dark:text-neutral-200 whitespace-nowrap font-medium">💬 Ask me anything!</p>
+              <div className="absolute right-[-6px] bottom-3 w-3 h-3 bg-white dark:bg-neutral-800 border-r border-t border-neutral-200 dark:border-white/10 rotate-45" />
+            </div>
+          )}
         </button>
       )}
 
@@ -596,6 +602,7 @@ function AssistantContent({
             disabled={isTyping}
             className="flex-1 min-w-0 px-4 py-2.5 rounded-xl border border-neutral-300 bg-white text-neutral-900 text-sm placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-400/50 transition-all dark:border-white/[0.10] dark:bg-white/[0.06] dark:text-white"
           />
+          <VoiceInputButton onTranscript={(text) => sendMessage(text)} disabled={isTyping} />
           <button
             type="button"
             onClick={() => sendMessage(inputText)}
@@ -650,5 +657,72 @@ function TypingIndicator() {
       <span className="w-2 h-2 rounded-full bg-primary-400 animate-pulse [animation-delay:150ms]" />
       <span className="w-2 h-2 rounded-full bg-primary-400 animate-pulse [animation-delay:300ms]" />
     </div>
+  );
+}
+
+/* ─── Voice Input Button ───────────────────────────────────────────────────── */
+
+interface VoiceInputButtonProps {
+  onTranscript: (text: string) => void;
+  disabled?: boolean;
+}
+
+function VoiceInputButton({ onTranscript, disabled }: VoiceInputButtonProps) {
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<unknown>(null);
+
+  const supportsVoice = typeof window !== 'undefined' &&
+    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+
+  const toggleListening = () => {
+    if (!supportsVoice) return;
+
+    if (isListening) {
+      (recognitionRef.current as { stop: () => void } | null)?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SpeechRecognitionCtor = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognitionCtor) return;
+
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = 'en-MY';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event: { results: { 0: { 0: { transcript: string } } } }) => {
+      const transcript = event.results[0]?.[0]?.transcript;
+      if (transcript) onTranscript(transcript);
+      setIsListening(false);
+    };
+
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={toggleListening}
+      disabled={disabled}
+      className={`shrink-0 w-11 h-11 rounded-xl flex items-center justify-center border transition-all relative overflow-hidden ${
+        isListening
+          ? 'bg-red-500 hover:bg-red-400 text-white border-red-400/50 shadow-lg shadow-red-500/30'
+          : 'bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white border-white/10 dark:border-white/[0.10]'
+      } disabled:opacity-30 disabled:pointer-events-none`}
+      aria-label={isListening ? 'Stop listening' : 'Voice input'}
+      title={supportsVoice ? (isListening ? 'Tap to stop' : 'Tap to speak') : 'Voice not supported in this browser'}
+    >
+      {isListening && (
+        <span className="absolute inset-0 rounded-xl border-2 border-red-400 animate-ping opacity-40" />
+      )}
+      <Mic size={16} className={isListening ? 'animate-pulse' : ''} />
+    </button>
   );
 }

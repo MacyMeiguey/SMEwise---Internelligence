@@ -10,6 +10,8 @@ import type { BusinessProfile } from "../../types";
 import { useWidgetState } from "../../hooks/useWidgetState";
 import WidgetCard from "../WidgetCard";
 import { API_BASE } from "../../lib/api";
+import FinancialDonut3D from "../three/FinancialDonut3D";
+import type { Segment as DonutSegment } from "../three/FinancialDonut3D";
 
 // ─── Types (exported so Dashboard can pass allocation to Revenue widget) ──────
 
@@ -228,6 +230,26 @@ function AllocationTable({ plan }: { plan: FundAllocationPlan }) {
   );
 }
 
+// ─── 3D Chart colour mapping ──────────────────────────────────────────────────
+
+const DONUT_COLOURS = [
+  '#8b5cf6', // violet
+  '#3b82f6', // blue
+  '#10b981', // emerald
+  '#f59e0b', // amber
+  '#f43f5e', // rose
+  '#06b6d4', // cyan
+];
+
+function planToDonutSegments(plan: FundAllocationPlan): DonutSegment[] {
+  return plan.allocations.map((a, i) => ({
+    category: a.category,
+    percentage: a.percentage,
+    amount: a.amount,
+    color: DONUT_COLOURS[i % DONUT_COLOURS.length],
+  }));
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -252,6 +274,7 @@ export default function FundAllocationWidget({
   const { state, generate, restoreSuccess } = useWidgetState();
   const [plan, setPlan] = useState<FundAllocationPlan | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [show3D, setShow3D] = useState(true);
 
   const cacheInputs = {
     companyName: profile.companyName,
@@ -324,7 +347,45 @@ export default function FundAllocationWidget({
       {parseError ? (
         <p className="text-sm text-red-400">{parseError}</p>
       ) : plan ? (
-        <AllocationTable plan={plan} />
+        <div className="space-y-4">
+          {/* View toggle */}
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShow3D(false)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                !show3D
+                  ? 'bg-primary-600 text-white shadow-sm'
+                  : 'bg-white/5 text-neutral-400 hover:text-white hover:bg-white/10 border border-white/10'
+              }`}
+            >
+              📊 Table
+            </button>
+            <button
+              type="button"
+              onClick={() => setShow3D(true)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                show3D
+                  ? 'bg-primary-600 text-white shadow-sm'
+                  : 'bg-white/5 text-neutral-400 hover:text-white hover:bg-white/10 border border-white/10'
+              }`}
+            >
+              🎨 3D Chart
+            </button>
+          </div>
+
+          {/* 3D Donut Chart */}
+          {show3D && (
+            <FinancialDonut3D
+              segments={planToDonutSegments(plan)}
+              height={480}
+              className="w-full"
+            />
+          )}
+
+          {/* Table view */}
+          {!show3D && <AllocationTable plan={plan} />}
+        </div>
       ) : null}
     </WidgetCard>
   );

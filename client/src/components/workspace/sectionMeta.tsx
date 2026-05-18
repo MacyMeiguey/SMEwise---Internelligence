@@ -97,6 +97,7 @@ export const WORKSPACE_SECTION_META: Record<string, WorkspaceSectionMeta> = {
     highlights: [
       'Use the flow strip below: snapshot first, then written exports — mirrors how founders prep packs.',
       '"Build owner bundle" still runs both generators in one tap when you are iterating fast.',
+      'PDF and Word exports include SMEwise branding with one disclaimer and one footer line.',
       'Downloads stay on this device until you choose to share — good hygiene for drafts.',
     ],
     runAllLabel: 'Build owner bundle',

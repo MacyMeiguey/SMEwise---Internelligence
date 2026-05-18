@@ -57,7 +57,7 @@ export default function OwnerToolsWorkspace({ snapshotSlot, documentsSlot }: Own
               <h3 className="text-base font-semibold text-neutral-900 dark:text-white">Generated reports</h3>
             </div>
             <p className="max-w-xl text-xs text-neutral-600 dark:text-neutral-400">
-              Pick a report brief to generate, optionally add a reference file, then download as PDF or Word.
+              Generate a report brief, then download as PDF (logo, watermark, charts) or Word (.docx). Each export has one review disclaimer and a single SMEwise footer — no duplicate notices.
             </p>
           </div>
           {documentsSlot}

@@ -304,7 +304,7 @@ export default function CompetitorPricingWidget({
       ) : rawFallback ? (
         <pre className="whitespace-pre-wrap font-sans text-sm text-[#a78bfa] leading-relaxed">
           {rawFallback}
-        </pre>
+      </pre>
       ) : null}
       {errorMessage && (
         <div className="rounded-xl border border-red-300 bg-red-50 p-4 dark:border-red-500/30 dark:bg-red-500/10">

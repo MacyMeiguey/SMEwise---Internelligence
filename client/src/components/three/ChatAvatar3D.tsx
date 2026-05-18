@@ -54,6 +54,8 @@ interface ChatAvatar3DProps {
   /** Pixel size of the square avatar; defaults to 56 */
   size?: number;
   className?: string;
+  /** When true, removes border/background so the avatar floats transparently */
+  borderless?: boolean;
 }
 
 function StaticAvatar({ size, speaking }: { size: number; speaking: boolean }) {
@@ -99,6 +101,7 @@ export default function ChatAvatar3D({
   nodSignal = 0,
   size = 56,
   className = '',
+  borderless = false,
 }: ChatAvatar3DProps) {
   const reduce = useReducedMotion();
   const [supports3D, setSupports3D] = useState<boolean | null>(null);
@@ -118,7 +121,7 @@ export default function ChatAvatar3D({
 
   return (
     <div
-      className={`relative rounded-2xl border-2 border-neutral-950 bg-neutral-950 overflow-hidden shadow-hard-sm shrink-0 ${className}`}
+      className={`relative shrink-0 ${borderless ? 'overflow-visible' : 'rounded-2xl border-2 border-neutral-950 bg-neutral-950 overflow-hidden shadow-hard-sm'} ${className}`}
       style={{ width: size, height: size }}
       aria-hidden
     >
@@ -133,9 +136,11 @@ export default function ChatAvatar3D({
           {supports3D && <ChatAvatar3DScene speaking={speaking} nodSignal={nodSignal} />}
         </Suspense>
       </ErrorBoundary>
-      <span
-        className={`absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-white ${speaking ? 'bg-success-500 motion-safe:animate-pulse' : 'bg-primary-300'}`}
-      />
+      {!borderless && (
+        <span
+          className={`absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-white ${speaking ? 'bg-success-500 motion-safe:animate-pulse' : 'bg-primary-300'}`}
+        />
+      )}
     </div>
   );
 }

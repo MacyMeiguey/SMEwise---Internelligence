@@ -23,6 +23,7 @@
     "@aws-sdk/client-bedrock": "^3.1045.0",
     "@aws-sdk/client-bedrock-agent-runtime": "^3.1046.0",
     "@aws-sdk/client-bedrock-runtime": "^3.1045.0",
-    "dotenv": "^17.4.2"
+    "dotenv": "^17.4.2",
+    "framer-motion": "^12.39.0"
   }
 }
