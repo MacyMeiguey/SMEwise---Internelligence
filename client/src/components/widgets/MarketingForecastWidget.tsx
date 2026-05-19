@@ -47,13 +47,6 @@ function extractJson(raw: string): string {
 
 // â”€â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-interface MarketingForecastWidgetProps {
-  /** Raw JSON string from the marketing strategy agent. Null means not yet generated. */
-  marketingPlanJson: string | null;
-  onGenerateRef?: (fn: (planJsonOverride?: string) => Promise<void>) => void;
-  hideGenerateButton?: boolean;
-}
-
 import { checkCache, writeCache, hashInputs } from '../../utils/widgetCache';
 
 const CACHE_KEY = 'marketing-forecast';
@@ -63,12 +56,15 @@ interface MarketingForecastWidgetProps {
   marketingPlanJson: string | null;
   onGenerateRef?: (fn: (planJsonOverride?: string) => Promise<void>) => void;
   hideGenerateButton?: boolean;
+  /** Called once the widget has a successful result (fresh or from cache). */
+  onSuccess?: () => void;
 }
 
 export default function MarketingForecastWidget({
   marketingPlanJson,
   onGenerateRef,
   hideGenerateButton = false,
+  onSuccess,
 }: MarketingForecastWidgetProps) {
   const { state, generate, restoreSuccess } = useWidgetState();
   const [forecast, setForecast] = useState<MarketingForecastData | null>(null);
@@ -92,6 +88,7 @@ export default function MarketingForecastWidget({
     if (cached) {
       setForecast(cached.result);
       restoreSuccess();
+      onSuccess?.();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [marketingPlanJson]);
@@ -108,6 +105,7 @@ export default function MarketingForecastWidget({
       setForecast(cached.result);
       setParseError(null);
       restoreSuccess();
+      onSuccess?.();
       return;
     }
 
@@ -124,6 +122,7 @@ export default function MarketingForecastWidget({
           const parsed = JSON.parse(jsonStr) as MarketingForecastData;
           setForecast(parsed);
           writeCache(CACHE_KEY, hashInputs(makeCacheInputs(jsonToUse)), parsed);
+          onSuccess?.();
         } catch {
           setParseError(
             "The agent returned a response that couldn't be parsed as a forecast. Try regenerating."

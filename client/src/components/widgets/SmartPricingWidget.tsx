@@ -226,9 +226,12 @@ export default function SmartPricingWidget({
 
       let res: Response
       try {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 120_000) // 2 min timeout
         res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
           body: JSON.stringify({
             companyName:    profile.companyName,
             industry:       profile.industry,
@@ -243,9 +246,10 @@ export default function SmartPricingWidget({
               : undefined,
           }),
         })
+        clearTimeout(timeoutId)
       } catch (networkErr) {
         console.error('[SmartPricing] Network error:', networkErr)
-        throw new Error('Cannot reach the server. Make sure npm run dev is running.')
+        throw new Error('Cannot reach the server. Please wait a moment and try again.')
       }
 
       if (!res.ok) {

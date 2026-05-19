@@ -30,7 +30,7 @@ import {
     extractBalancedJsonObject,
     escapeControlCharsInJsonStrings,
     stripTrailingJsonCommas,
-} from '../utils/extractBalancedJson'
+} from '../utils/extractBalancedJson.js'
 
 const router = Router()
 
@@ -280,6 +280,8 @@ async function invokeAgent(
     agentAliasId: string,
 ): Promise<string> {
     const THROTTLE_RETRIES = 5
+    const AGENT_TIMEOUT_MS = 60_000 // 60 s — abort if the agent never responds
+
     for (let t = 1; t <= THROTTLE_RETRIES; t++) {
         try {
             const command = new InvokeAgentCommand({
@@ -293,14 +295,32 @@ async function invokeAgent(
 
             let raw = ''
             try {
-                for await (const chunk of agentResponse.completion ?? []) {
-                    if (chunk.chunk?.bytes) {
-                        raw += new TextDecoder().decode(chunk.chunk.bytes)
-                    }
-                    if (chunk.trace) {
-                        console.log(`[Bedrock agent trace] agentId=${agentId}`, JSON.stringify(chunk.trace).slice(0, 300))
-                    }
-                }
+                // Wrap the stream in a timeout so a silent/hanging agent doesn't
+                // block the request forever.
+                const streamWithTimeout = new Promise<string>((resolve, reject) => {
+                    const timer = setTimeout(() => {
+                        reject(new Error(`invokeAgent timeout: agentId=${agentId} did not respond within ${AGENT_TIMEOUT_MS}ms`))
+                    }, AGENT_TIMEOUT_MS)
+
+                        ; (async () => {
+                            let accumulated = ''
+                            for await (const chunk of agentResponse.completion ?? []) {
+                                if (chunk.chunk?.bytes) {
+                                    accumulated += new TextDecoder().decode(chunk.chunk.bytes)
+                                }
+                                if (chunk.trace) {
+                                    console.log(`[Bedrock agent trace] agentId=${agentId}`, JSON.stringify(chunk.trace).slice(0, 300))
+                                }
+                            }
+                            clearTimeout(timer)
+                            resolve(accumulated)
+                        })().catch((err) => {
+                            clearTimeout(timer)
+                            reject(err)
+                        })
+                })
+
+                raw = await streamWithTimeout
             } catch (streamErr) {
                 // Throttle errors often surface here during stream iteration
                 if (isThrottleError(streamErr) && t < THROTTLE_RETRIES) {

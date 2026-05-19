@@ -57,12 +57,15 @@ interface MarketingGuidelinesWidgetProps {
   marketingPlanJson: string | null;
   onGenerateRef?: (fn: (planJsonOverride?: string) => Promise<void>) => void;
   hideGenerateButton?: boolean;
+  /** Called once the widget has a successful result (fresh or from cache). */
+  onSuccess?: () => void;
 }
 
 export default function MarketingGuidelinesWidget({
   marketingPlanJson,
   onGenerateRef,
   hideGenerateButton = false,
+  onSuccess,
 }: MarketingGuidelinesWidgetProps) {
   const { state, generate, restoreSuccess } = useWidgetState();
   const [guidelines, setGuidelines] = useState<MarketingGuidelinesData | null>(null);
@@ -85,6 +88,7 @@ export default function MarketingGuidelinesWidget({
     if (cached) {
       setGuidelines(cached.result);
       restoreSuccess();
+      onSuccess?.();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [marketingPlanJson]);
@@ -101,6 +105,7 @@ export default function MarketingGuidelinesWidget({
       setGuidelines(cached.result);
       setParseError(null);
       restoreSuccess();
+      onSuccess?.();
       return;
     }
 
@@ -117,6 +122,7 @@ export default function MarketingGuidelinesWidget({
           const parsed = JSON.parse(jsonStr) as MarketingGuidelinesData;
           setGuidelines(parsed);
           writeCache(CACHE_KEY, hashInputs(makeCacheInputs(jsonToUse)), parsed);
+          onSuccess?.();
         } catch {
           setParseError(
             "The agent returned a response that couldn't be parsed as marketing guidelines. " +

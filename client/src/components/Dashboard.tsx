@@ -130,6 +130,11 @@ export default function Dashboard({
   const marketingGuidelinesRef = useRef<((planJson?: string) => Promise<void>) | null>(null);
   const marketingForecastRef = useRef<((planJson?: string) => Promise<void>) | null>(null);
 
+  // Track whether downstream marketing widgets already have a result so the
+  // onStrategyGenerated fan-out doesn't re-trigger them on every cache restore.
+  const marketingGuidelinesDoneRef = useRef(false);
+  const marketingForecastDoneRef = useRef(false);
+
   const analyticsRef = useRef<(() => Promise<void>) | null>(null);
   const documentRef = useRef<(() => Promise<void>) | null>(null);
 
@@ -409,15 +414,17 @@ export default function Dashboard({
                             marketingPlanJsonRef.current = raw;
                             setMarketingPlanJson(raw);
                             // In auto-gen mode, fan out Guidelines + Forecast
-                            // every time Strategy produces a plan. Putting the
-                            // fan-out here (rather than inline in the auto-gen
-                            // pipeline) means a manual retry of Strategy after
-                            // a first-attempt failure also re-triggers the two
-                            // downstream widgets — they'd otherwise stay idle
-                            // because the original pipeline already bailed.
+                            // only if they haven't already produced a result.
+                            // This prevents duplicate calls when onStrategyGenerated
+                            // fires both from the cache-restore useEffect on mount
+                            // AND from the auto-gen pipeline completing.
                             if (isAutoSection) {
-                              void marketingGuidelinesRef.current?.(raw);
-                              void marketingForecastRef.current?.(raw);
+                              if (!marketingGuidelinesDoneRef.current) {
+                                void marketingGuidelinesRef.current?.(raw);
+                              }
+                              if (!marketingForecastDoneRef.current) {
+                                void marketingForecastRef.current?.(raw);
+                              }
                             }
                           }}
                           onGenerateRef={(fn) => {
@@ -432,6 +439,7 @@ export default function Dashboard({
                           onGenerateRef={(fn) => {
                             marketingGuidelinesRef.current = fn;
                           }}
+                          onSuccess={() => { marketingGuidelinesDoneRef.current = true; }}
                           hideGenerateButton={isAutoSection}
                         />
                       </div>
@@ -442,6 +450,7 @@ export default function Dashboard({
                       onGenerateRef={(fn) => {
                         marketingForecastRef.current = fn;
                       }}
+                      onSuccess={() => { marketingForecastDoneRef.current = true; }}
                       hideGenerateButton={isAutoSection}
                     />
                   </div>
