@@ -1,4 +1,6 @@
 # SMEwise — AI Business Assistant for Malaysian SMEs
+https://d21qwulue96ibi.cloudfront.net/ 
+
 
 SMEwise is an AI-powered web application that provides personalised business guidance to Malaysian SME founders. It uses AWS Bedrock (Claude via Converse API for text generation, Nova Canvas for image generation, and Bedrock Agents for marketing plans).
 
