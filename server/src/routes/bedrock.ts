@@ -1,5 +1,5 @@
 /**
- * Bedrock Agent proxy routes
+ * Bedrock / AgentCore proxy routes
  *
  * POST /api/bedrock/marketing   — marketing plan agent
  * POST /api/bedrock/startup     — startup registration agent
@@ -15,9 +15,9 @@
  *   5 times before returning an error.
  *
  * POST /api/bedrock/fund-allocation
- *   Invokes the fund-allocation Bedrock agent (RMJF0EXRHR / RDAMSJUEK5).
- *   Accepts BusinessProfile fields, returns a JSON budget allocation plan
- *   matching the FundAllocationPlan schema.
+ *   Invokes the fund-allocation AgentCore harness (sr_financial_FundAllocation)
+ *   via the InvokeHarness API. Accepts BusinessProfile fields, returns a JSON
+ *   budget allocation plan matching the FundAllocationPlan schema.
  */
 
 import { Router, Request, Response } from 'express'
@@ -35,6 +35,12 @@ import {
     escapeControlCharsInJsonStrings,
     stripTrailingJsonCommas,
 } from '../utils/extractBalancedJson.js'
+import { normaliseRevenuePlan } from '../utils/normaliseRevenuePlan.js'
+import { validateLoansFundingPlan } from '../utils/validateLoansFundingPlan.js'
+import {
+    normaliseInvestorFundingPlan,
+    validateInvestorFundingPlan,
+} from '../utils/validateInvestorFundingPlan.js'
 
 const router = Router()
 
@@ -147,6 +153,77 @@ const PROFILE_AGENT_QUALIFIER = process.env.PROFILE_AGENT_QUALIFIER || undefined
 
 /** Max tokens the profile-verification harness may generate (short output). */
 const PROFILE_MAX_TOKENS = Number(process.env.PROFILE_MAX_TOKENS ?? '1024')
+
+/**
+ * AgentCore harness ARN for the fund-allocation harness. Invoked via the
+ * InvokeHarness API using the harness ARN (not the underlying runtime ARN).
+ * Override via env var so swapping harnesses never requires a code change.
+ */
+const FUND_HARNESS_ARN =
+    process.env.FUND_HARNESS_ARN ??
+    'arn:aws:bedrock-agentcore:ap-southeast-1:781897846709:harness/sr_financial_FundAllocation-iunqjr6MYA'
+
+/** Optional endpoint/version qualifier for the fund-allocation harness. */
+const FUND_AGENT_QUALIFIER = process.env.FUND_AGENT_QUALIFIER || undefined
+
+/**
+ * Max tokens the fund-allocation harness may generate per iteration. The
+ * six-category JSON is small, so 4096 is enough; raise it if the response is
+ * truncated with `messageStop reason=max_tokens`.
+ */
+const FUND_MAX_TOKENS = Number(process.env.FUND_MAX_TOKENS ?? '4096')
+
+/**
+ * AgentCore harness ARN for the revenue-projection harness. Invoked via the
+ * InvokeHarness API using the harness ARN (not the underlying runtime ARN).
+ */
+const REVENUE_HARNESS_ARN =
+    process.env.REVENUE_HARNESS_ARN ??
+    'arn:aws:bedrock-agentcore:ap-southeast-1:781897846709:harness/sr_financial_RevenueProjection-mGkcG1UVK0'
+
+/** Optional endpoint/version qualifier for the revenue-projection harness. */
+const REVENUE_AGENT_QUALIFIER = process.env.REVENUE_AGENT_QUALIFIER || undefined
+
+/**
+ * Max tokens the revenue-projection harness may generate per iteration. The
+ * four-period JSON with milestones/risks/actions needs more room than Fund
+ * Allocation; 8192 leaves headroom without hitting the old truncation.
+ */
+const REVENUE_MAX_TOKENS = Number(process.env.REVENUE_MAX_TOKENS ?? '8192')
+
+/**
+ * AgentCore harness ARN for the loans & funding harness. Invoked via the
+ * InvokeHarness API using the harness ARN (not the underlying runtime ARN).
+ */
+const LOANS_HARNESS_ARN =
+    process.env.LOANS_HARNESS_ARN ??
+    'arn:aws:bedrock-agentcore:ap-southeast-1:781897846709:harness/sr_financial_LoansNFunding-iUoPB9AwcM'
+
+/** Optional endpoint/version qualifier for the loans & funding harness. */
+const LOANS_AGENT_QUALIFIER = process.env.LOANS_AGENT_QUALIFIER || undefined
+
+/**
+ * Max tokens the loans & funding harness may generate per iteration. The
+ * response is a compact list JSON; 4096 is enough.
+ */
+const LOANS_MAX_TOKENS = Number(process.env.LOANS_MAX_TOKENS ?? '4096')
+
+/**
+ * AgentCore harness ARN for the investor & funding harness. Invoked via the
+ * InvokeHarness API using the harness ARN (not the underlying runtime ARN).
+ */
+const INVESTOR_HARNESS_ARN =
+    process.env.INVESTOR_HARNESS_ARN ??
+    'arn:aws:bedrock-agentcore:ap-southeast-1:781897846709:harness/sr_financial_InvestorFunding-gypZe9idDz'
+
+/** Optional endpoint/version qualifier for the investor & funding harness. */
+const INVESTOR_AGENT_QUALIFIER = process.env.INVESTOR_AGENT_QUALIFIER || undefined
+
+/**
+ * Max tokens the investor & funding harness may generate per iteration. The
+ * response is a compact list JSON; 4096 is enough.
+ */
+const INVESTOR_MAX_TOKENS = Number(process.env.INVESTOR_MAX_TOKENS ?? '4096')
 
 const MAX_RETRIES = 5
 
@@ -802,9 +879,6 @@ router.post('/fund-allocation', async (req: Request, res: Response) => {
         return
     }
 
-    const FUND_AGENT_ID = process.env.BEDROCK_FUND_AGENT_ID ?? 'RMJF0EXRHR'
-    const FUND_AGENT_ALIAS_ID = process.env.BEDROCK_FUND_AGENT_ALIAS_ID ?? 'UUHZO1BLOO'
-
     const inputText = [
         `Company: ${companyName}`,
         `Industry: ${industry}`,
@@ -814,7 +888,7 @@ router.post('/fund-allocation', async (req: Request, res: Response) => {
         `Current Funds: RM ${Number(currentFunds).toLocaleString('en-MY')}`,
     ].join('\n')
 
-    console.log('=== [fund-allocation] inputText sent to Bedrock agent ===\n', inputText)
+    console.log('=== [fund-allocation] inputText sent to AgentCore harness ===\n', inputText)
 
     let lastRaw = ''
 
@@ -822,7 +896,13 @@ router.post('/fund-allocation', async (req: Request, res: Response) => {
         const sessionId = `fund-alloc-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
         try {
-            const raw = await invokeAgent(inputText, sessionId, FUND_AGENT_ID, FUND_AGENT_ALIAS_ID)
+            const raw = await invokeAgentCore(
+                inputText,
+                sessionId,
+                FUND_HARNESS_ARN,
+                FUND_AGENT_QUALIFIER,
+                FUND_MAX_TOKENS,
+            )
             lastRaw = raw
 
             console.log(
@@ -1182,9 +1262,6 @@ router.post('/revenue-projection', async (req: Request, res: Response) => {
         return
     }
 
-    const REVENUE_AGENT_ID = process.env.BEDROCK_REVENUE_AGENT_ID ?? 'B2WJZPIFMU'
-    const REVENUE_AGENT_ALIAS_ID = process.env.BEDROCK_REVENUE_AGENT_ALIAS_ID ?? 'O3XJLAUA27'
-
     const inputText = [
         `Company: ${companyName}`,
         `Industry: ${industry}`,
@@ -1195,7 +1272,7 @@ router.post('/revenue-projection', async (req: Request, res: Response) => {
         `Budget Allocation: ${budgetAllocation?.trim() || 'Not yet allocated'}`,
     ].join('\n')
 
-    console.log('=== [revenue-projection] inputText sent to Bedrock agent ===\n', inputText)
+    console.log('=== [revenue-projection] inputText sent to AgentCore harness ===\n', inputText)
 
     let lastRaw = ''
 
@@ -1203,7 +1280,13 @@ router.post('/revenue-projection', async (req: Request, res: Response) => {
         const sessionId = `revenue-proj-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
         try {
-            const raw = await invokeAgent(inputText, sessionId, REVENUE_AGENT_ID, REVENUE_AGENT_ALIAS_ID)
+            const raw = await invokeAgentCore(
+                inputText,
+                sessionId,
+                REVENUE_HARNESS_ARN,
+                REVENUE_AGENT_QUALIFIER,
+                REVENUE_MAX_TOKENS,
+            )
             lastRaw = raw
 
             console.log(
@@ -1216,10 +1299,25 @@ router.post('/revenue-projection', async (req: Request, res: Response) => {
             }
 
             const jsonString = extractJsonString(raw)
-            JSON.parse(jsonString) // validate
+            const parsed = JSON.parse(jsonString) as unknown
+            const { plan, repairs } = normaliseRevenuePlan(parsed, { goal: mainGoal })
 
-            console.log(`[revenue-projection] Attempt ${attempt} returned valid JSON`)
-            res.status(200).json({ content: raw })
+            // The request is the source of truth for these identity fields.
+            plan.company = companyName
+            plan.industry = industry
+            plan.currentFunds = Number(currentFunds)
+
+            if (repairs.length > 0) {
+                console.warn(
+                    `[revenue-projection] Normalised ${repairs.length} issue(s) on attempt ${attempt}:`,
+                )
+                for (const repair of repairs) {
+                    console.warn(`  - ${repair}`)
+                }
+            }
+
+            console.log(`[revenue-projection] Attempt ${attempt} returned a valid, normalised plan`)
+            res.status(200).json({ content: JSON.stringify(plan) })
             return
         } catch (err) {
             if (err instanceof SyntaxError) {
@@ -1271,9 +1369,6 @@ router.post('/loans-funding', async (req: Request, res: Response) => {
         return
     }
 
-    const LOANS_AGENT_ID = process.env.BEDROCK_LOANS_AGENT_ID ?? '5I7B8BCVX0'
-    const LOANS_AGENT_ALIAS_ID = process.env.BEDROCK_LOANS_AGENT_ALIAS_ID ?? 'BUJMARJWNU'
-
     const inputText = [
         `Company: ${companyName}`,
         `Industry: ${industry}`,
@@ -1283,7 +1378,7 @@ router.post('/loans-funding', async (req: Request, res: Response) => {
         `Current Funds: RM ${Number(currentFunds).toLocaleString('en-MY')}`,
     ].join('\n')
 
-    console.log('=== [loans-funding] inputText sent to Bedrock agent ===\n', inputText)
+    console.log('=== [loans-funding] inputText sent to AgentCore harness ===\n', inputText)
 
     let lastRaw = ''
 
@@ -1291,7 +1386,13 @@ router.post('/loans-funding', async (req: Request, res: Response) => {
         const sessionId = `loans-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
         try {
-            const raw = await invokeAgent(inputText, sessionId, LOANS_AGENT_ID, LOANS_AGENT_ALIAS_ID)
+            const raw = await invokeAgentCore(
+                inputText,
+                sessionId,
+                LOANS_HARNESS_ARN,
+                LOANS_AGENT_QUALIFIER,
+                LOANS_MAX_TOKENS,
+            )
             lastRaw = raw
 
             console.log(
@@ -1299,17 +1400,19 @@ router.post('/loans-funding', async (req: Request, res: Response) => {
             )
 
             const jsonString = extractJsonString(raw)
-            JSON.parse(jsonString)
+            const parsed = JSON.parse(jsonString) as unknown
+            const plan = validateLoansFundingPlan(parsed)
 
-            console.log(`[loans-funding] Attempt ${attempt} returned valid JSON`)
-            res.status(200).json({ content: raw })
+            console.log(`[loans-funding] Attempt ${attempt} returned a valid, validated plan`)
+            res.status(200).json({ content: JSON.stringify(plan) })
             return
         } catch (err) {
             if (err instanceof SyntaxError) {
                 console.warn(
-                    `[loans-funding] Attempt ${attempt}/${MAX_RETRIES} did NOT return valid JSON. ` +
+                    `[loans-funding] Attempt ${attempt}/${MAX_RETRIES} did NOT return a valid plan. ` +
                     (attempt < MAX_RETRIES ? 'Retrying...' : 'No retries left.'),
                 )
+                console.warn(`  reason: ${err.message}`)
                 continue
             }
 
@@ -1353,9 +1456,6 @@ router.post('/investor-funding', async (req: Request, res: Response) => {
         return
     }
 
-    const INVESTOR_AGENT_ID = process.env.BEDROCK_INVESTOR_AGENT_ID ?? 'K5UUZVS6JI'
-    const INVESTOR_AGENT_ALIAS_ID = process.env.BEDROCK_INVESTOR_AGENT_ALIAS_ID ?? 'ZRJVGFTYSU'
-
     const inputText = [
         `Company: ${companyName}`,
         `Industry: ${industry}`,
@@ -1365,7 +1465,7 @@ router.post('/investor-funding', async (req: Request, res: Response) => {
         `Goal: ${mainGoal?.trim() || 'Grow the business sustainably'}`,
     ].join('\n')
 
-    console.log('=== [investor-funding] inputText sent to Bedrock agent ===\n', inputText)
+    console.log('=== [investor-funding] inputText sent to AgentCore harness ===\n', inputText)
 
     let lastRaw = ''
 
@@ -1373,7 +1473,13 @@ router.post('/investor-funding', async (req: Request, res: Response) => {
         const sessionId = `investor-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
         try {
-            const raw = await invokeAgent(inputText, sessionId, INVESTOR_AGENT_ID, INVESTOR_AGENT_ALIAS_ID)
+            const raw = await invokeAgentCore(
+                inputText,
+                sessionId,
+                INVESTOR_HARNESS_ARN,
+                INVESTOR_AGENT_QUALIFIER,
+                INVESTOR_MAX_TOKENS,
+            )
             lastRaw = raw
 
             console.log(
@@ -1381,23 +1487,36 @@ router.post('/investor-funding', async (req: Request, res: Response) => {
             )
 
             if (raw.length === 0) {
-                console.warn(`[investor-funding] Attempt ${attempt}: empty response — agent may not be prepared or alias is wrong.`)
+                console.warn(`[investor-funding] Attempt ${attempt}: empty response — harness may not be ready.`)
                 // Treat empty as a retryable failure (same as bad JSON)
                 continue
             }
 
             const jsonString = extractJsonString(raw)
-            JSON.parse(jsonString)
+            const parsed = JSON.parse(jsonString) as unknown
+            const { plan: withFallbacks, repairs } =
+                normaliseInvestorFundingPlan(parsed)
+            const plan = validateInvestorFundingPlan(withFallbacks)
 
-            console.log(`[investor-funding] Attempt ${attempt} returned valid JSON`)
-            res.status(200).json({ content: raw })
+            if (repairs.length > 0) {
+                console.warn(
+                    `[investor-funding] Normalised ${repairs.length} issue(s) on attempt ${attempt}:`,
+                )
+                for (const repair of repairs) {
+                    console.warn(`  - ${repair}`)
+                }
+            }
+
+            console.log(`[investor-funding] Attempt ${attempt} returned a valid, validated plan`)
+            res.status(200).json({ content: JSON.stringify(plan) })
             return
         } catch (err) {
             if (err instanceof SyntaxError) {
                 console.warn(
-                    `[investor-funding] Attempt ${attempt}/${MAX_RETRIES} did NOT return valid JSON. ` +
+                    `[investor-funding] Attempt ${attempt}/${MAX_RETRIES} did NOT return a valid plan. ` +
                     (attempt < MAX_RETRIES ? 'Retrying...' : 'No retries left.'),
                 )
+                console.warn(`  reason: ${err.message}`)
                 continue
             }
 
