@@ -19,14 +19,6 @@ const MODEL_ID = 'amazon.nova-canvas-v1:0'
 // from the attached IAM role; in local dev we fall back to env vars.
 const bedrockClient = new BedrockRuntimeClient({
   region: process.env.AWS_REGION ?? 'us-east-1',
-  ...(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
-    ? {
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      },
-    }
-    : {}),
 })
 
 interface NovaImageRequest {

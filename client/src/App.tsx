@@ -390,6 +390,10 @@ function AppContent() {
           }
         >
 
+          <p className="px-5 pt-4 text-xs text-neutral-500 dark:text-neutral-400">
+            AI planning estimates. Verify current prices, funding eligibility, and official requirements before acting.
+          </p>
+
           {activeTab === 'overview' && (
             <InsightsDashboard
               profile={profile}

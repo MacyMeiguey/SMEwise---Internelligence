@@ -13,13 +13,9 @@ const IS_PROD = process.env.NODE_ENV === 'production'
 
 // ─── Environment validation ──────────────────────────────────────────────────
 //
-// AWS credentials are only required as env vars in local dev. In production
-// (App Runner / ECS / EC2) the AWS SDK picks up credentials from the attached
-// IAM role via the default credential provider chain, so we don't require
-// AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY to be set.
-const requiredEnvVars: string[] = IS_PROD
-  ? ['AWS_REGION']
-  : ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_REGION']
+// The SDK resolves environment credentials (including session tokens), local
+// AWS profiles / SSO, or a deployed IAM role through its default provider chain.
+const requiredEnvVars = ['AWS_REGION']
 
 const missingVars = requiredEnvVars.filter((v) => !process.env[v])
 if (missingVars.length > 0) {

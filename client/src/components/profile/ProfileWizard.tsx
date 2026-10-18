@@ -6,6 +6,7 @@
 import { useState, useEffect, useId, useRef } from 'react';
 import type { BusinessProfile, BusinessStage, BusinessType } from '../../types';
 import { validateProfile } from '../../utils/validateProfile';
+import { API_BASE } from '../../lib/api';
 import Button from '../shared/Button';
 import LogoWordmark from '../shared/LogoWordmark';
 import {
@@ -132,8 +133,7 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
     setVerificationError(null);
 
     try {
-      const apiBase = import.meta.env.VITE_API_URL ?? '';
-      const response = await fetch(`${apiBase}/api/bedrock/profile-verification`, {
+      const response = await fetch(`${API_BASE}/api/bedrock/profile-verification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

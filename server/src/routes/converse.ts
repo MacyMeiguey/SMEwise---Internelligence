@@ -22,18 +22,10 @@ const router = Router()
 // ─── Bedrock client (uses IAM role in prod, env vars in dev) ─────────────────
 const bedrockClient = new BedrockRuntimeClient({
     region: process.env.AWS_REGION ?? 'us-east-1',
-    ...(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
-        ? {
-            credentials: {
-                accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-                secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-            },
-        }
-        : {}),
 })
 
 // Model ID — Claude on Bedrock
-const MODEL_ID = process.env.BEDROCK_CONVERSE_MODEL_ID ?? 'us.anthropic.claude-sonnet-4-20250514-v1:0'
+const MODEL_ID = process.env.BEDROCK_CONVERSE_MODEL_ID ?? 'us.anthropic.claude-haiku-4-5-20251001-v1:0'
 
 // ─── POST /stream ────────────────────────────────────────────────────────────
 // Streams a text response using Server-Sent Events (SSE).

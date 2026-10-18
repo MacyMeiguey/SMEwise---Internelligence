@@ -24,17 +24,9 @@ const router = Router()
 // ─── Bedrock client (uses IAM role in prod, env vars in dev) ─────────────────
 const bedrockClient = new BedrockRuntimeClient({
   region: process.env.AWS_REGION ?? 'ap-southeast-1',
-  ...(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
-    ? {
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      },
-    }
-    : {}),
 })
 
-const MODEL_ID = process.env.BEDROCK_CONVERSE_MODEL_ID ?? 'anthropic.claude-3-5-sonnet-20240620-v1:0'
+const MODEL_ID = process.env.BEDROCK_CONVERSE_MODEL_ID ?? 'us.anthropic.claude-haiku-4-5-20251001-v1:0'
 
 const SYSTEM_PROMPT = `You are SMEwise, an expert AI business advisor specialising in Malaysian SMEs.
 Generate professional, well-structured business documents tailored to Malaysian business context.

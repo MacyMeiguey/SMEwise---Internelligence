@@ -1,5 +1,10 @@
 # SMEwise — AWS Deployment Guide (S3 + CloudFront + App Runner)
 
+> **Legacy deployment reference.** For an expired student lab or a new AWS account,
+> start with [AWS_RESTART.md](AWS_RESTART.md). App Runner stopped accepting new
+> customers on 30 April 2026. The restart guide maps every current page to its
+> AWS dependencies and describes the replacement hosting path.
+
 This guide walks you through deploying the SMEwise application on AWS using the
 AWS Management Console. The architecture puts both the React SPA and the Express
 API behind a single CloudFront distribution so the browser makes same-origin

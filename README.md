@@ -1,8 +1,11 @@
 # SMEwise — AI Business Assistant for Malaysian SMEs
+
+Starting again after an expired AWS student lab? Follow [AWS_RESTART.md](AWS_RESTART.md)
+for the page-by-page AWS inventory, account setup, and restoration order.
 https://d21qwulue96ibi.cloudfront.net/ 
 
 
-SMEwise is an AI-powered web application that provides personalised business guidance to Malaysian SME founders. It uses AWS Bedrock (Claude via Converse API for text generation, Nova Canvas for image generation, and Bedrock Agents for marketing plans).
+SMEwise is an AI-powered web application that provides personalised business guidance to Malaysian SME founders. It uses AWS Bedrock (Claude via Converse API for text generation, Nova Canvas for image generation, and schema-guided Converse calls for business planning).
 
 ---
 
@@ -37,7 +40,7 @@ SMEwise/
 
 - **Node.js** v18 or later
 - **npm** v8 or later
-- **AWS credentials** with Bedrock access (for Claude Converse, Nova Canvas, and Bedrock Agents)
+- **AWS credentials** with Bedrock access (for Claude Converse, Nova Canvas, and business planning)
 
 ---
 
@@ -53,15 +56,18 @@ cd SMEwise
 ### 2. Configure environment variables
 
 ```bash
-cp .env.example .env
+cp server/.env.example server/.env
+cp client/.env.example client/.env
 ```
 
-Edit `.env` and fill in your API keys:
+Edit `server/.env` with your region, local AWS profile or credentials, and the tested
+Bedrock model profile. Temporary credentials also require `AWS_SESSION_TOKEN`.
+See the restart guide for profile-based authentication without static keys:
 
 ```env
-AWS_ACCESS_KEY_ID=AKIA...
-AWS_SECRET_ACCESS_KEY=...
+AWS_PROFILE=smewise-showcase
 AWS_REGION=us-east-1
+BEDROCK_CONVERSE_MODEL_ID=us.anthropic.claude-haiku-4-5-20251001-v1:0
 ```
 
 > **Note:** The `.env` file is gitignored and should never be committed.
@@ -127,9 +133,9 @@ npm run build
 |----------|-------------------------------------------------|
 | Frontend | React 18, Vite, TypeScript, Tailwind CSS        |
 | Backend  | Node.js, Express, TypeScript                    |
-| AI Text  | AWS Bedrock Converse API (Claude Sonnet 4)      |
+| AI Text  | AWS Bedrock Converse API (Claude Haiku 4.5 default) |
 | AI Image | Amazon Nova Canvas via AWS Bedrock              |
-| AI Agent | AWS Bedrock Agents (Marketing Plan)             |
+| Business planning | AWS Bedrock Converse with UI response contracts |
 | Testing  | Vitest, Testing Library, fast-check (PBT)       |
 
 ---
@@ -148,11 +154,10 @@ SMEwise uses a dark theme with purple/violet accents:
 
 | Variable               | Description                                      |
 |------------------------|--------------------------------------------------|
+| `AWS_PROFILE`          | Local AWS SSO/profile name; omit on deployed IAM roles |
 | `AWS_ACCESS_KEY_ID`    | AWS access key ID for Bedrock                    |
 | `AWS_SECRET_ACCESS_KEY`| AWS secret access key for Bedrock                |
 | `AWS_REGION`           | AWS region (e.g., `us-east-1`)                   |
 | `BEDROCK_CONVERSE_MODEL_ID` | Optional: override the Converse model       |
-| `BEDROCK_AGENT_ID`     | Bedrock Agent ID for marketing plans             |
-| `BEDROCK_AGENT_ALIAS_ID` | Bedrock Agent Alias ID                         |
 | `PORT`                 | Server port (optional, defaults to `3001`)       |
 | `NODE_ENV`             | Environment (`development` or `production`)      |
