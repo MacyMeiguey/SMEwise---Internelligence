@@ -41,6 +41,7 @@ import {
     normaliseInvestorFundingPlan,
     validateInvestorFundingPlan,
 } from '../utils/validateInvestorFundingPlan.js'
+import { validateStartupGuide } from '../utils/validateStartupGuide.js'
 
 const router = Router()
 
@@ -224,6 +225,24 @@ const INVESTOR_AGENT_QUALIFIER = process.env.INVESTOR_AGENT_QUALIFIER || undefin
  * response is a compact list JSON; 4096 is enough.
  */
 const INVESTOR_MAX_TOKENS = Number(process.env.INVESTOR_MAX_TOKENS ?? '4096')
+
+/**
+ * AgentCore harness ARN for the startup registration guide. Invoked via the
+ * InvokeHarness API using the harness ARN (not the underlying runtime ARN).
+ */
+const STARTUP_HARNESS_ARN =
+    process.env.STARTUP_HARNESS_ARN ??
+    'arn:aws:bedrock-agentcore:ap-southeast-1:781897846709:harness/StartupRegistrationGuidelines-Gbl8PU6k4r'
+
+/** Optional endpoint/version qualifier for the startup registration harness. */
+const STARTUP_AGENT_QUALIFIER = process.env.STARTUP_AGENT_QUALIFIER || undefined
+
+/**
+ * Max tokens the startup registration harness may generate per iteration. The
+ * two-part guide is a large JSON document, so give it more headroom than the
+ * compact finance lists.
+ */
+const STARTUP_MAX_TOKENS = Number(process.env.STARTUP_MAX_TOKENS ?? '8192')
 
 const MAX_RETRIES = 5
 
@@ -742,34 +761,8 @@ router.post('/marketing', async (req: Request, res: Response) => {
 })
 
 
-//Invoke a Bedrock agent by explicit agent ID + alias ID.
-async function invokeAgentById(
-    inputText: string,
-    sessionId: string,
-    agentId: string,
-    agentAliasId: string,
-): Promise<string> {
-    const command = new InvokeAgentCommand({
-        agentId,
-        agentAliasId,
-        sessionId,
-        inputText,
-    })
-
-    const agentResponse = await client.send(command)
-
-    let raw = ''
-    for await (const chunk of agentResponse.completion ?? []) {
-        if (chunk.chunk?.bytes) {
-            raw += new TextDecoder().decode(chunk.chunk.bytes)
-        }
-    }
-
-    return raw
-}
-
 // ─── POST /api/bedrock/startup ────────────────────────────────────────────────
-// Invokes the startup registration Bedrock agent and returns parsed JSON.
+// Invokes the startup registration AgentCore harness and returns parsed JSON.
 
 router.post('/startup', async (req: Request, res: Response) => {
     const {
@@ -795,14 +788,6 @@ router.post('/startup', async (req: Request, res: Response) => {
         return
     }
 
-    const AGENT_ID = process.env.BEDROCK_STARTUP_AGENT_ID ?? 'A4YPNQR3RX'
-    const AGENT_ALIAS_ID = process.env.BEDROCK_STARTUP_AGENT_ALIAS_ID ?? 'IW25PK2WCB'
-
-    if (!AGENT_ID) {
-        res.status(500).json({ error: 'Startup agent is not configured. Set BEDROCK_STARTUP_AGENT_ID in .env.' })
-        return
-    }
-
     const inputText = [
         `Company: ${companyName}`,
         `Industry: ${industry}`,
@@ -812,7 +797,7 @@ router.post('/startup', async (req: Request, res: Response) => {
         currentFunds ? `Current Funds: RM ${Number(currentFunds).toLocaleString('en-MY')}` : null,
     ].filter(Boolean).join('\n')
 
-    console.log('=== [startup] inputText sent to Bedrock agent ===\n', inputText)
+    console.log('=== [startup] inputText sent to AgentCore harness ===\n', inputText)
 
     let lastRaw = ''
 
@@ -820,24 +805,31 @@ router.post('/startup', async (req: Request, res: Response) => {
         const sessionId = `startup-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
         try {
-            const raw = await invokeAgentById(inputText, sessionId, AGENT_ID, AGENT_ALIAS_ID)
+            const raw = await invokeAgentCore(
+                inputText,
+                sessionId,
+                STARTUP_HARNESS_ARN,
+                STARTUP_AGENT_QUALIFIER,
+                STARTUP_MAX_TOKENS,
+            )
             lastRaw = raw
 
             console.log(`[Bedrock/startup] Attempt ${attempt}/${MAX_RETRIES} — ${raw.length} chars`)
 
             const jsonString = extractJsonString(raw)
-            JSON.parse(jsonString) // validate
+            const parsed = JSON.parse(jsonString) as unknown
+            const guide = validateStartupGuide(parsed)
 
-            console.log(`[Bedrock/startup] Attempt ${attempt} returned valid JSON`)
-            console.log(`[Bedrock/startup] Raw response preview:`, raw.slice(0, 500))
-            res.status(200).json({ content: raw })
+            console.log(`[Bedrock/startup] Attempt ${attempt} returned a valid, validated guide`)
+            res.status(200).json({ content: JSON.stringify(guide) })
             return
         } catch (err) {
             if (err instanceof SyntaxError) {
                 console.warn(
-                    `[Bedrock/startup] Attempt ${attempt}/${MAX_RETRIES} invalid JSON.` +
+                    `[Bedrock/startup] Attempt ${attempt}/${MAX_RETRIES} invalid guide.` +
                     (attempt < MAX_RETRIES ? ' Retrying...' : ' No retries left.'),
                 )
+                console.warn(`  reason: ${err.message}`)
                 continue
             }
 
