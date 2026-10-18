@@ -25,6 +25,10 @@ import {
     BedrockAgentRuntimeClient,
     InvokeAgentCommand,
 } from '@aws-sdk/client-bedrock-agent-runtime'
+import {
+    BedrockAgentCoreClient,
+    InvokeHarnessCommand,
+} from '@aws-sdk/client-bedrock-agentcore'
 
 import {
     extractBalancedJsonObject,
@@ -34,17 +38,115 @@ import {
 
 const router = Router()
 
-const client = new BedrockAgentRuntimeClient({
-    region: process.env.AWS_REGION ?? 'ap-southeast-1',
-    ...(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
-        ? {
+/**
+ * Resolve AWS credentials for the Bedrock clients.
+ *
+ * - If AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY are set (local dev), use them.
+ *   AWS_SESSION_TOKEN is included when present — REQUIRED for temporary STS
+ *   credentials (access keys starting with "ASIA").
+ * - If no static keys are set (production), return undefined so the SDK falls
+ *   back to the default credential provider chain (App Runner IAM role).
+ */
+function resolveAwsCredentials() {
+    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+        return {
             credentials: {
                 accessKeyId: process.env.AWS_ACCESS_KEY_ID,
                 secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+                ...(process.env.AWS_SESSION_TOKEN
+                    ? { sessionToken: process.env.AWS_SESSION_TOKEN }
+                    : {}),
             },
         }
-        : {}),
+    }
+    return {}
+}
+
+const AWS_REGION = process.env.AWS_REGION ?? 'ap-southeast-1'
+
+const client = new BedrockAgentRuntimeClient({
+    region: AWS_REGION,
+    ...resolveAwsCredentials(),
 })
+
+// ─── Bedrock AgentCore client ────────────────────────────────────────────────
+//
+// AgentCore ("harness") is a separate service from classic Bedrock Agents. It
+// uses a different SDK package, a runtime ARN (instead of agentId/aliasId), and
+// a binary payload instead of inputText. Credentials follow the same rules as
+// the classic client (static keys in dev, IAM role in prod).
+const agentCoreClient = new BedrockAgentCoreClient({
+    region: AWS_REGION,
+    ...resolveAwsCredentials(),
+})
+
+/**
+ * AgentCore harness ARN for the marketing-plan harness. Harness-managed
+ * runtimes must be invoked via the InvokeHarness API using the harness ARN
+ * (NOT the underlying runtime ARN). Override via env var so swapping the
+ * harness never requires a code change / redeploy.
+ */
+const MARKETING_HARNESS_ARN =
+    process.env.MARKETING_HARNESS_ARN ??
+    'arn:aws:bedrock-agentcore:ap-southeast-1:781897846709:harness/marketingPlan-iS7SeEFIOL'
+
+/** Optional endpoint/version qualifier for the harness (defaults to DEFAULT). */
+const MARKETING_AGENT_QUALIFIER = process.env.MARKETING_AGENT_QUALIFIER || undefined
+
+/**
+ * Max tokens the harness may generate per iteration. The marketing plan is a
+ * large JSON document, so the harness default is often too low and truncates
+ * the answer. Override via MARKETING_MAX_TOKENS env var.
+ */
+const MARKETING_MAX_TOKENS = Number(process.env.MARKETING_MAX_TOKENS ?? '8192')
+
+/**
+ * AgentCore harness ARN for the marketing-guidelines harness. Invoked via the
+ * InvokeHarness API using the harness ARN. Override via env var.
+ *
+ * NOTE: replace the default below with the real guidelines harness ARN.
+ */
+const GUIDELINES_HARNESS_ARN =
+    process.env.GUIDELINES_HARNESS_ARN ??
+    'arn:aws:bedrock-agentcore:ap-southeast-1:781897846709:harness/marketingGuidelines-ALh6PBl9iQ'
+
+/** Optional endpoint/version qualifier for the guidelines harness. */
+const GUIDELINES_AGENT_QUALIFIER = process.env.GUIDELINES_AGENT_QUALIFIER || undefined
+
+/** Max tokens the guidelines harness may generate per iteration. */
+const GUIDELINES_MAX_TOKENS = Number(process.env.GUIDELINES_MAX_TOKENS ?? '32000')
+
+/**
+ * AgentCore harness ARN for the marketing-forecast harness. Invoked via the
+ * InvokeHarness API using the harness ARN. Override via env var.
+ *
+ * NOTE: replace the default below with the real forecast harness ARN.
+ */
+const FORECAST_HARNESS_ARN =
+    process.env.FORECAST_HARNESS_ARN ??
+    'arn:aws:bedrock-agentcore:ap-southeast-1:781897846709:harness/marketingForecast-NYba6i08Rk'
+
+/** Optional endpoint/version qualifier for the forecast harness. */
+const FORECAST_AGENT_QUALIFIER = process.env.FORECAST_AGENT_QUALIFIER || undefined
+
+/** Max tokens the forecast harness may generate per iteration. */
+const FORECAST_MAX_TOKENS = Number(process.env.FORECAST_MAX_TOKENS ?? '32000')
+
+/**
+ * AgentCore harness ARN for the profile-verification harness. Invoked via the
+ * InvokeHarness API using the harness ARN. Override via env var.
+ *
+ * NOTE: replace the default below with the real profile-verification harness ARN.
+ */
+const PROFILE_HARNESS_ARN =
+    process.env.PROFILE_HARNESS_ARN ??
+    'arn:aws:bedrock-agentcore:ap-southeast-1:781897846709:harness/profileVerification-URNFXarQM5'
+
+/** Optional endpoint/version qualifier for the profile-verification harness. */
+const PROFILE_AGENT_QUALIFIER = process.env.PROFILE_AGENT_QUALIFIER || undefined
+
+/** Max tokens the profile-verification harness may generate (short output). */
+const PROFILE_MAX_TOKENS = Number(process.env.PROFILE_MAX_TOKENS ?? '1024')
 
 const MAX_RETRIES = 5
 
@@ -350,6 +452,109 @@ async function invokeAgent(
     throw new Error('invokeAgent: all throttle retries exhausted')
 }
 
+/**
+ * Invoke a Bedrock AgentCore harness via the InvokeHarness API and return the
+ * accumulated assistant text. Mirrors invokeAgent (throttle retries + timeout).
+ *
+ * The prompt is sent as a single user message. The harness streams back events;
+ * we accumulate the text from contentBlockDelta events. The harness is expected
+ * to emit the marketing-plan JSON as text (the caller then runs extractJsonString
+ * + JSON.parse on it).
+ */
+async function invokeAgentCore(
+    promptText: string,
+    sessionId: string,
+    harnessArn: string,
+    qualifier?: string,
+    maxTokens?: number,
+): Promise<string> {
+    const THROTTLE_RETRIES = 5
+    const AGENT_TIMEOUT_MS = 120_000
+
+    // InvokeHarness requires runtimeSessionId to be at least 33 characters.
+    const safeSessionId =
+        sessionId.length >= 33
+            ? sessionId
+            : (sessionId + '-' + '0'.repeat(33)).slice(0, 48)
+
+    for (let t = 1; t <= THROTTLE_RETRIES; t++) {
+        try {
+            const command = new InvokeHarnessCommand({
+                harnessArn,
+                qualifier,
+                runtimeSessionId: safeSessionId,
+                // Override the harness default so the large marketing-plan JSON
+                // isn't truncated. Only sent when a positive value is provided.
+                ...(maxTokens && maxTokens > 0 ? { maxTokens } : {}),
+                messages: [
+                    {
+                        role: 'user',
+                        content: [{ text: promptText }],
+                    },
+                ],
+            })
+
+            const invokeWithTimeout = new Promise<string>((resolve, reject) => {
+                const timer = setTimeout(() => {
+                    reject(new Error(`invokeAgentCore timeout: harness=${harnessArn} did not respond within ${AGENT_TIMEOUT_MS}ms`))
+                }, AGENT_TIMEOUT_MS)
+
+                    ; (async () => {
+                        const response = await agentCoreClient.send(command)
+                        let accumulated = ''
+                        for await (const event of response.stream ?? []) {
+                            // Assistant text arrives as contentBlockDelta.delta.text
+                            const deltaText = event.contentBlockDelta?.delta?.text
+                            if (deltaText) accumulated += deltaText
+
+                            // Log the stop reason so truncation (max_tokens) is visible.
+                            if (event.messageStop?.stopReason) {
+                                console.log(`[AgentCore] messageStop reason=${event.messageStop.stopReason}`)
+                            }
+                            if (event.metadata?.usage) {
+                                const u = event.metadata.usage
+                                console.log(`[AgentCore] usage input=${u.inputTokens} output=${u.outputTokens} total=${u.totalTokens}`)
+                            }
+
+                            // Surface harness-side errors instead of silently timing out.
+                            if (event.validationException) {
+                                throw new Error(`Harness validation error: ${event.validationException.message}`)
+                            }
+                            if (event.internalServerException) {
+                                throw new Error(`Harness internal error: ${event.internalServerException.message}`)
+                            }
+                            if (event.runtimeClientError) {
+                                throw new Error(`Harness runtime client error: ${event.runtimeClientError.message}`)
+                            }
+                        }
+                        clearTimeout(timer)
+                        resolve(accumulated)
+                    })().catch((err) => {
+                        clearTimeout(timer)
+                        reject(err)
+                    })
+            })
+
+            const raw = await invokeWithTimeout
+
+            if (raw.length === 0) {
+                console.warn(`[AgentCore] harness=${harnessArn} returned EMPTY response.`)
+            }
+
+            return raw
+        } catch (err) {
+            if (isThrottleError(err) && t < THROTTLE_RETRIES) {
+                const delay = 5000 * (t * 0.5)
+                console.warn(`[AgentCore] Throttled on attempt ${t}/${THROTTLE_RETRIES}. Waiting ${delay}ms before retry...`)
+                await sleep(delay)
+                continue
+            }
+            throw err
+        }
+    }
+    throw new Error('invokeAgentCore: all throttle retries exhausted')
+}
+
 // ─── POST /api/bedrock/marketing ─────────────────────────────────────────────
 
 router.post('/marketing', async (req: Request, res: Response) => {
@@ -412,11 +617,12 @@ router.post('/marketing', async (req: Request, res: Response) => {
         const sessionId = `marketing-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
         try {
-            const raw = await invokeAgent(
+            const raw = await invokeAgentCore(
                 inputText,
                 sessionId,
-                'HOG3CDST5J',
-                '5YJAUY5OSD',
+                MARKETING_HARNESS_ARN,
+                MARKETING_AGENT_QUALIFIER,
+                MARKETING_MAX_TOKENS,
             )
             lastRaw = raw
 
@@ -833,10 +1039,7 @@ router.post('/marketing-guidelines', async (req: Request, res: Response) => {
         return
     }
 
-    const GUIDELINES_AGENT_ID = process.env.BEDROCK_GUIDELINES_AGENT_ID ?? 'XHNLKLW8ZR'
-    const GUIDELINES_AGENT_ALIAS_ID = process.env.BEDROCK_GUIDELINES_AGENT_ALIAS_ID ?? 'QZZPYAYXRR'
-
-    console.log('=== [marketing-guidelines] Invoking agent with marketing plan ===')
+    console.log('=== [marketing-guidelines] Invoking harness with marketing plan ===')
 
     let lastRaw = ''
 
@@ -844,7 +1047,13 @@ router.post('/marketing-guidelines', async (req: Request, res: Response) => {
         const sessionId = `guidelines-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
         try {
-            const raw = await invokeAgent(marketingPlanJson, sessionId, GUIDELINES_AGENT_ID, GUIDELINES_AGENT_ALIAS_ID)
+            const raw = await invokeAgentCore(
+                marketingPlanJson,
+                sessionId,
+                GUIDELINES_HARNESS_ARN,
+                GUIDELINES_AGENT_QUALIFIER,
+                GUIDELINES_MAX_TOKENS,
+            )
             lastRaw = raw
 
             console.log(
@@ -893,10 +1102,7 @@ router.post('/marketing-forecast', async (req: Request, res: Response) => {
         return
     }
 
-    const FORECAST_AGENT_ID = process.env.BEDROCK_FORECAST_AGENT_ID ?? 'HSXW0AKDZF'
-    const FORECAST_AGENT_ALIAS_ID = process.env.BEDROCK_FORECAST_AGENT_ALIAS_ID ?? 'ELIECSQ2L5'
-
-    console.log('=== [marketing-forecast] Invoking agent with marketing plan ===')
+    console.log('=== [marketing-forecast] Invoking harness with marketing plan ===')
 
     let lastRaw = ''
 
@@ -906,7 +1112,13 @@ router.post('/marketing-forecast', async (req: Request, res: Response) => {
         try {
             const inputJson = extractJsonString(marketingPlanJson)
             // console.log(`input: ${inputJson}`)
-            const raw = await invokeAgent(inputJson, sessionId, FORECAST_AGENT_ID, FORECAST_AGENT_ALIAS_ID)
+            const raw = await invokeAgentCore(
+                inputJson,
+                sessionId,
+                FORECAST_HARNESS_ARN,
+                FORECAST_AGENT_QUALIFIER,
+                FORECAST_MAX_TOKENS,
+            )
             lastRaw = raw
 
             console.log(
@@ -1239,9 +1451,6 @@ router.post('/profile-verification', async (req: Request, res: Response) => {
         return
     }
 
-    const PROFILE_AGENT_ID = process.env.BEDROCK_PROFILE_AGENT_ID ?? 'EBDJERK2DV'
-    const PROFILE_AGENT_ALIAS_ID = process.env.BEDROCK_PROFILE_AGENT_ALIAS_ID ?? 'IDVDZBTZIK'
-
     const inputText = [
         `Company: ${companyName}`,
         `Industry: ${industry}`,
@@ -1255,12 +1464,18 @@ router.post('/profile-verification', async (req: Request, res: Response) => {
         .filter(Boolean)
         .join('\n')
 
-    console.log('=== [profile-verification] inputText sent to Bedrock agent ===\n', inputText)
+    console.log('=== [profile-verification] inputText sent to harness ===\n', inputText)
 
     const sessionId = `profile-verify-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
     try {
-        const raw = await invokeAgent(inputText, sessionId, PROFILE_AGENT_ID, PROFILE_AGENT_ALIAS_ID)
+        const raw = await invokeAgentCore(
+            inputText,
+            sessionId,
+            PROFILE_HARNESS_ARN,
+            PROFILE_AGENT_QUALIFIER,
+            PROFILE_MAX_TOKENS,
+        )
 
         console.log(`[profile-verification] Agent response: "${raw}"`)
 
