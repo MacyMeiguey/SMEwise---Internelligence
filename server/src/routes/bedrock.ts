@@ -42,6 +42,8 @@ import {
     validateInvestorFundingPlan,
 } from '../utils/validateInvestorFundingPlan.js'
 import { validateStartupGuide } from '../utils/validateStartupGuide.js'
+import { normaliseAnalyticsDashboard } from '../utils/normaliseAnalyticsDashboard.js'
+import { validateGeneratedDocument } from '../utils/validateGeneratedDocument.js'
 
 const router = Router()
 
@@ -243,6 +245,57 @@ const STARTUP_AGENT_QUALIFIER = process.env.STARTUP_AGENT_QUALIFIER || undefined
  * compact finance lists.
  */
 const STARTUP_MAX_TOKENS = Number(process.env.STARTUP_MAX_TOKENS ?? '8192')
+
+/**
+ * AgentCore harness ARN for the analytics dashboard. Invoked via the
+ * InvokeHarness API using the harness ARN (not the underlying runtime ARN).
+ */
+const ANALYTICS_HARNESS_ARN =
+    process.env.ANALYTICS_HARNESS_ARN ??
+    'arn:aws:bedrock-agentcore:ap-southeast-1:781897846709:harness/cindy_AnalyticsDashboard-PZrViaLlm8'
+
+/** Optional endpoint/version qualifier for the analytics dashboard harness. */
+const ANALYTICS_AGENT_QUALIFIER = process.env.ANALYTICS_AGENT_QUALIFIER || undefined
+
+/**
+ * Max tokens the analytics dashboard harness may generate per iteration. The
+ * 12-month dashboard JSON needs more room than the compact finance lists.
+ */
+const ANALYTICS_MAX_TOKENS = Number(process.env.ANALYTICS_MAX_TOKENS ?? '8192')
+
+/**
+ * AgentCore harness ARN for the report / document generator. Invoked via the
+ * InvokeHarness API using the harness ARN (not the underlying runtime ARN).
+ */
+const DOCUMENT_HARNESS_ARN =
+    process.env.DOCUMENT_HARNESS_ARN ??
+    'arn:aws:bedrock-agentcore:ap-southeast-1:781897846709:harness/cindy_DocumentGenerator-lQCRH0RcWS'
+
+/** Optional endpoint/version qualifier for the document generator harness. */
+const DOCUMENT_AGENT_QUALIFIER = process.env.DOCUMENT_AGENT_QUALIFIER || undefined
+
+/**
+ * Max tokens the document generator harness may generate per iteration.
+ * Reports are long, so this is much higher than the compact finance boxes.
+ */
+const DOCUMENT_MAX_TOKENS = Number(process.env.DOCUMENT_MAX_TOKENS ?? '16384')
+
+/**
+ * AgentCore harness ARN for the business advisor chat. Invoked via the
+ * InvokeHarness API using the harness ARN (not the underlying runtime ARN).
+ */
+const ASSISTANT_HARNESS_ARN =
+    process.env.ASSISTANT_HARNESS_ARN ??
+    'arn:aws:bedrock-agentcore:ap-southeast-1:781897846709:harness/Business_Advisor-AAxu3iHMvD'
+
+/** Optional endpoint/version qualifier for the business advisor harness. */
+const ASSISTANT_AGENT_QUALIFIER = process.env.ASSISTANT_AGENT_QUALIFIER || undefined
+
+/**
+ * Max tokens the advisor harness may generate per iteration. Answers are
+ * capped at ~180 words by the UI, so 2048 is plenty.
+ */
+const ASSISTANT_MAX_TOKENS = Number(process.env.ASSISTANT_MAX_TOKENS ?? '2048')
 
 const MAX_RETRIES = 5
 
@@ -1852,9 +1905,6 @@ router.post('/analytics-dashboard', async (req: Request, res: Response) => {
         return
     }
 
-    const AGENT_ID = process.env.BEDROCK_ANALYTICS_AGENT_ID ?? '9VWWUJ0WX2'
-    const AGENT_ALIAS_ID = process.env.BEDROCK_ANALYTICS_AGENT_ALIAS_ID ?? 'WJZ0N9RES5'
-
     const inputText = [
         `Company: ${companyName}`,
         `Industry: ${industry}`,
@@ -1866,7 +1916,7 @@ router.post('/analytics-dashboard', async (req: Request, res: Response) => {
         mainGoal ? `Main Business Goal: ${mainGoal}` : null,
     ].filter(Boolean).join('\n')
 
-    console.log('=== [analytics-dashboard] inputText sent to Bedrock agent ===\n', inputText)
+    console.log('=== [analytics-dashboard] inputText sent to AgentCore harness ===\n', inputText)
 
     let lastRaw = ''
 
@@ -1874,23 +1924,43 @@ router.post('/analytics-dashboard', async (req: Request, res: Response) => {
         const sessionId = `analytics-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
         try {
-            const raw = await invokeAgent(inputText, sessionId, AGENT_ID, AGENT_ALIAS_ID)
+            const raw = await invokeAgentCore(
+                inputText,
+                sessionId,
+                ANALYTICS_HARNESS_ARN,
+                ANALYTICS_AGENT_QUALIFIER,
+                ANALYTICS_MAX_TOKENS,
+            )
             lastRaw = raw
 
             console.log(`[analytics-dashboard] Attempt ${attempt}/${MAX_RETRIES} — ${raw.length} chars`)
 
             const jsonString = extractJsonString(raw)
-            JSON.parse(jsonString) // validate
+            const parsed = JSON.parse(jsonString) as unknown
+            const { data, repairs } = normaliseAnalyticsDashboard(parsed, {
+                companyName,
+                currentFunds: Number(currentFunds),
+            })
 
-            console.log(`[analytics-dashboard] Attempt ${attempt} returned valid JSON`)
-            res.status(200).json({ content: raw })
+            if (repairs.length > 0) {
+                console.warn(
+                    `[analytics-dashboard] Normalised ${repairs.length} issue(s) on attempt ${attempt}:`,
+                )
+                for (const repair of repairs) {
+                    console.warn(`  - ${repair}`)
+                }
+            }
+
+            console.log(`[analytics-dashboard] Attempt ${attempt} returned a valid, normalised dashboard`)
+            res.status(200).json({ content: JSON.stringify(data) })
             return
         } catch (err) {
             if (err instanceof SyntaxError) {
                 console.warn(
-                    `[analytics-dashboard] Attempt ${attempt}/${MAX_RETRIES} invalid JSON.` +
+                    `[analytics-dashboard] Attempt ${attempt}/${MAX_RETRIES} invalid dashboard.` +
                     (attempt < MAX_RETRIES ? ' Retrying...' : ' No retries left.'),
                 )
+                console.warn(`  reason: ${err.message}`)
                 continue
             }
 
@@ -1947,13 +2017,8 @@ router.post('/assistant', async (req: Request, res: Response) => {
         return
     }
 
-    const ASSISTANT_AGENT_ID = process.env.BEDROCK_ASSISTANT_AGENT_ID ?? '3UUYBVADJS'
-    const ASSISTANT_AGENT_ALIAS_ID = process.env.BEDROCK_ASSISTANT_AGENT_ALIAS_ID ?? 'R4UVOCXUYC'
-
-    // Compose the agent's input. The agent sees one concatenated message per
-    // turn — context first (so the model can ground answers in it), then the
-    // user's question. The client builds the context object; we just serialise
-    // it here.
+    // Compose the harness input. The advisor sees one user message per turn:
+    // context first (so it can ground answers), then the user's question.
     const contextSection = context
         ? `--- CONTEXT (do not echo back verbatim, use only as reference) ---\n${JSON.stringify(context, null, 2)}\n--- END CONTEXT ---\n\n`
         : ''
@@ -1965,10 +2030,13 @@ router.post('/assistant', async (req: Request, res: Response) => {
     )
 
     // Reuse the same session across turns when the client provides one so the
-    // agent can keep memory of the conversation. Fall back to a fresh session.
-    const sessionId = clientSessionId && clientSessionId.length > 0
+    // harness keeps memory. runtimeSessionId must be at least 33 characters.
+    const requestedSessionId = clientSessionId && clientSessionId.length > 0
         ? clientSessionId
         : `assistant-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const sessionId = requestedSessionId.length >= 33
+        ? requestedSessionId
+        : (requestedSessionId + '-' + '0'.repeat(33)).slice(0, 48)
 
     // Set SSE headers up front so the browser starts rendering immediately.
     res.setHeader('Content-Type', 'text/event-stream')
@@ -1976,77 +2044,110 @@ router.post('/assistant', async (req: Request, res: Response) => {
     res.setHeader('Connection', 'keep-alive')
     res.flushHeaders()
 
+    const AGENT_TIMEOUT_MS = 120_000
+    let timedOut = false
+    const timeoutHandle = setTimeout(() => {
+        timedOut = true
+        if (!res.writableEnded) {
+            res.write(
+                `data: ${JSON.stringify({
+                    error: 'The advisor took too long to respond. Please try again.',
+                })}\n\n`,
+            )
+            res.write('data: [DONE]\n\n')
+            res.end()
+        }
+    }, AGENT_TIMEOUT_MS)
+
     try {
-        const command = new InvokeAgentCommand({
-            agentId: ASSISTANT_AGENT_ID,
-            agentAliasId: ASSISTANT_AGENT_ALIAS_ID,
-            sessionId,
-            inputText,
+        const command = new InvokeHarnessCommand({
+            harnessArn: ASSISTANT_HARNESS_ARN,
+            qualifier: ASSISTANT_AGENT_QUALIFIER,
+            runtimeSessionId: sessionId,
+            maxTokens: ASSISTANT_MAX_TOKENS,
+            messages: [
+                {
+                    role: 'user',
+                    content: [{ text: inputText }],
+                },
+            ],
         })
 
-        const agentResponse = await client.send(command)
+        const agentResponse = await agentCoreClient.send(command)
 
         let totalChars = 0
         let eventCount = 0
 
-        for await (const event of agentResponse.completion ?? []) {
+        for await (const event of agentResponse.stream ?? []) {
+            if (timedOut) break
             eventCount++
 
-            // Forward each chunk to the client as it arrives.
-            if (event.chunk?.bytes) {
-                const text = new TextDecoder().decode(event.chunk.bytes)
-                totalChars += text.length
-                res.write(`data: ${JSON.stringify({ delta: text })}\n\n`)
+            const deltaText = event.contentBlockDelta?.delta?.text
+            if (deltaText) {
+                totalChars += deltaText.length
+                res.write(`data: ${JSON.stringify({ delta: deltaText })}\n\n`)
                 continue
             }
 
-            // Surface error events so the user sees a usable message instead
-            // of a silent stream end.
-            const errorEvent =
-                event.accessDeniedException ??
-                event.badGatewayException ??
-                event.conflictException ??
-                event.dependencyFailedException ??
-                event.internalServerException ??
-                event.modelNotReadyException ??
-                event.resourceNotFoundException ??
-                event.serviceQuotaExceededException ??
-                event.throttlingException ??
-                event.validationException
-            if (errorEvent) {
-                const errorType =
-                    Object.keys(event).find(
-                        (k) => (event as unknown as Record<string, unknown>)[k] === errorEvent,
-                    ) ?? 'unknownException'
-                const msg = (errorEvent as { message?: string }).message ?? '(no message)'
-                console.error(
-                    `[assistant] ERROR EVENT type=${errorType} message=${msg}`,
+            if (event.messageStop?.stopReason) {
+                console.log(`[assistant] messageStop reason=${event.messageStop.stopReason}`)
+            }
+
+            if (event.metadata?.usage) {
+                const usage = event.metadata.usage
+                console.log(
+                    `[assistant] usage input=${usage.inputTokens} output=${usage.outputTokens} total=${usage.totalTokens}`,
                 )
-                res.write(`data: ${JSON.stringify({ error: `Agent ${errorType}: ${msg}` })}\n\n`)
+            }
+
+            // Surface harness-side errors so the user sees a usable message
+            // instead of a silent stream end.
+            if (event.validationException) {
+                const msg = event.validationException.message ?? '(no message)'
+                console.error(`[assistant] validationException: ${msg}`)
+                res.write(`data: ${JSON.stringify({ error: `Advisor validation error: ${msg}` })}\n\n`)
+                continue
+            }
+            if (event.internalServerException) {
+                const msg = event.internalServerException.message ?? '(no message)'
+                console.error(`[assistant] internalServerException: ${msg}`)
+                res.write(`data: ${JSON.stringify({ error: `Advisor error: ${msg}` })}\n\n`)
+                continue
+            }
+            if (event.runtimeClientError) {
+                const msg = event.runtimeClientError.message ?? '(no message)'
+                console.error(`[assistant] runtimeClientError: ${msg}`)
+                res.write(`data: ${JSON.stringify({ error: `Advisor error: ${msg}` })}\n\n`)
                 continue
             }
         }
 
+        clearTimeout(timeoutHandle)
         console.log(
             `[assistant] stream finished events=${eventCount} chars=${totalChars} session=${sessionId}`,
         )
 
-        res.write('data: [DONE]\n\n')
-        res.end()
+        if (!res.writableEnded) {
+            res.write('data: [DONE]\n\n')
+            res.end()
+        }
     } catch (err) {
+        clearTimeout(timeoutHandle)
         console.error('[SMEwise] /api/bedrock/assistant error:', err)
         const error = err as { name?: string; message?: string }
 
-        // We've already flushed SSE headers, so we can't switch to JSON now.
-        res.write(
-            `data: ${JSON.stringify({
-                error: error.name === 'ThrottlingException'
-                    ? 'Our AI service is busy right now. Please wait a moment and try again.'
-                    : `Something went wrong: ${error.message ?? 'unknown error'}`,
-            })}\n\n`,
-        )
-        res.write('data: [DONE]\n\n')
-        res.end()
+        // SSE headers are already flushed, so send an SSE error event.
+        if (!res.writableEnded) {
+            res.write(
+                `data: ${JSON.stringify({
+                    error: isThrottlingError(err)
+                        ? THROTTLE_USER_MESSAGE
+                        : `Something went wrong: ${error.message ?? 'unknown error'}`,
+                })}\n\n`,
+            )
+            res.write('data: [DONE]\n\n')
+            res.end()
+        }
     }
 })
 
@@ -2093,9 +2194,6 @@ router.post('/document-generator', async (req: Request, res: Response) => {
             return
         }
 
-        const AGENT_ID = process.env.BEDROCK_DOCUMENT_AGENT_ID ?? '4K4BZVI9F8'
-        const AGENT_ALIAS_ID = process.env.BEDROCK_DOCUMENT_AGENT_ALIAS_ID ?? 'TCYVOZAWOA'
-
         const inputText = buildDocumentGeneratorInputText({
             documentType,
             companyName,
@@ -2112,7 +2210,7 @@ router.post('/document-generator', async (req: Request, res: Response) => {
             priorAgentQuestion,
         })
 
-        console.log('=== [document-generator] inputText sent to Bedrock agent ===\n', inputText)
+        console.log('=== [document-generator] inputText sent to AgentCore harness ===\n', inputText)
 
         let lastRaw = ''
 
@@ -2120,7 +2218,13 @@ router.post('/document-generator', async (req: Request, res: Response) => {
             const sessionId = `doc-gen-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
             try {
-                const raw = await invokeAgent(inputText, sessionId, AGENT_ID, AGENT_ALIAS_ID)
+                const raw = await invokeAgentCore(
+                    inputText,
+                    sessionId,
+                    DOCUMENT_HARNESS_ARN,
+                    DOCUMENT_AGENT_QUALIFIER,
+                    DOCUMENT_MAX_TOKENS,
+                )
                 lastRaw = raw
 
                 console.log(
@@ -2143,10 +2247,14 @@ router.post('/document-generator', async (req: Request, res: Response) => {
                 }
 
                 const jsonString = extractJsonString(raw)
-                JSON.parse(jsonString)
+                const parsed = JSON.parse(jsonString) as unknown
+                const doc = validateGeneratedDocument(parsed, {
+                    documentType,
+                    companyName,
+                })
 
-                console.log(`[document-generator] Invocation ${attempt} returned valid JSON`)
-                res.status(200).json({ content: raw })
+                console.log(`[document-generator] Invocation ${attempt} returned a valid, validated document`)
+                res.status(200).json({ content: JSON.stringify(doc) })
                 return
             } catch (err) {
                 if (err instanceof SyntaxError) {
