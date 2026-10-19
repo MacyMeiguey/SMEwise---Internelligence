@@ -181,7 +181,7 @@ function StatPill({ label, value, color = "neutral" }: {
   return (
     <div className="flex flex-col gap-0.5 rounded-xl border border-neutral-200 bg-neutral-50 dark:border-white/[0.08] dark:bg-white/[0.03] px-3 py-2.5 min-w-0">
       <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">{label}</span>
-      <span className={`text-sm font-bold leading-snug truncate ${text}`}>{value}</span>
+      <span className={`text-sm font-bold leading-snug break-words ${text}`}>{value}</span>
     </div>
   );
 }
