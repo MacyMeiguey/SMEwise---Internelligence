@@ -31,6 +31,7 @@ export interface CompetitorAnalysisResult {
     priceRange: string
     strength: string
     weakness: string
+    sources?: Array<{ name: string; url: string }>
   }>
   recommendedPositioning?: {
     marketPosition: string      // non-price whitespace description
@@ -42,6 +43,15 @@ export interface CompetitorAnalysisResult {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function safeSourceUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  try {
+    const url = new URL(value)
+    return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password
+      ? url.href : null
+  } catch { return null }
+}
 
 function competitionBadgeClass(level: string) {
   const l = level.toLowerCase()
@@ -82,6 +92,11 @@ function CompetitorCard({
   entry, index,
 }: { entry: NonNullable<CompetitorAnalysisResult['competitorOverview']>[0]; index: number }) {
   const pillClass = PRICE_PILL_CLASSES[index % PRICE_PILL_CLASSES.length]
+  const sources = (Array.isArray(entry.sources) ? entry.sources : []).flatMap(source => {
+    if (!source || typeof source.name !== 'string' || !source.name.trim()) return []
+    const url = safeSourceUrl(source.url)
+    return url ? [{ name: source.name, url }] : []
+  })
   return (
     <div className="rounded-xl border border-neutral-200 bg-white p-4 min-w-0 overflow-hidden hover:-translate-y-0.5 transition-transform duration-200 dark:border-[#3d3660] dark:bg-[#221f35]">
       <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
@@ -96,6 +111,21 @@ function CompetitorCard({
       </div>
       {entry.exampleNames && (
         <p className="text-xs text-neutral-400 dark:text-[#6b6890] mb-2 break-words">{entry.exampleNames}</p>
+      )}
+      {sources.length > 0 && (
+        <div className="flex flex-col gap-1 mb-3 text-xs">
+          {sources.map((source, sourceIndex) => (
+            <a
+              key={`${source.url}-${sourceIndex}`}
+              href={source.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-violet-600 dark:text-violet-300 underline underline-offset-2 break-words"
+            >
+              View source — {source.name} ↗
+            </a>
+          ))}
+        </div>
       )}
       <p className="text-xs leading-relaxed break-words">
         {entry.strength && (

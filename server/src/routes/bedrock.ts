@@ -297,6 +297,24 @@ const ASSISTANT_AGENT_QUALIFIER = process.env.ASSISTANT_AGENT_QUALIFIER || undef
  */
 const ASSISTANT_MAX_TOKENS = Number(process.env.ASSISTANT_MAX_TOKENS ?? '2048')
 
+/** AgentCore harness used for competitor pricing analysis. */
+const COMPETITOR_HARNESS_ARN =
+    process.env.COMPETITOR_HARNESS_ARN ??
+    'arn:aws:bedrock-agentcore:ap-southeast-1:781897846709:harness/CompetitorPricingAnalysis-cKXDzRuMXr'
+
+/** Optional endpoint/version qualifier for the competitor-pricing harness. */
+const COMPETITOR_AGENT_QUALIFIER = process.env.COMPETITOR_AGENT_QUALIFIER || undefined
+
+/** Max tokens the competitor-pricing harness may generate. */
+const COMPETITOR_MAX_TOKENS = Number(process.env.COMPETITOR_MAX_TOKENS ?? '4096')
+
+/** AgentCore harness for Smart Pricing Suggestions. */
+const SMART_PRICING_HARNESS_ARN =
+    process.env.SMART_PRICING_HARNESS_ARN ??
+    'arn:aws:bedrock-agentcore:ap-southeast-1:781897846709:harness/SmartPricingSuggestion-ZKszfEXOTJ'
+const SMART_PRICING_AGENT_QUALIFIER = process.env.SMART_PRICING_AGENT_QUALIFIER || undefined
+const SMART_PRICING_MAX_TOKENS = Number(process.env.SMART_PRICING_MAX_TOKENS ?? '4096')
+
 const MAX_RETRIES = 5
 
 function sleep(ms: number): Promise<void> {
@@ -1657,8 +1675,7 @@ router.post('/profile-verification', async (req: Request, res: Response) => {
 
 // ─── POST /api/bedrock/competitor-pricing ────────────────────────────────────
 //
-// Invokes the competitor pricing analysis Bedrock agent.
-// Agent IDs: U1JHBRBYCD / AU3DKNFIFF (competitor analysis)
+// Invokes the competitor-pricing AgentCore harness.
 //
 // Request body:
 //   companyName, industry, city, targetCustomer, businessType,
@@ -1689,9 +1706,6 @@ router.post('/competitor-pricing', async (req: Request, res: Response) => {
         res.status(400).json({ error: 'companyName, industry, and city are required.' })
         return
     }
-
-    const COMPETITOR_AGENT_ID = process.env.BEDROCK_COMPETITOR_AGENT_ID ?? 'U1JHBRBYCD'
-    const COMPETITOR_AGENT_ALIAS_ID = process.env.BEDROCK_COMPETITOR_AGENT_ALIAS_ID ?? 'AU3DKNFIFF'
 
     // Build the same input format that works in the test script
     const productLines = products && products.length > 0
@@ -1725,7 +1739,13 @@ router.post('/competitor-pricing', async (req: Request, res: Response) => {
         const sessionId = `competitor-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
         try {
-            const raw = await invokeAgent(inputText, sessionId, COMPETITOR_AGENT_ID, COMPETITOR_AGENT_ALIAS_ID)
+            const raw = await invokeAgentCore(
+                inputText,
+                sessionId,
+                COMPETITOR_HARNESS_ARN,
+                COMPETITOR_AGENT_QUALIFIER,
+                COMPETITOR_MAX_TOKENS,
+            )
             lastRaw = raw
 
             console.log(
@@ -1733,7 +1753,7 @@ router.post('/competitor-pricing', async (req: Request, res: Response) => {
             )
 
             const jsonString = extractJsonString(raw)
-            JSON.parse(jsonString) // validate
+            JSON.parse(jsonString)
 
             console.log(`[competitor-pricing] Attempt ${attempt} returned valid JSON`)
             res.status(200).json({ content: raw })
@@ -1763,8 +1783,7 @@ router.post('/competitor-pricing', async (req: Request, res: Response) => {
 
 // ─── POST /api/bedrock/smart-pricing ─────────────────────────────────────────
 //
-// Invokes the smart pricing suggestions Bedrock agent.
-// Agent IDs: MBTQYPGAAU / EKWPIHADSF
+// Invokes the Smart Pricing Suggestions AgentCore harness.
 //
 // The smart pricing agent requires competitor analysis JSON as part of its input.
 // Request body:
@@ -1799,9 +1818,6 @@ router.post('/smart-pricing', async (req: Request, res: Response) => {
         res.status(400).json({ error: 'companyName, industry, and city are required.' })
         return
     }
-
-    const SMART_AGENT_ID = process.env.BEDROCK_SMART_PRICING_AGENT_ID ?? 'MBTQYPGAAU'
-    const SMART_AGENT_ALIAS_ID = process.env.BEDROCK_SMART_PRICING_AGENT_ALIAS_ID ?? 'EVH8JQ9YQ4'
 
     const productLines = products && products.length > 0
         ? [
@@ -1841,7 +1857,13 @@ router.post('/smart-pricing', async (req: Request, res: Response) => {
         const sessionId = `smart-pricing-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
         try {
-            const raw = await invokeAgent(inputText, sessionId, SMART_AGENT_ID, SMART_AGENT_ALIAS_ID)
+            const raw = await invokeAgentCore(
+                inputText,
+                sessionId,
+                SMART_PRICING_HARNESS_ARN,
+                SMART_PRICING_AGENT_QUALIFIER,
+                SMART_PRICING_MAX_TOKENS,
+            )
             lastRaw = raw
 
             console.log(`[smart-pricing] Attempt ${attempt}/${MAX_RETRIES} — response length: ${raw.length} chars`)
