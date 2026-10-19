@@ -173,23 +173,6 @@ const APPLICABILITY_PILL: Record<string, string> = {
   "Confirm applicability": "bg-neutral-500/20 text-neutral-300 border border-neutral-500/30",
 };
 
-// ─── Stat box (mirrors SmartPricingWidget stat boxes) ─────────────────────────
-
-function StatBox({ label, value, highlight }: {
-  label: string; value: string; highlight?: boolean;
-}) {
-  return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-2.5 min-w-0 dark:border-white/[0.08] dark:bg-[#1a1728]">
-      <p className="text-[10px] text-neutral-400 dark:text-[#6b6890] mb-1 uppercase tracking-widest font-medium whitespace-normal leading-snug">
-        {label}
-      </p>
-      <p className={`text-sm font-bold leading-tight break-words ${highlight ? "text-amber-300" : "text-neutral-900 dark:text-white"}`}>
-        {value}
-      </p>
-    </div>
-  );
-}
-
 // ─── Risk card (mirrors CompetitorCard) ───────────────────────────────────────
 
 function RiskCard({ risk, isOpen, onToggle }: {
