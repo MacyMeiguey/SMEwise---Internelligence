@@ -269,10 +269,14 @@ function AppContent() {
 
               <Link
                 to="/"
-                className="flex items-center gap-3 min-w-0 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 rounded-lg px-1 py-1"
+                className="flex items-center gap-2.5 min-w-0 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded-lg px-1 py-1"
                 aria-label="Go to home"
               >
-                <LogoWordmark size="lg" variant={darkChrome ? 'light' : 'dark'} />
+                <LogoWordmark
+                  size="md"
+                  showMark
+                  variant={darkChrome ? 'light' : 'dark'}
+                />
               </Link>
             </div>
 
@@ -287,10 +291,10 @@ function AppContent() {
                   aria-label={`Color theme: ${
                     preference === 'dark' ? 'Dark' : preference === 'light' ? 'Light' : 'System'
                   }. Click to cycle.`}
-                  className={`p-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 ${
+                  className={`p-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                     darkChrome
-                      ? 'text-neutral-200 hover:bg-white/10 border border-white/12 bg-white/5'
-                      : 'text-neutral-800 hover:bg-neutral-100 border border-neutral-200 bg-white'
+                      ? 'text-neutral-300 hover:text-white hover:bg-white/10'
+                      : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
                   }`}
                 >
                   {preference === 'dark' ? (

@@ -1,6 +1,5 @@
 /**
- * Button Component
- * Modern, accessible button with multiple variants
+ * Button — sharp SaaS control with lavender primary.
  */
 
 import { ButtonHTMLAttributes, forwardRef } from 'react';
@@ -34,25 +33,27 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+      'inline-flex items-center justify-center gap-2 font-semibold rounded-lg transition-all duration-150 ' +
+      'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 ' +
+      'disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]';
 
     const variantStyles = {
       primary:
-        'bg-neutral-950 text-white hover:bg-neutral-800 active:bg-neutral-900 border-2 border-neutral-950',
+        'bg-primary-600 text-white hover:bg-primary-500 shadow-sm shadow-primary-600/20 border border-primary-500/30',
       secondary:
-        'bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800 border-2 border-neutral-950',
+        'bg-primary-50 text-primary-800 hover:bg-primary-100 border border-primary-200 dark:bg-primary-500/15 dark:text-primary-200 dark:border-primary-500/30 dark:hover:bg-primary-500/25',
       outline:
-        'bg-white border-2 border-neutral-950 text-neutral-950 hover:bg-neutral-50',
+        'bg-transparent border border-neutral-300 text-neutral-900 hover:bg-neutral-50 hover:border-neutral-400 dark:border-white/15 dark:text-white dark:hover:bg-white/[0.06]',
       ghost:
-        'bg-transparent border-2 border-neutral-300 text-neutral-700 hover:bg-neutral-100 hover:border-neutral-400',
+        'bg-transparent border border-transparent text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-white/[0.06]',
       danger:
-        'bg-error-600 text-white hover:bg-error-700 active:bg-error-800 border-2 border-neutral-950',
+        'bg-error-600 text-white hover:bg-error-700 border border-error-500/40',
     };
 
     const sizeStyles = {
       sm: 'px-3 py-1.5 text-sm',
-      md: 'px-4 py-2.5 text-base',
-      lg: 'px-6 py-3 text-lg',
+      md: 'px-4 py-2 text-sm',
+      lg: 'px-5 py-2.5 text-base',
     };
 
     const widthStyles = fullWidth ? 'w-full' : '';
@@ -67,7 +68,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {isLoading ? (
           <>
             <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            <span>Loading...</span>
+            <span>Loading</span>
           </>
         ) : (
           <>

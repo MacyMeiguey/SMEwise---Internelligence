@@ -1,6 +1,5 @@
 /**
- * Badge Component
- * Small status indicators and labels
+ * Badge — compact status labels (slightly squared, not pill-everything).
  */
 
 import { HTMLAttributes } from 'react';
@@ -23,30 +22,30 @@ export default function Badge({
   ...props
 }: BadgeProps) {
   const baseStyles =
-    'inline-flex items-center gap-1.5 font-medium rounded-full transition-colors duration-200';
+    'inline-flex items-center gap-1.5 font-medium rounded-md transition-colors duration-150';
 
   const variantStyles = {
-    default: 'bg-neutral-100 text-neutral-700',
-    primary: 'bg-primary-100 text-primary-700',
-    success: 'bg-success-100 text-success-700',
-    warning: 'bg-warning-100 text-warning-700',
-    error: 'bg-error-100 text-error-700',
-    info: 'bg-info-100 text-info-700',
+    default: 'bg-neutral-100 text-neutral-700 dark:bg-white/[0.08] dark:text-neutral-300',
+    primary: 'bg-primary-100 text-primary-800 dark:bg-primary-500/20 dark:text-primary-200',
+    success: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300',
+    warning: 'bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
+    error: 'bg-red-50 text-red-800 dark:bg-red-500/15 dark:text-red-300',
+    info: 'bg-sky-50 text-sky-800 dark:bg-sky-500/15 dark:text-sky-300',
   };
 
   const sizeStyles = {
-    sm: 'px-2 py-0.5 text-xs',
-    md: 'px-2.5 py-1 text-sm',
-    lg: 'px-3 py-1.5 text-base',
+    sm: 'px-1.5 py-0.5 text-xs',
+    md: 'px-2 py-0.5 text-xs',
+    lg: 'px-2.5 py-1 text-sm',
   };
 
   const dotColors = {
     default: 'bg-neutral-500',
     primary: 'bg-primary-500',
-    success: 'bg-success-500',
-    warning: 'bg-warning-500',
-    error: 'bg-error-500',
-    info: 'bg-info-500',
+    success: 'bg-emerald-500',
+    warning: 'bg-amber-500',
+    error: 'bg-red-500',
+    info: 'bg-sky-500',
   };
 
   return (

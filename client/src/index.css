@@ -15,8 +15,8 @@ html.app-deep-scrollbar ::-webkit-scrollbar-thumb:hover { background: #a78bfa; }
 /* ── Brand design tokens ──────────────────────────────────────────────────── */
 :root {
   --brand-ink:      #0f0f0f;
-  --brand-lavender: #c4b5fd;   /* logo dot — violet-300 */
-  --brand-violet:   #7c3aed;   /* interactive — violet-600 */
+  --brand-lavender: #c4b5fd;   /* soft brand tint */
+  --brand-violet:   #7c3aed;   /* favicon / primary CTA */
   --brand-bg:       #ffffff;
   --brand-off:      #fafafa;
   --brand-border:   #e5e5e5;
@@ -31,7 +31,7 @@ html.app-deep-scrollbar ::-webkit-scrollbar-thumb:hover { background: #a78bfa; }
   body {
     background-color: var(--brand-bg);
     color: var(--brand-ink);
-    font-family: Inter, system-ui, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     text-rendering: optimizeLegibility;
     line-height: 1.55;
     @apply antialiased;

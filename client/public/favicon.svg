@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="SMEwise">
+  <rect width="32" height="32" rx="8" fill="#7c3aed"/>
+  <!-- Stroke S — clearer than a filled glyph at 16px -->
+  <path
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="3.4"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    d="M21.2 10.4c-.4-1.7-1.9-2.9-4.2-2.9-2.6 0-4.4 1.5-4.4 3.5 0 1.7 1.1 2.7 3.6 3.4l1.6.5c2.8.9 4.4 2.2 4.4 4.6 0 2.7-2.3 4.5-5.4 4.5-2.7 0-4.7-1.4-5.3-3.5"
+  />
+</svg>
