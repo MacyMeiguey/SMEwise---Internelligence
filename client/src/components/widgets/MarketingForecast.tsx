@@ -103,6 +103,47 @@ function fmtRM(n: unknown): string {
   return `RM ${fmt(n)}`;
 }
 
+/**
+ * The agent (a small model) routinely emits wildly inflated revenue — e.g.
+ * RM 900k on a RM 40k budget. We cap revenue at a realistic multiple of the
+ * marketing spend so ROI and all derived figures stay sane. Marketing revenue
+ * above ~4x spend is implausible for an SME, so we clamp there.
+ */
+const MAX_REVENUE_MULTIPLE = 4;
+
+function clampRevenue(revenue: unknown, cost: unknown): number {
+  const r = toNum(revenue);
+  const c = toNum(cost);
+  if (c <= 0) return Math.round(r);
+  return Math.round(Math.min(r, c * MAX_REVENUE_MULTIPLE));
+}
+
+/**
+ * The agent sometimes dumps the revenue amount into projectedTotalGrowth (e.g.
+ * "80000%"). Total growth is a percentage; cap it at a believable ceiling so a
+ * stray huge value can't render as "80000%".
+ */
+const MAX_GROWTH_PCT = 300;
+
+function clampGrowthPct(growth: unknown): string {
+  const g = Math.min(Math.abs(toNum(growth)), MAX_GROWTH_PCT);
+  return `${Math.round(g * 10) / 10}%`;
+}
+
+/**
+ * Correct ROI = profit over cost, as a percentage: (revenue - cost) / cost * 100,
+ * computed from the CLAMPED revenue so it can never show absurd values. The
+ * agent's own ROI field is ignored (it often returns revenue/cost ratios).
+ * Returns a display string like "87.5%".
+ */
+function roiPct(revenue: unknown, cost: unknown): string {
+  const c = toNum(cost);
+  if (c <= 0) return '—';
+  const r = clampRevenue(revenue, cost);
+  const pct = ((r - c) / c) * 100;
+  return `${Math.round(pct * 10) / 10}%`;
+}
+
 function normalizeExecutiveSummary(
   raw: Partial<ExecutiveSummary> | null | undefined,
 ): ExecutiveSummary {
@@ -181,6 +222,16 @@ export default function MarketingForecastView({ forecast }: { forecast: Marketin
   const exec = normalizeExecutiveSummary(forecast.executiveSummary);
   const { timeSeriesData: ts, channelBreakdown, funnelMetrics, phaseProjections, benchmarking } = forecast;
 
+  // Total marketing budget: prefer last cumulative-budget value, else sum of
+  // phase spend, else sum of channel allocations. Used to recompute ROI (the
+  // agent's ROI field is unreliable — it often reports revenue/cost ratios).
+  const cumBudget = ts?.cumulativeBudgetSpend ?? [];
+  const totalBudget =
+    cumBudget.length > 0
+      ? toNum(cumBudget[cumBudget.length - 1])
+      : (phaseProjections ?? []).reduce((s, p) => s + toNum(p.budgetSpend), 0)
+        || (channelBreakdown ?? []).reduce((s, c) => s + toNum(c.allocatedBudget), 0);
+
   // Agent JSON may omit parallel arrays or whole timeSeries blocks — never index undefined.
   const months = ts?.months ?? [];
   const timeData = months.map((m, i) => ({
@@ -195,6 +246,35 @@ export default function MarketingForecastView({ forecast }: { forecast: Marketin
     cumulativeRevenue: ts?.cumulativeRevenue?.[i] ?? 0,
   }));
 
+  // Avg monthly success: the agent frequently omits averageMonthlySuccessRate
+  // (renders as 0%). Fall back to the average of the phases' successProbability,
+  // then to forecastConfidence, so a sensible number is always shown.
+  const avgMonthlySuccess = (() => {
+    const direct = toNum(exec.averageMonthlySuccessRate);
+    if (direct > 0) return direct;
+    const probs = (phaseProjections ?? [])
+      .map((p) => toNum(p.successProbability))
+      .filter((n) => n > 0);
+    if (probs.length > 0) {
+      return Math.round((probs.reduce((s, n) => s + n, 0) / probs.length) * 10) / 10;
+    }
+    return toNum(exec.forecastConfidence);
+  })();
+
+  // Realistic "projected growth": how much monthly client intake grows from the
+  // first active month to the last, instead of the agent's unreliable field
+  // (which sometimes equals the revenue amount, e.g. "80000%").
+  const computedGrowthPct = (() => {
+    const monthly = (ts?.projectedNewClients ?? []).map((n) => toNum(n)).filter((n) => n > 0);
+    if (monthly.length >= 2 && monthly[0] > 0) {
+      return ((monthly[monthly.length - 1] - monthly[0]) / monthly[0]) * 100;
+    }
+    if (totalBudget > 0) {
+      return ((clampRevenue(exec.projectedTotalRevenue, totalBudget) - totalBudget) / totalBudget) * 100;
+    }
+    return toNum(exec.projectedTotalGrowth);
+  })();
+
   return (
     <div className="font-sans max-w-none space-y-6">
 
@@ -202,14 +282,14 @@ export default function MarketingForecastView({ forecast }: { forecast: Marketin
       <div>
         <SectionHeading>Executive Summary</SectionHeading>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard label="Projected Growth" value={`${exec.projectedTotalGrowth}%`} sub="total growth" color="#10b981" />
-          <StatCard label="Total Revenue" value={fmtRM(exec.projectedTotalRevenue)} sub="projected" color="#7c3aed" />
+          <StatCard label="Projected Growth" value={clampGrowthPct(computedGrowthPct)} sub="total growth" color="#10b981" />
+          <StatCard label="Total Revenue" value={fmtRM(clampRevenue(exec.projectedTotalRevenue, totalBudget))} sub="projected" color="#7c3aed" />
           <StatCard label="New Clients" value={fmt(exec.projectedTotalNewClients)} sub="total acquired" color="#a78bfa" />
           <StatCard label="Est. CAC" value={fmtRM(exec.estimatedCAC)} sub="cost per acquisition" color="#f59e0b" />
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
-          <StatCard label="Avg Monthly Success" value={`${exec.averageMonthlySuccessRate}%`} color="#7c3aed" />
-          <StatCard label="Estimated ROI" value={`${exec.estimatedROI}x`} color="#10b981" />
+          <StatCard label="Avg Monthly Success" value={`${avgMonthlySuccess}%`} color="#7c3aed" />
+          <StatCard label="Estimated ROI" value={roiPct(exec.projectedTotalRevenue, totalBudget)} color="#10b981" />
           <ConfidenceBar value={exec.forecastConfidence} />
         </div>
       </div>
@@ -296,8 +376,16 @@ export default function MarketingForecastView({ forecast }: { forecast: Marketin
                 </tr>
               </thead>
               <tbody>
-                {channelBreakdown.map((ch, i) => (
-                  <tr key={ch.channel} className="border-b border-neutral-100 dark:border-white/[0.04]">
+                {channelBreakdown.map((ch, i) => {
+                  // Recompute channel ROI: estimate the channel's revenue as its
+                  // share of total conversions, then ROI = (rev - budget)/budget.
+                  const totalConv = (channelBreakdown ?? []).reduce((s, c) => s + toNum(c.projectedConversions), 0);
+                  const clampedTotalRev = clampRevenue(exec.projectedTotalRevenue, totalBudget);
+                  const chRevenue = totalConv > 0
+                    ? clampedTotalRev * (toNum(ch.projectedConversions) / totalConv)
+                    : 0;
+                  return (
+                  <tr key={`${ch.channel}-${i}`} className="border-b border-neutral-100 dark:border-white/[0.04]">
                     <td className="py-2 px-2 font-medium text-neutral-800 dark:text-neutral-200">
                       <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ background: CHANNEL_COLORS[i % CHANNEL_COLORS.length] }} />
                       {ch.channel}
@@ -306,9 +394,10 @@ export default function MarketingForecastView({ forecast }: { forecast: Marketin
                     <td className="py-2 px-2 text-right text-neutral-600 dark:text-neutral-300">{toNum(ch.budgetPercentage)}%</td>
                     <td className="py-2 px-2 text-right text-neutral-600 dark:text-neutral-300">{fmt(ch.projectedReach)}</td>
                     <td className="py-2 px-2 text-right text-neutral-600 dark:text-neutral-300">{fmt(ch.projectedConversions)}</td>
-                    <td className="py-2 px-2 text-right font-semibold text-emerald-600 dark:text-emerald-400">{ch.estimatedROI}x</td>
+                    <td className="py-2 px-2 text-right font-semibold text-emerald-600 dark:text-emerald-400">{roiPct(chRevenue, ch.allocatedBudget)}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -364,7 +453,7 @@ export default function MarketingForecastView({ forecast }: { forecast: Marketin
                     </div>
                     <div>
                       <p className="text-[10px] text-neutral-500 mb-0.5">Revenue</p>
-                      <p className="font-bold" style={{ color }}>{fmtRM(phase.projectedRevenue)}</p>
+                      <p className="font-bold" style={{ color }}>{fmtRM(clampRevenue(phase.projectedRevenue, phase.budgetSpend))}</p>
                     </div>
                     <div>
                       <p className="text-[10px] text-neutral-500 mb-0.5">New Clients</p>
@@ -372,7 +461,7 @@ export default function MarketingForecastView({ forecast }: { forecast: Marketin
                     </div>
                     <div>
                       <p className="text-[10px] text-neutral-500 mb-0.5">ROI</p>
-                      <p className="font-bold text-emerald-600 dark:text-emerald-400">{toNum(phase.estimatedROI)}x</p>
+                      <p className="font-bold text-emerald-600 dark:text-emerald-400">{roiPct(phase.projectedRevenue, phase.budgetSpend)}</p>
                     </div>
                     <div>
                       <p className="text-[10px] text-neutral-500 mb-0.5">Conversion</p>
@@ -411,7 +500,7 @@ export default function MarketingForecastView({ forecast }: { forecast: Marketin
             </div>
             <div>
               <p className="text-[10px] text-neutral-500 mb-0.5">Your Growth</p>
-              <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{exec.projectedTotalGrowth}%</p>
+              <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{clampGrowthPct(computedGrowthPct)}</p>
             </div>
             <div>
               <p className="text-[10px] text-neutral-500 mb-0.5">Competitor Score</p>
@@ -423,7 +512,7 @@ export default function MarketingForecastView({ forecast }: { forecast: Marketin
             </div>
             <div>
               <p className="text-[10px] text-neutral-500 mb-0.5">Industry Avg ROI</p>
-              <p className="text-sm font-bold">{toNum(benchmarking.industryAverageROI)}x</p>
+              <p className="text-sm font-bold">{toNum(benchmarking.industryAverageROI)}%</p>
             </div>
             <div>
               <p className="text-[10px] text-neutral-500 mb-0.5">vs Competitors</p>
