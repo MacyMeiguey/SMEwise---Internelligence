@@ -12,7 +12,7 @@
 - [x] Check AWS identity: CLI reports no credentials; browser login alone is insufficient.
 - [x] Check Docker: Linux engine pipe is unavailable.
 - [x] Start Docker Desktop and wait for `docker info` to succeed.
-- [ ] Run `aws configure sso --profile sandbox38` with portal `https://eliteacademy.awsapps.com/start/`, SSO region `ap-southeast-1`, account `781897846709`, and assigned role `myisb_IsbUsersPS`. Use default client region `ap-southeast-1` and output `json`.
+- [x] Run `aws configure sso --profile sandbox38` with portal `https://eliteacademy.awsapps.com/start/`, SSO region `ap-southeast-1`, account `781897846709`, and assigned role `myisb_IsbUsersPS`. Use default client region `ap-southeast-1` and output `json`.
 - [x] Run `aws sso login --profile sandbox38` and finish browser authorization (temporary `AWS_CONFIG_FILE`, no repository credentials).
 - [x] Verify `aws sts get-caller-identity --profile sandbox38` returns the approved account.
 - [x] Inspect existing S3, CloudFront, App Runner, ECR, and IAM resources before creating duplicates.
@@ -28,16 +28,16 @@
 - [x] Reuse or create a dedicated ECR repository and push the verified image with an explicit version tag.
 - [x] Prepare narrowly scoped ECR pull and backend execution roles; review their exact policies before applying any access changes.
 - [x] Configure App Runner port `3001`, HTTP health check `/api/health`, `NODE_ENV=production`, and required region/model/harness configuration. Do not copy AWS keys into service variables.
-- [ ] Wait for Running and verify the HTTPS health endpoint.
+- [x] Wait for Running and verify the HTTPS health endpoint.
 
 ## 4. Deploy frontend and routing
 
-- [ ] Create or reuse a private S3 bucket with public access blocked; upload `client/dist` only.
-- [ ] Configure CloudFront Origin Access Control for the S3 origin.
-- [ ] Route `/api/*` to App Runner over HTTPS with caching disabled, all required methods enabled, and an origin request policy that excludes the viewer Host header.
-- [ ] Rewrite frontend navigation paths to `/index.html` at viewer request time, excluding `/api/*` and asset paths. Avoid distribution-wide error rewriting that masks API errors.
-- [ ] Set the backend's allowed browser origin to the CloudFront URL.
-- [ ] Wait for CloudFront deployment, then verify homepage, direct navigation, static assets, `/api/health`, an API error, and an authorized Bedrock request.
+- [x] Create or reuse a private S3 bucket with public access blocked; upload `client/dist` only.
+- [x] Configure CloudFront Origin Access Control for the S3 origin.
+- [x] Route `/api/*` to App Runner over HTTPS with caching disabled, all required methods enabled, and an origin request policy that excludes the viewer Host header.
+- [x] Rewrite frontend navigation paths to `/index.html` at viewer request time, excluding `/api/*` and asset paths. Avoid distribution-wide error rewriting that masks API errors.
+- [x] Set the backend's allowed browser origin to the CloudFront URL.
+- [x] Wait for CloudFront deployment, then verify homepage, direct navigation, static assets, `/api/health`, an API error, and an authorized Bedrock request.
 
 ## Completion evidence
 
@@ -50,3 +50,19 @@ Record resource identifiers, region, image tag, public HTTPS URL, verification r
 - Build with `--provenance=false` to publish one architecture manifest compatible with App Runner.
 - Patched `proxy-addr`, `body-parser`, and related dependencies through compatible lockfile updates. The pruned production audit reports one remaining moderate `qs` advisory and no critical/high findings.
 - AWS reports the legacy Nova Canvas v1 model as end of life. Image-generation migration is a separate feature change; do not claim it passed verification.
+
+## Deployment completed
+
+- Account: 781897846709 (ETA-Sandbox-38).
+- Region: ap-southeast-1 (Singapore).
+- Public website: https://df9kx3mn95m8a.cloudfront.net
+- Backend: https://espxswgkkv.ap-southeast-1.awsapprunner.com
+- Stack: smewise-hosting, update complete.
+- CloudFront distribution: E1B4VUQPYRQO8M, deployed.
+- Private bucket: smewise-hosting-website-r9k6vscrqaws, all public-access blocks enabled.
+- Image: smewise-server:20261019, sha256:29e204e372a920209cb2b9ae4d1d5fbbbcae6ea727ef9e6091276c2598df16a0.
+- Text model: global.anthropic.claude-sonnet-4-6. Sonnet 4's inference-profile metadata was active, but runtime invocation reported model end of life; the supported replacement passed both direct and deployed checks.
+- Eight public checks passed: homepage, direct navigation, API health, missing-route 404, validation 400, JavaScript asset, Bedrock text generation, and AgentCore advisor streaming.
+- Verification evidence: deployment/verification-results.json.
+- Remaining limitations: retired Nova Canvas image model; one moderate production qs advisory. No critical/high backend production dependency findings remained after compatible patches.
+- To stop hosting compute charges after demos, pause the App Runner service. Review DEPLOYMENT.md before teardown; the frontend bucket and ECR repository are retained separately from stack deletion.

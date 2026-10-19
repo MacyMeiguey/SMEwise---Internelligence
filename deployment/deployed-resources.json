@@ -1,0 +1,12 @@
+{
+  "StackName": "smewise-hosting",
+  "BackendUrl": "https://espxswgkkv.ap-southeast-1.awsapprunner.com",
+  "WebsiteBucket": "smewise-hosting-website-r9k6vscrqaws",
+  "WebsiteUrl": "https://df9kx3mn95m8a.cloudfront.net",
+  "ImageUri": "781897846709.dkr.ecr.ap-southeast-1.amazonaws.com/smewise-server:20261019",
+  "Region": "ap-southeast-1",
+  "DistributionId": "E1B4VUQPYRQO8M",
+  "BackendArn": "arn:aws:apprunner:ap-southeast-1:781897846709:service/smewise-server/d2e4f365d76546258d1b9b33986f2a02",
+  "TextModel": "global.anthropic.claude-sonnet-4-6",
+  "VerifiedAt": "2026-10-19T13:50:34.6958190Z"
+}
