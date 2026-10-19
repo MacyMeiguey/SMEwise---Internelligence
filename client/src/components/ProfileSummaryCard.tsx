@@ -50,17 +50,16 @@ function LoadingState() {
   return (
     <div aria-busy="true" aria-label="Generating your business summary…">
       {/* Contextual message */}
-      <p className="text-sm text-[#a78bfa] mb-4 flex items-center gap-2">
-        <span className="inline-block w-2 h-2 rounded-full bg-[#a78bfa] animate-pulse" />
+      <p className="text-sm text-primary-600 dark:text-primary-300 mb-4 flex items-center gap-2">
+        <span className="inline-block w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
         Analysing your business profile…
       </p>
-      {/* Skeleton lines */}
       <div className="animate-pulse space-y-3">
-        <div className="h-4 bg-[#3d3660]/40 rounded-lg w-full" />
-        <div className="h-4 bg-[#3d3660]/40 rounded-lg w-11/12" />
-        <div className="h-4 bg-[#3d3660]/40 rounded-lg w-full" />
-        <div className="h-4 bg-[#3d3660]/40 rounded-lg w-10/12" />
-        <div className="h-4 bg-[#3d3660]/40 rounded-lg w-9/12" />
+        <div className="h-4 bg-neutral-200 dark:bg-white/[0.08] rounded-md w-full" />
+        <div className="h-4 bg-neutral-200 dark:bg-white/[0.08] rounded-md w-11/12" />
+        <div className="h-4 bg-neutral-200 dark:bg-white/[0.08] rounded-md w-full" />
+        <div className="h-4 bg-neutral-200 dark:bg-white/[0.08] rounded-md w-10/12" />
+        <div className="h-4 bg-neutral-200 dark:bg-white/[0.08] rounded-md w-9/12" />
       </div>
     </div>
   );
@@ -98,10 +97,9 @@ function ErrorState({ message, onRetry }: ErrorStateProps) {
       <button
         type="button"
         onClick={onRetry}
-        className="bg-transparent border border-[#7c3aed] text-[#a78bfa] rounded-[10px] px-4 py-2 hover:bg-[#7c3aed]/10 transition-all duration-200
-                   focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/50"
+        className="bg-transparent border border-primary-500/50 text-primary-600 dark:text-primary-300 rounded-lg px-4 py-2 hover:bg-primary-500/10 transition-all duration-150 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
       >
-        Try Again
+        Try again
       </button>
     </div>
   );
@@ -121,10 +119,10 @@ function RegenerateButton({ onClick, disabled }: RegenerateButtonProps) {
       onClick={onClick}
       disabled={disabled}
       aria-label="Regenerate business summary"
-      className="mt-4 inline-flex items-center gap-2 bg-transparent border border-[#7c3aed] text-[#a78bfa] rounded-[10px] px-4 py-2
-                 hover:bg-[#7c3aed]/10 transition-all duration-200
+      className="mt-4 inline-flex items-center gap-2 bg-transparent border border-primary-500/50 text-primary-600 dark:text-primary-300 rounded-lg px-4 py-2
+                 hover:bg-primary-500/10 transition-all duration-150 active:scale-[0.98]
                  disabled:opacity-50 disabled:cursor-not-allowed
-                 focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/50"
+                 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
     >
       {/* Refresh icon */}
       <svg
@@ -213,10 +211,9 @@ export default function ProfileSummaryCard({ profile, trigger }: ProfileSummaryC
       aria-label="Business Profile Summary"
       className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6"
     >
-      <div className="bg-[#1a1728] rounded-xl border border-[#3d3660] p-5">
-        {/* ── Card header ── */}
+      <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-subtle dark:border-white/[0.08] dark:bg-white/[0.03] dark:shadow-none">
         <div className="flex items-center gap-3 mb-5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7c3aed] to-[#a78bfa] flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center flex-shrink-0">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-4 w-4 text-white"
@@ -234,18 +231,17 @@ export default function ProfileSummaryCard({ profile, trigger }: ProfileSummaryC
             </svg>
           </div>
           <div>
-            <h2 className="text-base font-semibold text-white leading-tight">
-              Business Profile Summary
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-white leading-tight tracking-tight">
+              Business profile summary
             </h2>
-            <p className="text-xs text-[#6b6890] mt-0.5">
+            <p className="text-xs text-neutral-500 mt-0.5">
               AI-generated overview of your business
             </p>
           </div>
         </div>
 
-        {/* ── Content area ── */}
         {status === "idle" && (
-          <p className="text-sm text-[#6b6890] italic">
+          <p className="text-sm text-neutral-500">
             Submit your profile to generate your business summary.
           </p>
         )}
@@ -258,7 +254,7 @@ export default function ProfileSummaryCard({ profile, trigger }: ProfileSummaryC
 
         {status === "success" && content && (
           <>
-            <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-line">
+            <p className="text-sm text-neutral-700 dark:text-neutral-200 leading-relaxed whitespace-pre-line">
               {content}
             </p>
             <RegenerateButton onClick={generate} disabled={false} />

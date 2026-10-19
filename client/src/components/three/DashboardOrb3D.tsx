@@ -37,19 +37,16 @@ class ErrorBoundary extends Component<BoundaryProps, { hasError: boolean }> {
   }
 }
 
-/* Static SVG fallback — unique per section */
-const FALLBACK_ICONS: Record<string, string> = {
-  'Operations': '🏢',
-  'Financial Planning': '📊',
-  'Pricing Strategy': '🏷️',
-  'Marketing': '📣',
-  'Owner Tools': '📋',
-};
-
 function StaticFallback({ section }: { section: string }) {
+  const initial = (section.trim().charAt(0) || 'S').toUpperCase();
   return (
-    <div className="w-full h-full grid place-items-center rounded-2xl bg-gradient-to-br from-primary-950/60 to-primary-900/30 border border-primary-500/20">
-      <span className="text-4xl" role="img" aria-hidden>{FALLBACK_ICONS[section] ?? '✦'}</span>
+    <div className="w-full h-full grid place-items-center rounded-2xl bg-gradient-to-br from-[#07070b] to-[#101018] border border-white/[0.09]">
+      <span
+        className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-500/20 text-lg font-bold text-primary-300"
+        aria-hidden
+      >
+        {initial}
+      </span>
     </div>
   );
 }
@@ -80,7 +77,7 @@ export default function DashboardOrb3D({ section, size = 140, className = '' }: 
 
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl bg-[#0a0818] border border-primary-500/20 shadow-lg shadow-primary-950/50 shrink-0 ${className}`}
+      className={`relative overflow-hidden rounded-2xl bg-[#07070b] border border-white/[0.09] shadow-lg shadow-black/40 shrink-0 ${className}`}
       style={{ width: size, height: size }}
       aria-hidden
     >

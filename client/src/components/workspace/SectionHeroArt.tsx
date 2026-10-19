@@ -62,7 +62,7 @@ function ArtFinancial() {
       </defs>
       <rect width="240" height="140" rx="16" fill="url(#fin-bg)" className="dark:opacity-90" />
       <line x1="40" y1="112" x2="208" y2="112" stroke="currentColor" strokeOpacity="0.2" strokeWidth="2" />
-      <rect x="52" y="72" width="22" height="40" rx="3" fill="#8b5cf6" fillOpacity="0.65" />
+      <rect x="52" y="72" width="22" height="40" rx="3" fill="#7c3aed" fillOpacity="0.65" />
       <rect x="86" y="56" width="22" height="56" rx="3" fill="#a78bfa" fillOpacity="0.75" />
       <rect x="120" y="40" width="22" height="72" rx="3" fill="#fbbf24" fillOpacity="0.75" />
       <rect x="154" y="64" width="22" height="48" rx="3" fill="#34d399" fillOpacity="0.55" />
@@ -99,9 +99,9 @@ function ArtPricing() {
 function ArtMarketing() {
   return (
     <SvgFrame>
-      <rect width="240" height="140" rx="16" fill="#ecfeff" className="dark:fill-[rgba(15,35,45,0.75)]" />
-      <ellipse cx="120" cy="118" rx="90" ry="18" fill="#38bdf8" fillOpacity="0.12" />
-      <path d="M32 88 Q72 52 112 72 T192 64" fill="none" stroke="#38bdf8" strokeOpacity="0.55" strokeWidth="3" strokeLinecap="round" />
+      <rect width="240" height="140" rx="16" fill="#f0fdfa" className="dark:fill-[rgba(8,24,22,0.75)]" />
+      <ellipse cx="120" cy="118" rx="90" ry="18" fill="#14b8a6" fillOpacity="0.12" />
+      <path d="M32 88 Q72 52 112 72 T192 64" fill="none" stroke="#14b8a6" strokeOpacity="0.55" strokeWidth="3" strokeLinecap="round" />
       <path d="M40 100 Q88 70 128 92 T210 80" fill="none" stroke="#a78bfa" strokeOpacity="0.45" strokeWidth="2.5" strokeLinecap="round" />
       <polygon points="148,36 196,58 148,80 130,58" fill="#fbbf24" fillOpacity="0.75" />
       <circle cx="58" cy="44" r="6" fill="#f472b6" fillOpacity="0.55" />

@@ -160,14 +160,14 @@ function SummaryBar({ summary, company }: { summary: RiskSummary; company: strin
       {/* Biggest threat + quick win */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
-          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide flex items-center gap-1.5">
-            <span>🔥</span> Biggest Threat Now
+          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+            Biggest Threat Now
           </p>
           <p className="text-sm text-neutral-200 leading-relaxed">{summary.biggestThreatNow}</p>
         </div>
         <div className="space-y-1">
-          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide flex items-center gap-1.5">
-            <span>⚡</span> Quick Win
+          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+            Quick Win
           </p>
           <p className="text-sm text-neutral-200 leading-relaxed">{summary.quickWin}</p>
         </div>
@@ -209,7 +209,7 @@ function RiskStrip({ risks, active, onSelect }: {
             </span>
 
             {/* Level badge */}
-            <span className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full border ${cfg.badge}`}>
+            <span className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-md border ${cfg.badge}`}>
               {cfg.label}
             </span>
 

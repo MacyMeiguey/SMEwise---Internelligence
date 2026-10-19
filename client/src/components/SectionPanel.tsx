@@ -37,8 +37,8 @@ export default function SectionPanel({
         id={`section-${id}`}
         className={`
           scroll-mt-28 sm:scroll-mt-32 motion-safe:animate-fade-up
-          rounded-2xl overflow-hidden border border-neutral-200 bg-white shadow-md
-          dark:border-white/[0.08] dark:bg-[#0a0a10] dark:shadow-panel
+          rounded-xl overflow-hidden border border-neutral-200/90 bg-white shadow-subtle
+          dark:border-white/[0.08] dark:bg-[#101018] dark:shadow-none
           transition-shadow duration-300
           ${isLocked ? 'opacity-45 pointer-events-none select-none' : ''}
         `}
@@ -47,7 +47,7 @@ export default function SectionPanel({
       >
         {showBanner && <SectionBanner section={title} />}
 
-        <div className="bg-neutral-50 dark:bg-[#07070b]">
+        <div className="bg-neutral-50/80 dark:bg-[#07070b]">
           {children ? (
             <div className="p-4 sm:p-5 lg:p-6">{children}</div>
           ) : (
@@ -66,8 +66,8 @@ export default function SectionPanel({
       id={`section-${id}`}
       className={`
         scroll-mt-28 sm:scroll-mt-32 motion-safe:animate-fade-up
-        rounded-2xl overflow-hidden border border-neutral-200 bg-white shadow-md
-        dark:border-white/[0.08] dark:bg-[#0a0a10] dark:shadow-panel
+        rounded-xl overflow-hidden border border-neutral-200/90 bg-white shadow-subtle
+        dark:border-white/[0.08] dark:bg-[#101018] dark:shadow-none
         transition-shadow duration-300
         ${isLocked ? 'opacity-45 pointer-events-none select-none' : ''}
       `}

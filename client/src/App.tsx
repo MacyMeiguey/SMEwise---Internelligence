@@ -157,7 +157,7 @@ function AppContent() {
     saveProfile(submitted);
     setProfile(submitted);
     setShowConfetti(true);
-    addToast('success', '🎉 Profile saved! Generating your workspace…');
+    addToast('success', 'Profile saved. Opening your workspace…');
     goWorkspace('overview');
   };
 
@@ -241,9 +241,13 @@ function AppContent() {
       <header
         ref={setHeaderEl}
         className={`sticky top-0 z-30 border-b ${
-          darkChrome
-            ? 'bg-[#07070b]/85 backdrop-blur-xl border-white/[0.08] text-white'
-            : 'bg-white/95 backdrop-blur-xl border-neutral-200 text-neutral-900'
+          showWorkspaceChrome && darkChrome
+            ? 'bg-[#0c0c10] border-white/[0.07] text-white'
+            : darkChrome
+              ? 'bg-[#07070b]/85 backdrop-blur-xl border-white/[0.08] text-white'
+              : showWorkspaceChrome
+                ? 'bg-white border-neutral-200/90 text-neutral-900'
+                : 'bg-white/95 backdrop-blur-xl border-neutral-200 text-neutral-900'
         }`}
       >
         <div className="px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3">
@@ -336,13 +340,13 @@ function AppContent() {
               )}
 
               {view === 'landing' && !profile && (
-                <button type="button" onClick={goOnboarding} className="btn-primary text-sm py-2 px-4 rounded-xl">
+                <button type="button" onClick={goOnboarding} className="btn-primary text-sm py-2 px-4 rounded-lg">
                   Get started
                 </button>
               )}
 
               {view === 'landing' && profile && (
-                <button type="button" onClick={() => goWorkspace('overview')} className="btn-primary text-sm py-2 px-4 rounded-xl">
+                <button type="button" onClick={() => goWorkspace('overview')} className="btn-primary text-sm py-2 px-4 rounded-lg">
                   My workspace
                 </button>
               )}
@@ -383,7 +387,7 @@ function AppContent() {
         <main
           id="main-content"
           className={`flex-1 bg-neutral-100 text-neutral-950 transition-[padding] duration-200 dark:bg-[#07070b] dark:text-white ${
-            sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-60 xl:pl-64'
+            sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-60'
           } ${
             assistantCollapsed ? 'lg:pr-24' : ''
           }`}
@@ -446,17 +450,13 @@ function LandingFooter() {
     <footer className="relative border-t border-white/[0.08] bg-[#07070b]/45 backdrop-blur-xl py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <LogoWordmark size="sm" variant="light" />
-            <span className="text-xs text-neutral-400">© 2026 · For Malaysian SMEs</span>
+          <div className="flex items-center gap-3 min-w-0">
+            <LogoWordmark size="sm" showMark variant="light" />
+            <span className="text-xs text-neutral-500">© 2026 · Built for Malaysian SMEs</span>
           </div>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-neutral-400">
-            {['Privacy', 'Terms', 'Support'].map((l) => (
-              <a key={l} href="#" className="hover:text-white transition-colors">
-                {l}
-              </a>
-            ))}
-          </div>
+          <p className="text-xs text-neutral-500 max-w-sm sm:text-right leading-relaxed">
+            Profile data stays on this device. Generators and advisor use your saved business details.
+          </p>
         </div>
       </div>
     </footer>

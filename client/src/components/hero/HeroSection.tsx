@@ -46,7 +46,7 @@ const TOPIC_CHIPS: { key: SMEIconKey; label: string }[] = [
   { key: 'reports', label: 'Reports' },
 ];
 
-const CHIP_ACCENT = '#c4b5fd';
+const CHIP_ACCENT = '#a78bfa';
 
 const SME_ICON_MAP: Record<SMEIconKey, FC<IconBadgeProps>> = {
   money:      ({ accent }) => <CoinStackIcon  accent={accent} size="md" />,
@@ -112,7 +112,7 @@ export default function HeroSection({ onGetStarted, profile, onGoToWorkspace }: 
         {/* Content layer */}
         <div className="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-28 text-center motion-safe:animate-fade-up">
           <div className="flex justify-center mb-8">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/[0.12] bg-black/45 backdrop-blur-md px-4 py-1.5 text-xs sm:text-sm font-medium text-neutral-200 shadow-panel">
+            <span className="inline-flex items-center gap-2 rounded-full border border-primary-400/25 bg-primary-600/15 backdrop-blur-md px-4 py-1.5 text-xs sm:text-sm font-medium text-primary-100">
               <Store className="h-3.5 w-3.5 text-primary-300 shrink-0" aria-hidden />
               Malaysian SME workspace · Advisor + planners
             </span>
@@ -122,7 +122,7 @@ export default function HeroSection({ onGetStarted, profile, onGoToWorkspace }: 
             <span className="block text-white drop-shadow-[0_2px_24px_rgba(0,0,0,0.55)]">
               Plans, paperwork &amp;
             </span>
-            <span className="block mt-2 text-primary-100">
+            <span className="block mt-2 bg-gradient-to-r from-primary-200 via-primary-300 to-primary-100 bg-clip-text text-transparent">
               one calm workspace.
             </span>
           </h1>
@@ -140,7 +140,7 @@ export default function HeroSection({ onGetStarted, profile, onGoToWorkspace }: 
             {TRUTH_PILLS.map((t) => (
               <li
                 key={t}
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/40 backdrop-blur px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-neutral-200"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-white/12 bg-black/35 backdrop-blur px-3 py-1.5 text-xs sm:text-sm font-medium text-neutral-200"
               >
                 <Check className="h-4 w-4 text-primary-300 shrink-0" aria-hidden />
                 {t}
@@ -153,7 +153,7 @@ export default function HeroSection({ onGetStarted, profile, onGoToWorkspace }: 
               <>
                 <Button
                   size="lg"
-                  className="!py-3.5 !px-8 text-base !bg-white !text-neutral-950 hover:!bg-primary-100 !shadow-panel"
+                  className="!py-3.5 !px-8 text-base !bg-white !text-neutral-950 hover:!bg-primary-100"
                   rightIcon={<ArrowRight className="w-5 h-5" />}
                   onClick={onGoToWorkspace}
                 >
@@ -171,7 +171,7 @@ export default function HeroSection({ onGetStarted, profile, onGoToWorkspace }: 
               <>
                 <Button
                   size="lg"
-                  className="!py-3.5 !px-8 text-base !bg-primary-600 hover:!bg-primary-500 !text-white !shadow-panel"
+                  className="!py-3.5 !px-8 text-base !bg-primary-600 hover:!bg-primary-500 !text-white"
                   rightIcon={<ArrowRight className="w-5 h-5" />}
                   onClick={onGetStarted}
                 >
@@ -180,7 +180,7 @@ export default function HeroSection({ onGetStarted, profile, onGoToWorkspace }: 
                 <button
                   type="button"
                   onClick={scrollToAdvisor}
-                  className="inline-flex items-center justify-center gap-1.5 text-base font-semibold text-neutral-200 hover:text-white px-4 py-2 rounded-xl border border-white/[0.1] bg-white/[0.04] hover:bg-white/[0.07] backdrop-blur-md shadow-panel transition-colors"
+                  className="inline-flex items-center justify-center gap-1.5 text-base font-semibold text-neutral-200 hover:text-white px-4 py-2 rounded-xl border border-white/[0.1] bg-white/[0.04] hover:bg-white/[0.07] backdrop-blur-md transition-colors"
                 >
                   See how it looks <ChevronDown className="w-5 h-5" aria-hidden />
                 </button>
@@ -195,7 +195,7 @@ export default function HeroSection({ onGetStarted, profile, onGoToWorkspace }: 
               return (
                 <span
                   key={key}
-                  className="inline-flex items-center gap-2 rounded-lg border border-white/[0.08] bg-black/40 backdrop-blur-md px-2.5 py-1.5 text-[11px] font-medium text-neutral-200 shadow-panel"
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/[0.08] bg-black/40 backdrop-blur-md px-2.5 py-1.5 text-[11px] font-medium text-neutral-200"
                 >
                   <span className="grid h-7 w-7 place-items-center rounded-md border border-white/[0.08] bg-white/[0.04] [&_svg]:max-h-[22px] [&_svg]:max-w-[22px]">
                     <Icon accent={CHIP_ACCENT} />
@@ -241,7 +241,7 @@ export default function HeroSection({ onGetStarted, profile, onGoToWorkspace }: 
                 return (
                   <div
                     key={i}
-                    className="relative rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-md p-6 flex flex-col gap-4 shadow-panel hover:shadow-panel-hover hover:border-white/[0.12] transition-all duration-300"
+                    className="relative rounded-xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-md p-6 flex flex-col gap-4 hover:border-white/[0.12] transition-all duration-300"
                   >
                     <div className="flex items-center gap-3">
                       <span className="grid place-items-center h-11 w-11 rounded-xl border border-white/[0.1] bg-primary-500/15 text-primary-200">
@@ -290,14 +290,14 @@ export default function HeroSection({ onGetStarted, profile, onGoToWorkspace }: 
                 <div
                   key={f.title}
                   className={`
-                    group relative rounded-2xl border border-white/[0.08] p-6 sm:p-7 flex flex-col
-                    bg-white/[0.03] backdrop-blur-md shadow-panel hover:shadow-panel-hover hover:border-white/[0.12]
+                    group relative rounded-xl border border-white/[0.08] p-6 sm:p-7 flex flex-col
+                    bg-white/[0.03] backdrop-blur-md hover:border-white/[0.12]
                     transition-all duration-300 text-white overflow-hidden
                     ${cols} ${lastFull}
                   `}
                 >
                   <div className="relative shrink-0 mb-5 lg:mb-0">
-                    <div className="grid place-items-center h-20 w-20 rounded-2xl border border-white/[0.1] bg-black/25 [&_svg]:max-h-[52px] [&_svg]:max-w-[52px]">
+                    <div className="grid place-items-center h-20 w-20 rounded-xl border border-white/[0.1] bg-black/25 [&_svg]:max-h-[52px] [&_svg]:max-w-[52px]">
                       <Icon accent={f.accent} />
                     </div>
                   </div>
@@ -316,7 +316,7 @@ export default function HeroSection({ onGetStarted, profile, onGoToWorkspace }: 
                       <button
                         type="button"
                         onClick={onGetStarted}
-                        className="mt-8 inline-flex items-center gap-2 rounded-xl bg-primary-600 hover:bg-primary-500 px-6 py-3 text-sm font-semibold text-white border border-white/[0.1] shadow-panel transition-colors lg:self-start"
+                        className="mt-8 inline-flex items-center gap-2 rounded-xl bg-primary-600 hover:bg-primary-500 px-6 py-3 text-sm font-semibold text-white border border-white/[0.1] transition-colors lg:self-start"
                       >
                         Unlock these tools · free <ArrowRight className="w-4 h-4" aria-hidden />
                       </button>
@@ -346,7 +346,7 @@ export default function HeroSection({ onGetStarted, profile, onGoToWorkspace }: 
         </span>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-24 lg:py-28 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.1] bg-black/40 backdrop-blur-md px-4 py-1.5 text-xs font-medium text-neutral-300 mb-8 shadow-panel">
+          <div className="inline-flex items-center gap-2 rounded-lg border border-white/[0.1] bg-black/40 backdrop-blur-md px-4 py-1.5 text-xs font-medium text-neutral-300 mb-8">
             No credit card · No lock-in · Your data stays yours
           </div>
           <h2 className="text-[clamp(1.875rem,5vw,3.25rem)] font-bold tracking-tight leading-tight max-w-4xl mx-auto text-white">
@@ -363,13 +363,13 @@ export default function HeroSection({ onGetStarted, profile, onGoToWorkspace }: 
               </button>
             ) : (
               <>
-                <button type="button" onClick={onGetStarted} className="px-10 py-3.5 text-base gap-2 border border-white/[0.12] inline-flex items-center justify-center rounded-xl transition-colors hover:bg-primary-500 bg-primary-600 text-white font-semibold shadow-panel focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070b]">
+                <button type="button" onClick={onGetStarted} className="px-10 py-3.5 text-base gap-2 border border-white/[0.12] inline-flex items-center justify-center rounded-xl transition-colors hover:bg-primary-500 bg-primary-600 text-white font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070b]">
                   Create my workspace free <ArrowRight className="w-5 h-5" aria-hidden />
                 </button>
                 <button
                   type="button"
                   onClick={scrollToWorkspacePreview}
-                  className="inline-flex items-center justify-center rounded-xl border border-white/[0.12] bg-white/[0.04] px-6 py-3.5 text-base font-semibold text-white hover:bg-white/[0.08] backdrop-blur-md shadow-panel focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950"
+                  className="inline-flex items-center justify-center rounded-xl border border-white/[0.12] bg-white/[0.04] px-6 py-3.5 text-base font-semibold text-white hover:bg-white/[0.08] backdrop-blur-md focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950"
                 >
                   Preview workspace
                 </button>

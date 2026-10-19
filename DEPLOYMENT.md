@@ -1,5 +1,55 @@
 # SMEwise — AWS Deployment Guide (S3 + CloudFront + App Runner)
 
+## Automated Sandbox-38 deployment
+
+The current deployment is defined in `deployment/hosting.yaml` and
+`deployment/deploy.ps1`. It targets account `781897846709` in Singapore
+(`ap-southeast-1`), with a private S3 bucket, CloudFront, and a single App Runner
+instance. The IAM policies name the application's configured agents and harnesses.
+
+Authenticate with IAM Identity Center using the Elite Academy portal, then verify
+`aws sts get-caller-identity --profile sandbox38` before deployment. If the CLI
+profile is stored in a temporary config file, set `AWS_CONFIG_FILE` to that file
+for each shell session. Never put AWS credentials in this repository or the image.
+
+From the repository root, build with:
+
+```powershell
+docker build --provenance=false --platform linux/amd64 -f server/Dockerfile -t smewise-server:20261019 .
+```
+
+Build the frontend from `client/` so Vite loads the correct Tailwind configuration.
+After checking the local container's `/api/health`, run:
+
+```powershell
+./deployment/deploy.ps1 -Profile sandbox38 -LocalImage smewise-server:20261019
+```
+
+The dedicated `smewise-server` ECR repository must already exist. Each upload uses
+an immutable version tag. The script checks the account, uploads the image,
+deploys the hosting stack, uploads the frontend, configures its browser origin,
+and invalidates CloudFront. It records resource identifiers in
+`deployment/deployed-resources.json` after successful infrastructure deployment.
+Verify the public website, direct frontend navigation, API health, API errors,
+and an AI request separately before considering deployment complete.
+
+The template uses the tested `global.anthropic.claude-sonnet-4-6` inference profile
+through the Singapore Bedrock endpoint. AWS reports the older Sonnet 4 model as
+end of life even though its inference-profile metadata still says active.
+The legacy Nova Canvas model `amazon.nova-canvas-v1:0` was reported as end of life
+by AWS during preparation on 2026-10-19; the existing image-generation endpoint
+requires a separate supported-model migration. `NOVA_REGION` configures the image
+endpoint independently from the Singapore agent endpoints.
+
+To stop hosting charges after a demo, pause the App Runner service. App Runner
+does not automatically scale its provisioned instances to zero. To remove hosting,
+review and delete the `smewise-hosting` stack; its frontend bucket is deliberately
+retained, and the separately created ECR repository is also retained. Do not
+delete the sandbox's existing Bedrock resources or organization-managed stacks.
+
+The following manual walkthrough is a reference; use the current template for
+exact policies, region configuration, and safe SPA/API routing.
+
 This guide walks you through deploying the SMEwise application on AWS using the
 AWS Management Console. The architecture puts both the React SPA and the Express
 API behind a single CloudFront distribution so the browser makes same-origin
@@ -42,7 +92,7 @@ This produces `client/dist/` containing `index.html` and hashed assets.
 1. Open **S3** in the AWS Console.
 2. Click **Create bucket**.
    - Bucket name: `smewise-web-prod` (must be globally unique — adjust if taken).
-   - Region: `us-east-1` (same region as CloudFront edge).
+   - Region: `ap-southeast-1` for Sandbox-38. CloudFront is a global service.
    - **Block all public access**: ✅ Keep enabled (CloudFront will access it
      privately via Origin Access Control).
 3. Click **Create bucket**.
@@ -77,7 +127,7 @@ if needed.
 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
 
 # Build the image (run from the repo root)
-docker build -t smewise-server ./server
+docker build --platform linux/amd64 -f server/Dockerfile -t smewise-server .
 
 # Tag and push
 docker tag smewise-server:latest <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/smewise-server:latest
@@ -203,7 +253,7 @@ Wait for the service to reach **Running** status. Note the default domain:
    - Viewer protocol policy: **Redirect HTTP to HTTPS**.
    - Allowed HTTP methods: **GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE**.
    - Cache policy: **CachingDisabled**.
-   - Origin request policy: **AllViewer** (forwards all headers, cookies, query strings).
+   - Origin request policy: **AllViewerExceptHostHeader** (the origin must receive its own Host header).
    - Response headers policy: None.
 
 6. **Settings**:
@@ -225,13 +275,11 @@ the S3 bucket policy. Click **Copy policy** and apply it:
 
 ### 6.3 Configure SPA fallback (custom error responses)
 
-React Router needs all paths to serve `index.html`:
-
-1. In your CloudFront distribution → **Error pages** tab.
-2. Click **Create custom error response**:
-   - HTTP error code: `403` → Response page path: `/index.html` → HTTP response code: `200`.
-3. Create another:
-   - HTTP error code: `404` → Response page path: `/index.html` → HTTP response code: `200`.
+React Router navigation needs `index.html`. Associate the viewer-request
+CloudFront function from `deployment/hosting.yaml` with the default frontend
+behavior. It rewrites extensionless HTML navigation requests while preserving
+asset paths and `/api/*` errors. Do not configure distribution-wide 403/404
+rewrites, because those can turn API failures into misleading HTML success pages.
 
 ### 6.4 Update App Runner CORS_ORIGIN
 
@@ -269,7 +317,7 @@ aws cloudfront create-invalidation --distribution-id <DIST_ID> --paths "/*"
 ### Server updates
 
 ```bash
-docker build -t smewise-server ./server
+docker build --platform linux/amd64 -f server/Dockerfile -t smewise-server .
 docker tag smewise-server:latest <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/smewise-server:latest
 docker push <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/smewise-server:latest
 ```
@@ -331,7 +379,7 @@ Lambda@Edge, etc.).
 |---------|----------------------|
 | S3 | < $1 (small static site) |
 | CloudFront | $0–5 (depends on traffic, first 1TB/month free tier) |
-| App Runner (1 vCPU, 2GB) | ~$30–50 (scales to zero if configured) |
+| App Runner (1 vCPU, 2GB) | Provisioned memory and active compute charges; pause after demos |
 | ECR | < $1 (image storage) |
 | Bedrock | Pay-per-use (varies by model and volume) |
 

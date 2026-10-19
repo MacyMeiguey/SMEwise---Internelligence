@@ -346,8 +346,7 @@ export default function AIAssistantPanel({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="lg:hidden fixed bottom-[5.25rem] right-4 sm:right-5 z-40 flex items-center gap-2 bg-neutral-950 hover:bg-neutral-800 text-white rounded-2xl pl-1.5 pr-3 py-1.5 border-2 border-neutral-950"
-        style={{ boxShadow: '3px 3px 0 0 #c4b5fd' }}
+        className="lg:hidden fixed bottom-[5.25rem] right-4 sm:right-5 z-40 flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-white rounded-xl pl-1.5 pr-3 py-1.5 border border-primary-400/40 shadow-lg shadow-primary-600/25 transition-colors active:scale-[0.98]"
         aria-label="Open business advisor — same details as your summary"
       >
         <ChatAvatar3D speaking={isTyping} nodSignal={userMessageCount} size={40} />
@@ -407,8 +406,8 @@ export default function AIAssistantPanel({
 
           {/* Speech bubble hint */}
           {!isTyping && userMessageCount === 0 && (
-            <div className="absolute -left-36 bottom-12 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-              <p className="text-xs text-neutral-700 dark:text-neutral-200 whitespace-nowrap font-medium">💬 Ask me anything!</p>
+            <div className="absolute -left-36 bottom-12 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-white/10 rounded-lg px-3 py-2 shadow-subtle opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+              <p className="text-xs text-neutral-700 dark:text-neutral-200 whitespace-nowrap font-medium">Ask me anything</p>
               <div className="absolute right-[-6px] bottom-3 w-3 h-3 bg-white dark:bg-neutral-800 border-r border-t border-neutral-200 dark:border-white/10 rotate-45" />
             </div>
           )}
@@ -419,7 +418,7 @@ export default function AIAssistantPanel({
       {!isCollapsed && (
         <div
           id="ai-assistant-panel"
-          className="hidden lg:flex fixed top-20 right-5 bottom-6 flex-col z-40 rounded-2xl border bg-white border-neutral-200 shadow-[0_24px_48px_rgba(15,23,42,0.08)] dark:bg-neutral-900 dark:border-white/[0.10] dark:shadow-[0_24px_48px_rgba(0,0,0,0.6)]"
+          className="hidden lg:flex fixed top-20 right-5 bottom-6 flex-col z-40 rounded-xl border bg-white border-neutral-200/90 shadow-subtle dark:bg-neutral-900 dark:border-white/[0.10] dark:shadow-none"
           style={{ width: `${panelWidth}px` }}
           role="complementary"
           aria-label="Business advisor"
@@ -506,7 +505,7 @@ function AssistantContent({
             <h3 className="text-sm font-semibold text-neutral-900 tracking-tight flex items-center gap-2 dark:text-white">
               Business advisor
               <span
-                className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${
+                className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${
                   isTyping
                     ? 'bg-primary-100 text-primary-700 border-primary-200 dark:bg-primary-900/50 dark:text-primary-300 dark:border-primary-700/50'
                     : 'bg-primary-50 text-primary-700 border-primary-200 dark:bg-white/[0.06] dark:text-primary-300 dark:border-primary-500/25'

@@ -1,0 +1,232 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: SMEwise private frontend and App Runner API in Sandbox-38
+Parameters:
+  ImageUri:
+    Type: String
+  FrontendOrigin:
+    Type: String
+    Default: ''
+Resources:
+  ImageAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: build.apprunner.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: PullBackendImage
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:DescribeImages
+                Resource: !Sub arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/smewise-server
+  BackendRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: tasks.apprunner.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeConfiguredAI
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  - !Sub arn:${AWS::Partition}:bedrock:*::foundation-model/anthropic.claude-sonnet-4-6
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/global.anthropic.claude-sonnet-4-6
+                  - !Sub arn:${AWS::Partition}:bedrock:us-east-1::foundation-model/amazon.nova-canvas-v1:0
+              - Effect: Allow
+                Action: bedrock:InvokeAgent
+                Resource:
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/SYN0JX0DXX/DVRSIKLAPX
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/4RYTKWLEVB/ODFAKDIZFV
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:InvokeHarness
+                  - bedrock-agentcore:InvokeAgentRuntime
+                Resource:
+                  - !Sub arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:harness/marketingPlan-iS7SeEFIOL
+                  - !Sub arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:harness/marketingGuidelines-ALh6PBl9iQ
+                  - !Sub arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:harness/marketingForecast-NYba6i08Rk
+                  - !Sub arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:harness/profileVerification-URNFXarQM5
+                  - !Sub arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:harness/sr_financial_FundAllocation-iunqjr6MYA
+                  - !Sub arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:harness/sr_financial_RevenueProjection-mGkcG1UVK0
+                  - !Sub arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:harness/sr_financial_LoansNFunding-iUoPB9AwcM
+                  - !Sub arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:harness/sr_financial_InvestorFunding-gypZe9idDz
+                  - !Sub arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:harness/StartupRegistrationGuidelines-Gbl8PU6k4r
+                  - !Sub arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:harness/cindy_AnalyticsDashboard-PZrViaLlm8
+                  - !Sub arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:harness/cindy_DocumentGenerator-lQCRH0RcWS
+                  - !Sub arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:harness/Business_Advisor-AAxu3iHMvD
+                  - !Sub arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:harness/CompetitorPricingAnalysis-cKXDzRuMXr
+                  - !Sub arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:harness/SmartPricingSuggestion-ZKszfEXOTJ
+  Capacity:
+    Type: AWS::AppRunner::AutoScalingConfiguration
+    Properties:
+      MinSize: 1
+      MaxSize: 1
+      MaxConcurrency: 20
+  Backend:
+    Type: AWS::AppRunner::Service
+    Properties:
+      ServiceName: smewise-server
+      AutoScalingConfigurationArn: !GetAtt Capacity.AutoScalingConfigurationArn
+      SourceConfiguration:
+        AutoDeploymentsEnabled: false
+        AuthenticationConfiguration:
+          AccessRoleArn: !GetAtt ImageAccessRole.Arn
+        ImageRepository:
+          ImageRepositoryType: ECR
+          ImageIdentifier: !Ref ImageUri
+          ImageConfiguration:
+            Port: '3001'
+            RuntimeEnvironmentVariables:
+              - Name: NODE_ENV
+                Value: production
+              - Name: AWS_REGION
+                Value: !Ref AWS::Region
+              - Name: BEDROCK_CONVERSE_MODEL_ID
+                Value: global.anthropic.claude-sonnet-4-6
+              - Name: NOVA_REGION
+                Value: us-east-1
+              - Name: CORS_ORIGIN
+                Value: !Ref FrontendOrigin
+      InstanceConfiguration:
+        Cpu: '1024'
+        Memory: '2048'
+        InstanceRoleArn: !GetAtt BackendRole.Arn
+      HealthCheckConfiguration:
+        Protocol: HTTP
+        Path: /api/health
+        Interval: 10
+        Timeout: 5
+  Website:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+  OriginAccess:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub ${AWS::StackName}-website
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+  Navigation:
+    Type: AWS::CloudFront::Function
+    Properties:
+      AutoPublish: true
+      Name: !Sub ${AWS::StackName}-navigation
+      FunctionConfig:
+        Comment: Serve the SPA for frontend navigation only
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        function handler(event) {
+          var request = event.request;
+          var accept = request.headers.accept;
+          if ((request.method === 'GET' || request.method === 'HEAD') &&
+              request.uri.indexOf('/api/') !== 0 && request.uri !== '/api' &&
+              request.uri.split('/').pop().indexOf('.') === -1 &&
+              accept && accept.value.indexOf('text/html') !== -1) {
+            request.uri = '/index.html';
+          }
+          return request;
+        }
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: SMEwise Sandbox-38
+        DefaultRootObject: index.html
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        PriceClass: PriceClass_All
+        Origins:
+          - Id: website
+            DomainName: !GetAtt Website.RegionalDomainName
+            OriginAccessControlId: !Ref OriginAccess
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+          - Id: api
+            DomainName: !GetAtt Backend.ServiceUrl
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols: [TLSv1.2]
+              OriginReadTimeout: 60
+        DefaultCacheBehavior:
+          TargetOriginId: website
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt Navigation.FunctionARN
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: api
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD]
+            Compress: false
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+  WebsitePolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref Website
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub ${Website.Arn}/*
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribution}
+Outputs:
+  WebsiteBucket:
+    Value: !Ref Website
+  WebsiteUrl:
+    Value: !Sub https://${Distribution.DomainName}
+  DistributionId:
+    Value: !Ref Distribution
+  BackendUrl:
+    Value: !Sub https://${Backend.ServiceUrl}
+  BackendArn:
+    Value: !GetAtt Backend.ServiceArn

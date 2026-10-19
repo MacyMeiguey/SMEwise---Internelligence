@@ -34,7 +34,7 @@ interface AnalyticsDashboardWidgetProps {
   onGenerateRef?: (fn: () => Promise<void>) => void;
 }
 
-const COLORS = ["#8b5cf6", "#6366f1", "#3b82f6", "#06b6d4", "#10b981", "#f59e0b"];
+const COLORS = ["#7c3aed", "#a78bfa", "#14b8a6", "#10b981", "#f59e0b", "#f43f5e"];
 
 const CACHE_KEY = "analytics-dashboard";
 
@@ -183,18 +183,19 @@ export default function AnalyticsDashboardWidget({
             </h4>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={dashboardData.revenue.monthly}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+                <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#a3a3a3" />
+                <YAxis tick={{ fontSize: 11 }} stroke="#a3a3a3" />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "#1f2937",
-                    border: "none",
+                    backgroundColor: "#101018",
+                    border: "1px solid rgba(255,255,255,0.12)",
                     borderRadius: "8px",
                     fontSize: "12px",
+                    color: "#f5f5f5",
                   }}
                 />
-                <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="value" fill="#7c3aed" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -222,10 +223,11 @@ export default function AnalyticsDashboardWidget({
                 </Pie>
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "#1f2937",
-                    border: "none",
+                    backgroundColor: "#101018",
+                    border: "1px solid rgba(255,255,255,0.12)",
                     borderRadius: "8px",
                     fontSize: "12px",
+                    color: "#f5f5f5",
                   }}
                 />
               </PieChart>

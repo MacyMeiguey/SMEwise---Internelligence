@@ -99,73 +99,69 @@ html.app-deep-scrollbar ::-webkit-scrollbar-thumb:hover { background: #a78bfa; }
 
   /* ── Bento card base ── */
   .bento-card {
-    @apply bg-white border border-neutral-200 rounded-2xl overflow-hidden;
+    @apply bg-white border border-neutral-200/90 rounded-xl overflow-hidden;
   }
 
-  /* Light data card on dark workspace (Metrica / finance dashboard) */
+  /* Light data card on dark workspace */
   .surface-widget {
-    @apply bg-white rounded-2xl border border-neutral-200/90;
-    box-shadow:
-      0 4px 28px -6px rgba(0, 0, 0, 0.42),
-      0 0 0 1px rgba(255, 255, 255, 0.04);
+    @apply bg-white rounded-xl border border-neutral-200/90 shadow-subtle;
   }
 
-  /* Editorial "hard shadow" card */
+  /* Soft elevated card (replaces neo-brutalist hard shadow) */
   .card-hard {
-    @apply bg-white border-2 border-ink rounded-2xl;
-    box-shadow: 4px 4px 0 0 #0f0f0f;
+    @apply bg-white border border-neutral-200 rounded-xl shadow-subtle;
   }
 
   /* Lavender accent card */
   .card-brand {
-    @apply bg-primary-50 border border-primary-200 rounded-2xl;
+    @apply bg-primary-50 border border-primary-200 rounded-xl;
   }
 
   /* ── Ink pill (dark badge) ── */
   .pill-ink {
-    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md
            bg-neutral-950 text-white text-xs font-semibold tracking-wide;
   }
 
   /* ── Lavender pill ── */
   .pill-brand {
-    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md
            bg-primary-100 text-primary-700 text-xs font-semibold tracking-wide;
   }
 
   /* ── Primary button ── */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl
-           bg-neutral-950 text-white text-sm font-semibold
-           hover:bg-neutral-800 active:bg-neutral-900
-           transition-colors duration-150
-           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg
+           bg-primary-600 text-white text-sm font-semibold
+           hover:bg-primary-500 active:scale-[0.98]
+           transition-all duration-150
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2
            disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   /* ── Brand (lavender) button ── */
   .btn-brand {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg
            bg-primary-600 text-white text-sm font-semibold
-           hover:bg-primary-700 active:bg-primary-800
-           transition-colors duration-150
-           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2
+           hover:bg-primary-500 active:scale-[0.98]
+           transition-all duration-150
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2
            disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   /* ── Ghost button ── */
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg
            border border-neutral-300 bg-white text-neutral-800 text-sm font-medium
-           hover:bg-neutral-50 hover:border-neutral-400
-           transition-colors duration-150
-           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2
+           hover:bg-neutral-50 hover:border-neutral-400 active:scale-[0.98]
+           transition-all duration-150
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2
            disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   /* ── Form input ── */
   .input-field {
-    @apply w-full px-4 py-2.5 rounded-xl border border-neutral-300 bg-white
+    @apply w-full px-4 py-2.5 rounded-lg border border-neutral-300 bg-white
            text-neutral-900 text-sm placeholder:text-neutral-400
            focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400
            transition-all duration-150;

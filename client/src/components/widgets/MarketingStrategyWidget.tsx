@@ -346,7 +346,7 @@ export default function MarketingStrategyWidget({
 
   return (
     <article
-      className="flex flex-col h-full rounded-xl border border-neutral-200 bg-white text-neutral-800 overflow-hidden motion-safe:animate-fade-up shadow-sm dark:border-white/[0.09] dark:bg-[#101018] dark:text-neutral-200 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_12px_40px_-16px_rgba(0,0,0,0.65)]"
+      className="flex flex-col h-full rounded-xl border border-neutral-200 bg-white text-neutral-800 overflow-hidden motion-safe:animate-fade-up shadow-subtle dark:border-white/[0.09] dark:bg-[#101018] dark:text-neutral-200 dark:shadow-none"
       aria-label="Marketing Strategy widget"
     >
       {/* ── Header ── */}
@@ -380,7 +380,7 @@ export default function MarketingStrategyWidget({
             <button
               type="button"
               onClick={() => handleGenerate()}
-              className="inline-flex items-center justify-center rounded-lg bg-primary-600 hover:bg-primary-500 text-white text-xs font-semibold py-2 px-4 min-h-[38px] min-w-[5rem] shrink-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#101018]"
+              className="inline-flex items-center justify-center rounded-lg bg-primary-600 hover:bg-primary-500 text-white text-xs font-semibold py-2 px-4 min-h-[38px] min-w-[5rem] shrink-0 transition-all duration-150 active:scale-[0.98] shadow-sm shadow-primary-600/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#101018]"
               aria-label={status === "idle" ? "Write strategy" : "Rewrite plan"}
             >
               {status === "idle" ? "Write strategy" : "Rewrite plan"}

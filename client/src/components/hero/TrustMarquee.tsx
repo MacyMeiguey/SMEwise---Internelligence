@@ -23,7 +23,7 @@ export default function TrustMarquee() {
     >
       <div className="max-w-4xl mx-auto px-4 text-center mb-6">
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5">
-          <LogoWordmark size="md" variant="gradient" />
+          <LogoWordmark size="md" showMark variant="gradient" />
           <span className="hidden sm:block h-8 w-px bg-white/15" aria-hidden />
           <div className="text-left sm:text-center">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary-300">

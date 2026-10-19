@@ -2,7 +2,7 @@
  * SplashScreen — first-visit intro overlay for the SMEwise landing.
  *
  * Uses the actual SMEwise wordmark logo at the centre, framed by a spinning
- * lavender / coral gradient ring and a pulsing glow. Pure CSS / SVG / <img> —
+ * lavender gradient ring and a pulsing glow. Pure CSS / SVG / <img> —
  * no WebGL — so it paints instantly and never blocks the page beneath.
  *
  * Behaviour:
@@ -72,12 +72,12 @@ export default function SplashScreen({ onDone, durationMs = 2200 }: SplashScreen
         aria-hidden
       />
       <span
-        className="pointer-events-none absolute -bottom-32 -right-24 h-[520px] w-[520px] rounded-full bg-accent-coral/40 blur-3xl motion-safe:animate-glow-pulse"
+        className="pointer-events-none absolute -bottom-32 -right-24 h-[520px] w-[520px] rounded-full bg-primary-700/35 blur-3xl motion-safe:animate-glow-pulse"
         style={{ animationDelay: '1.1s' }}
         aria-hidden
       />
       <span
-        className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[360px] w-[360px] rounded-full bg-accent-teal/25 blur-3xl motion-safe:animate-glow-pulse"
+        className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[360px] w-[360px] rounded-full bg-primary-400/20 blur-3xl motion-safe:animate-glow-pulse"
         style={{ animationDelay: '0.5s' }}
         aria-hidden
       />
@@ -100,7 +100,7 @@ export default function SplashScreen({ onDone, durationMs = 2200 }: SplashScreen
         <div className="relative h-56 w-56 sm:h-64 sm:w-64 grid place-items-center">
           {/* Glow plate behind wordmark */}
           <span
-            className="absolute inset-12 rounded-full bg-gradient-to-br from-primary-400/70 via-primary-600/70 to-accent-coral/40 motion-safe:animate-splash-pulse blur-xl"
+            className="absolute inset-12 rounded-full bg-gradient-to-br from-primary-400/70 via-primary-600/60 to-primary-800/40 motion-safe:animate-splash-pulse blur-xl"
             aria-hidden
           />
 
@@ -112,10 +112,9 @@ export default function SplashScreen({ onDone, durationMs = 2200 }: SplashScreen
           >
             <defs>
               <linearGradient id="splash-stroke" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%"   stopColor="#c4b5fd" />
-                <stop offset="40%"  stopColor="#a78bfa" />
-                <stop offset="80%"  stopColor="#fb7185" />
-                <stop offset="100%" stopColor="#fbbf24" />
+                <stop offset="0%" stopColor="#c4b5fd" />
+                <stop offset="50%" stopColor="#8b5cf6" />
+                <stop offset="100%" stopColor="#7c3aed" />
               </linearGradient>
             </defs>
             <circle cx="50" cy="50" r="47" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1.8" />
@@ -129,23 +128,23 @@ export default function SplashScreen({ onDone, durationMs = 2200 }: SplashScreen
               strokeLinecap="round"
               strokeDasharray="90 250"
             />
-            <circle cx="50" cy="3"  r="2.2" fill="#c4b5fd" />
-            <circle cx="50" cy="97" r="2.2" fill="#fbbf24" />
-            <circle cx="3"  cy="50" r="2.2" fill="#34d399" />
-            <circle cx="97" cy="50" r="2.2" fill="#fb7185" />
+            <circle cx="50" cy="3" r="2.2" fill="#c4b5fd" />
+            <circle cx="50" cy="97" r="2.2" fill="#7c3aed" />
+            <circle cx="3" cy="50" r="2.2" fill="#a78bfa" />
+            <circle cx="97" cy="50" r="2.2" fill="#8b5cf6" />
           </svg>
 
-          {/* Wordmark at centre — pure text, no PNG */}
           <LogoWordmark
             size="xl"
+            showMark
             variant="light"
-            className="relative z-10 drop-shadow-[0_8px_24px_rgba(167,139,250,0.45)] motion-safe:animate-splash-pulse"
+            className="relative z-10 drop-shadow-[0_8px_24px_rgba(124,58,237,0.45)] motion-safe:animate-splash-pulse"
             style={{ animationDuration: '2.4s' }}
           />
         </div>
 
         <div className="flex flex-col items-center gap-2">
-          <p className="text-xs sm:text-sm uppercase tracking-[0.35em] text-neutral-400">
+          <p className="text-xs sm:text-sm uppercase tracking-[0.28em] text-neutral-400">
             Your business · one workspace
           </p>
           <p className="text-sm text-neutral-300 max-w-[20rem] leading-relaxed">
@@ -157,7 +156,7 @@ export default function SplashScreen({ onDone, durationMs = 2200 }: SplashScreen
         <div className="w-56 sm:w-72">
           <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-primary-300 via-accent-coral to-accent-gold transition-[width] duration-100 ease-linear"
+              className="h-full rounded-full bg-gradient-to-r from-primary-400 via-primary-500 to-primary-600 transition-[width] duration-100 ease-linear"
               style={{ width: `${Math.round(progress * 100)}%` }}
             />
           </div>

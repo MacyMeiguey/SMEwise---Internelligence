@@ -186,21 +186,20 @@ function Section({
 
 function AnalysisGrid({ analysis }: { analysis: AdvisorAnalysis }) {
   const items = [
-    { label: "Space Type",     value: analysis.industrySpaceType,    icon: "🏢" },
-    { label: "Commitment",     value: analysis.stageCommitment,      icon: "📅" },
-    { label: "Budget",         value: analysis.budgetVerdict,        icon: "💰" },
-    { label: "Availability",   value: analysis.locationAvailability, icon: "📍" },
-    { label: "Key Constraint", value: analysis.keyConstraint,        icon: "⚠️" },
+    { label: "Space Type",     value: analysis.industrySpaceType },
+    { label: "Commitment",     value: analysis.stageCommitment },
+    { label: "Budget",         value: analysis.budgetVerdict },
+    { label: "Availability",   value: analysis.locationAvailability },
+    { label: "Key Constraint", value: analysis.keyConstraint },
   ];
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-      {items.map(({ label, value, icon }) => (
+      {items.map(({ label, value }) => (
         <div
           key={label}
           className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 space-y-1.5"
         >
           <div className="flex items-center gap-1.5">
-            <span className="text-sm leading-none">{icon}</span>
             <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide">{label}</p>
           </div>
           <p className="text-sm text-neutral-200 leading-relaxed">{value}</p>
@@ -221,11 +220,11 @@ const OPTION_STYLES = [
     dot:    "bg-amber-400",
   },
   {
-    tab:    "border-blue-400/60 text-blue-300 bg-blue-400/10",
-    active: "border-blue-400/40 bg-blue-400/[0.06]",
-    badge:  "bg-blue-400/15 text-blue-300 border-blue-400/30",
-    cost:   "bg-blue-400/10 text-blue-200 border-blue-400/25",
-    dot:    "bg-blue-400",
+    tab:    "border-primary-400/60 text-primary-300 bg-primary-400/10",
+    active: "border-primary-400/40 bg-primary-400/[0.06]",
+    badge:  "bg-primary-400/15 text-primary-300 border-primary-400/30",
+    cost:   "bg-primary-400/10 text-primary-200 border-primary-400/25",
+    dot:    "bg-primary-400",
   },
   {
     tab:    "border-neutral-400/60 text-neutral-300 bg-neutral-400/10",
@@ -390,7 +389,10 @@ function CostTable({ breakdown }: { breakdown: CostBreakdown }) {
             : "border-amber-500/25 bg-amber-500/[0.07] text-amber-300"
         }`}
       >
-        <span className="text-lg leading-none mt-0.5">{isAffordable ? "✅" : "⚠️"}</span>
+        <span
+          className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${isAffordable ? "bg-emerald-400" : "bg-amber-400"}`}
+          aria-hidden
+        />
         <p className="text-sm leading-relaxed">{breakdown.affordabilityCheck}</p>
       </div>
     </div>

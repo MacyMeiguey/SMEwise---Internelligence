@@ -238,25 +238,25 @@ function RevenueChart({ periods }: { periods: FinancialPeriod[] }) {
 // ─── Cost breakdown helpers ───────────────────────────────────────────────────
 
 const COST_CATEGORIES: { key: keyof CostBreakdown; label: string; colour: string }[] = [
-  { key: "operations",  label: "Operations",  colour: "bg-blue-400" },
-  { key: "marketing",   label: "Marketing",   colour: "bg-orange-400" },
+  { key: "operations",  label: "Operations",  colour: "bg-teal-400" },
+  { key: "marketing",   label: "Marketing",   colour: "bg-amber-400" },
   { key: "inventory",   label: "Inventory",   colour: "bg-emerald-400" },
-  { key: "staffing",    label: "Staffing",    colour: "bg-violet-400" },
-  { key: "technology",  label: "Technology",  colour: "bg-cyan-400" },
+  { key: "staffing",    label: "Staffing",    colour: "bg-primary-400" },
+  { key: "technology",  label: "Technology",  colour: "bg-primary-300" },
   { key: "contingency", label: "Contingency", colour: "bg-rose-400" },
 ];
 
 // ─── Period cards ─────────────────────────────────────────────────────────────
 
 const CARD_BORDERS = [
-  "border-violet-500/25",
-  "border-blue-500/25",
+  "border-primary-500/25",
+  "border-teal-500/25",
   "border-emerald-500/25",
   "border-amber-500/25",
 ];
 const CARD_ACCENTS = [
-  "text-violet-300",
-  "text-blue-300",
+  "text-primary-300",
+  "text-teal-300",
   "text-emerald-300",
   "text-amber-300",
 ];
@@ -294,7 +294,7 @@ function PeriodCard({ p, i }: { p: FinancialPeriod; i: number }) {
   const hasCostDetail = bd || p.costExplanation;
 
   return (
-    <div className={`rounded-2xl border ${CARD_BORDERS[i % CARD_BORDERS.length]} bg-white/[0.03] overflow-visible`}>
+    <div className={`rounded-xl border ${CARD_BORDERS[i % CARD_BORDERS.length]} bg-white/[0.03] overflow-visible`}>
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/[0.06]">
         <p className="text-base font-bold text-white">{PHASE_LABELS[i] ?? p.period}</p>

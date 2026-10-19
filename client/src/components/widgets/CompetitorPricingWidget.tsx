@@ -62,9 +62,9 @@ function competitionBadgeClass(level: string) {
 
 const PRICE_PILL_CLASSES = [
   'bg-emerald-500/20 text-emerald-300',
-  'bg-[#7c3aed]/25 text-[#a78bfa]',
-  'bg-blue-500/20 text-blue-300',
-  'bg-pink-500/20 text-pink-300',
+  'bg-primary-500/25 text-primary-300',
+  'bg-primary-500/20 text-primary-300',
+  'bg-teal-500/20 text-teal-300',
 ]
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -73,8 +73,8 @@ function SnapshotPill({
   label, value, isLevel,
 }: { label: string; value: string; isLevel?: boolean }) {
   return (
-    <div className="rounded-xl p-3 flex flex-col gap-1.5 min-w-0 bg-neutral-50 border border-neutral-200 dark:bg-[#221f35] dark:border-[#3d3660]">
-      <span className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-[#6b6890] whitespace-normal leading-snug">
+    <div className="rounded-xl p-3 flex flex-col gap-1.5 min-w-0 bg-neutral-50 border border-neutral-200 dark:bg-white/[0.04] dark:border-white/[0.08]">
+      <span className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-neutral-500 whitespace-normal leading-snug">
         {label}
       </span>
       {isLevel ? (
@@ -98,7 +98,7 @@ function CompetitorCard({
     return url ? [{ name: source.name, url }] : []
   })
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-4 min-w-0 overflow-hidden hover:-translate-y-0.5 transition-transform duration-200 dark:border-[#3d3660] dark:bg-[#221f35]">
+    <div className="rounded-xl border border-neutral-200 bg-white p-4 min-w-0 overflow-hidden hover:-translate-y-0.5 transition-transform duration-200 dark:border-white/[0.08] dark:bg-white/[0.04]">
       <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
         <span className="font-semibold text-neutral-900 dark:text-white text-sm leading-snug min-w-0 break-words">
           {entry.competitorType}
@@ -110,7 +110,7 @@ function CompetitorCard({
         )}
       </div>
       {entry.exampleNames && (
-        <p className="text-xs text-neutral-400 dark:text-[#6b6890] mb-2 break-words">{entry.exampleNames}</p>
+        <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-2 break-words">{entry.exampleNames}</p>
       )}
       {sources.length > 0 && (
         <div className="flex flex-col gap-1 mb-3 text-xs">
@@ -120,7 +120,7 @@ function CompetitorCard({
               href={source.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-violet-600 dark:text-violet-300 underline underline-offset-2 break-words"
+              className="text-primary-600 dark:text-primary-300 underline underline-offset-2 break-words"
             >
               View source — {source.name} ↗
             </a>
@@ -134,7 +134,7 @@ function CompetitorCard({
           </span>
         )}
         {entry.strength && entry.weakness && (
-          <span className="text-neutral-300 dark:text-[#3d3660] mx-1.5">·</span>
+          <span className="text-neutral-300 dark:text-neutral-600 mx-1.5">·</span>
         )}
         {entry.weakness && (
           <span className="text-red-500 dark:text-red-400">
@@ -166,7 +166,7 @@ function AnalysisResult({ data }: { data: CompetitorAnalysisResult }) {
       {/* ── Competitors ── */}
       {competitors.length > 0 && (
         <div className="flex flex-col gap-2">
-          <span className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-[#6b6890]">
+          <span className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-neutral-500">
             Competitors
           </span>
           {competitors.map((c, i) => (
@@ -177,14 +177,14 @@ function AnalysisResult({ data }: { data: CompetitorAnalysisResult }) {
 
       {/* ── Recommended position ── */}
       {pos && (
-        <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 dark:border-[#7c3aed]/40 dark:bg-[#7c3aed]/10">
-          <p className="text-xs font-semibold text-violet-600 dark:text-[#a78bfa] mb-1">
+        <div className="rounded-xl border border-primary-200 bg-primary-50 p-4 dark:border-primary-500/40 dark:bg-primary-500/10">
+          <p className="text-xs font-semibold text-primary-700 dark:text-primary-300 mb-1">
             Recommended position
           </p>
           <p className="text-sm font-semibold text-neutral-900 dark:text-white mb-1">
             {pos.marketPosition}
           </p>
-          <p className="text-xs text-violet-700 dark:text-[#a78bfa]/80 leading-relaxed">
+          <p className="text-xs text-primary-800 dark:text-primary-300/80 leading-relaxed">
             {pos.reason}
             {pos.bestDifferentiator && (
               <> Lead with <span className="font-medium">{pos.bestDifferentiator}</span>.</>
@@ -208,8 +208,8 @@ function AnalysisResult({ data }: { data: CompetitorAnalysisResult }) {
 
       {/* ── Bottom line ── */}
       {data.bottomLine && (
-        <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-[#3d3660] dark:bg-[#221f35]">
-          <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-[#6b6890] mb-1">
+        <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-white/[0.08] dark:bg-white/[0.04]">
+          <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-neutral-500 mb-1">
             Bottom Line
           </p>
           <p className="text-sm text-neutral-900 dark:text-white leading-relaxed">{data.bottomLine}</p>
@@ -332,7 +332,7 @@ export default function CompetitorPricingWidget({
       {analysis ? (
         <AnalysisResult data={analysis} />
       ) : rawFallback ? (
-        <pre className="whitespace-pre-wrap font-sans text-sm text-[#a78bfa] leading-relaxed">
+        <pre className="whitespace-pre-wrap font-sans text-sm text-primary-300 leading-relaxed">
           {rawFallback}
       </pre>
       ) : null}

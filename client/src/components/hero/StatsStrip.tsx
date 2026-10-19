@@ -53,7 +53,7 @@ export default function StatsStrip() {
         }}
       />
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-12 grid grid-cols-2 lg:grid-cols-4 gap-px bg-white/[0.08] border border-white/[0.08] rounded-2xl overflow-hidden shadow-panel">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-12 grid grid-cols-2 lg:grid-cols-4 gap-px bg-white/[0.08] border border-white/[0.08] rounded-xl overflow-hidden">
         {STATS.map(({ icon: Icon, value, valueSuffix, label, sub }, i) => {
           return (
             <div

@@ -18,7 +18,7 @@ const MODEL_ID = 'amazon.nova-canvas-v1:0'
 // In production the default credential provider chain picks up credentials
 // from the attached IAM role; in local dev we fall back to env vars.
 const bedrockClient = new BedrockRuntimeClient({
-  region: process.env.AWS_REGION ?? 'us-east-1',
+  region: process.env.NOVA_REGION ?? process.env.AWS_REGION ?? 'us-east-1',
   ...(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
     ? {
       credentials: {

@@ -36,7 +36,7 @@ export const ShopIcon: FC<IconProps> = ({ accent, size = 'lg', className }) => {
       <rect x="86" y="84" width="28" height="44" rx="3" fill="#7c3aed" />
       <rect x="32" y="60" width="136" height="10" rx="3" fill="#a78bfa" />
       {size === 'lg' && (
-        <text x="100" y="68" fontSize="7" fontWeight="700" textAnchor="middle" fill="#fff" fontFamily="Inter, sans-serif">
+        <text x="100" y="68" fontSize="7" fontWeight="700" textAnchor="middle" fill="#fff" fontFamily="Plus Jakarta Sans, system-ui, sans-serif">
           KEDAI WISE
         </text>
       )}
@@ -54,7 +54,7 @@ export const CoinStackIcon: FC<IconProps> = ({ accent, size = 'lg', className })
           <ellipse cx="100" cy={y + 14} rx="56" ry="8" fill="#a16207" opacity="0.4" />
           <rect x="44" y={y} width="112" height="18" rx="3" fill={accent} />
           <ellipse cx="100" cy={y} rx="56" ry="8" fill="#fde68a" />
-          <text x="100" y={y + 3} fontSize="8" fontWeight="800" textAnchor="middle" fill="#92400e" fontFamily="Inter, sans-serif">
+          <text x="100" y={y + 3} fontSize="8" fontWeight="800" textAnchor="middle" fill="#92400e" fontFamily="Plus Jakarta Sans, system-ui, sans-serif">
             RM
           </text>
         </g>
@@ -68,9 +68,9 @@ export const BarChartIcon: FC<IconProps> = ({ accent, size = 'lg', className }) 
   const { width, height } = box(size);
   return (
     <svg viewBox="0 0 200 140" width={width} height={height} className={className} aria-hidden>
-      <line x1="30" y1="120" x2="180" y2="120" stroke="#475569" strokeWidth="2" />
+      <line x1="30" y1="120" x2="180" y2="120" stroke="#525252" strokeWidth="2" />
       <rect x="40"  y="80"  width="22" height="40"  rx="3" fill="#a78bfa" />
-      <rect x="74"  y="60"  width="22" height="60"  rx="3" fill="#38bdf8" />
+      <rect x="74"  y="60"  width="22" height="60"  rx="3" fill="#14b8a6" />
       <rect x="108" y="40"  width="22" height="80"  rx="3" fill="#34d399" />
       <rect x="142" y="20"  width="22" height="100" rx="3" fill={accent} />
       <polyline
@@ -112,7 +112,7 @@ export const MegaphoneIcon: FC<IconProps> = ({ accent, size = 'lg', className })
     <svg viewBox="0 0 200 140" width={width} height={height} className={className} aria-hidden>
       <polygon points="40,55 40,95 110,118 110,32" fill={accent} />
       <ellipse cx="110" cy="75" rx="8" ry="42" fill="#fbbf24" />
-      <rect x="22" y="64" width="22" height="22" rx="4" fill="#1f2937" />
+      <rect x="22" y="64" width="22" height="22" rx="4" fill="#171717" />
       <g stroke="#fff" strokeWidth="2" strokeLinecap="round">
         <line x1="138" y1="40" x2="156" y2="30" />
         <line x1="138" y1="75" x2="160" y2="75" />
@@ -130,7 +130,7 @@ export const CalculatorIcon: FC<IconProps> = ({ accent, size = 'lg', className }
       <rect x="50" y="14" width="100" height="112" rx="10" fill="#0f0f0f" stroke="#262626" strokeWidth="2" />
       <rect x="58" y="22" width="84" height="26" rx="4" fill={accent} />
       {size === 'lg' && (
-        <text x="138" y="42" fontSize="14" fontWeight="800" textAnchor="end" fill="#0f0f0f" fontFamily="Inter, sans-serif">
+        <text x="138" y="42" fontSize="14" fontWeight="800" textAnchor="end" fill="#0f0f0f" fontFamily="Plus Jakarta Sans, system-ui, sans-serif">
           1,250
         </text>
       )}

@@ -104,12 +104,12 @@ function KpiTile({ icon: Icon, label, value, hint, accent, spark, trend, dim, bi
   return (
     <div
       className={`
-        relative rounded-2xl border border-neutral-200/90 bg-white/90 backdrop-blur-xl
-        shadow-sm hover:shadow-md
-        dark:border-white/[0.06] dark:bg-white/[0.03] dark:shadow-panel dark:hover:shadow-panel-hover
+        relative rounded-xl border border-neutral-200/90 bg-white/90 backdrop-blur-xl
+        shadow-subtle hover:shadow-sm
+        dark:border-white/[0.06] dark:bg-white/[0.03] dark:shadow-none dark:hover:border-white/[0.1]
         p-5 sm:p-6 flex flex-col gap-3 overflow-hidden
-        transition-shadow duration-300
-        ${big ? 'ring-1 ring-neutral-200/80 dark:ring-white/[0.07]' : ''}
+        transition-all duration-200
+        ${big ? 'ring-1 ring-primary-200/60 dark:ring-primary-500/25' : ''}
       `}
     >
       {/* Glow only on the featured (big) tile */}
@@ -203,7 +203,7 @@ function QuickAction({ icon: Icon, label, hint, accent, onClick }: QuickActionPr
     <button
       type="button"
       onClick={onClick}
-      className="group relative rounded-2xl border border-neutral-200/90 bg-white/90 backdrop-blur-xl shadow-sm hover:shadow-md dark:border-white/[0.06] dark:bg-white/[0.03] dark:shadow-panel dark:hover:shadow-panel-hover p-4 text-left overflow-hidden transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#07070b]"
+      className="group relative rounded-xl border border-neutral-200/90 bg-white/90 backdrop-blur-xl shadow-subtle hover:shadow-sm dark:border-white/[0.06] dark:bg-white/[0.03] dark:shadow-none dark:hover:border-white/[0.1] p-4 text-left overflow-hidden transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#07070b]"
     >
       <span
         className="inline-flex shrink-0 items-center justify-center h-10 w-10 rounded-xl border border-neutral-200 bg-neutral-50 dark:border-white/10 dark:bg-white/[0.06]"
@@ -240,7 +240,7 @@ function ToolkitCard({ Icon, title, plain, accent, stat, hint, ctaLabel, onOpen,
       type="button"
       onClick={onOpen}
       aria-label={`Open ${title}`}
-      className={`group relative rounded-2xl border border-neutral-200/90 bg-white/90 backdrop-blur-xl shadow-sm hover:shadow-md dark:border-white/[0.06] dark:bg-white/[0.03] dark:shadow-panel dark:hover:shadow-panel-hover p-6 text-left overflow-hidden flex flex-col gap-4 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#07070b] ${span}`}
+      className={`group relative rounded-xl border border-neutral-200/90 bg-white/90 backdrop-blur-xl shadow-subtle hover:shadow-sm dark:border-white/[0.06] dark:bg-white/[0.03] dark:shadow-none dark:hover:border-white/[0.1] p-6 text-left overflow-hidden flex flex-col gap-4 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#07070b] ${span}`}
     >
       {/* Subtle top-edge accent tint — gives identity without neon overload */}
       <span
@@ -342,7 +342,7 @@ const TOOLKITS: ToolkitSpec[] = [
   { key: 'money',      title: 'Money & Funding',  plain: 'Money',     section: 'Financial Planning', accent: '#fbbf24', Icon: CoinStackIcon, ctaLabel: 'Open money tools' },
   { key: 'operations', title: 'Operations',       plain: 'Ops',       section: 'Operations',         accent: '#34d399', Icon: ShopIcon,      ctaLabel: 'Open ops tools' },
   { key: 'pricing',    title: 'Market Pricing Intelligence', plain: 'Pricing',   section: 'Pricing Strategy',   accent: '#fb7185', Icon: CalculatorIcon,ctaLabel: 'Open pricing' },
-  { key: 'marketing',  title: 'Marketing',        plain: 'Marketing', section: 'Marketing',          accent: '#38bdf8', Icon: MegaphoneIcon, ctaLabel: 'Open marketing' },
+  { key: 'marketing',  title: 'Marketing',        plain: 'Marketing', section: 'Marketing',          accent: '#14b8a6', Icon: MegaphoneIcon, ctaLabel: 'Open marketing' },
   { key: 'reports',    title: 'Owner Reports',    plain: 'Reports',   section: 'Owner Tools',        accent: '#2dd4bf', Icon: BarChartIcon,  ctaLabel: 'Open reports' },
 ];
 
@@ -594,7 +594,7 @@ export default function InsightsDashboard({
           </span>
         </div>
 
-        <div className="rounded-2xl border border-neutral-200/90 bg-white/80 backdrop-blur-xl shadow-sm p-6 sm:p-8 overflow-hidden relative dark:border-white/[0.06] dark:bg-white/[0.03] dark:shadow-panel">
+        <div className="rounded-xl border border-neutral-200/90 bg-white/80 backdrop-blur-xl shadow-subtle p-6 sm:p-8 overflow-hidden relative dark:border-white/[0.06] dark:bg-white/[0.03] dark:shadow-none">
 
           {/* Top progress strip */}
           <div className="relative flex items-center gap-4 mb-6">

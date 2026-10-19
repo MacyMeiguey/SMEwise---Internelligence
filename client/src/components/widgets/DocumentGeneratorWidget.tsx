@@ -244,32 +244,32 @@ function normalizeAgentChart(raw: unknown): SectionChartSpec | null {
 
 /** Editorial accent — muted navy / slate / ink (not rainbow AI slabs) */
 const SECTION_STYLE = [
-  { bar: "bg-slate-700", badge: "bg-slate-700" },
-  { bar: "bg-[#1e4976]", badge: "bg-[#1e4976]" },
-  { bar: "bg-[#0f766e]", badge: "bg-[#0f766e]" },
-  { bar: "bg-slate-600", badge: "bg-slate-600" },
+  { bar: "bg-neutral-700", badge: "bg-neutral-700" },
+  { bar: "bg-primary-800", badge: "bg-primary-800" },
+  { bar: "bg-teal-700", badge: "bg-teal-700" },
+  { bar: "bg-neutral-600", badge: "bg-neutral-600" },
 ] as const;
 
-const CHART_AXIS_LIGHT = { tick: { fill: "#64748b", fontSize: 11 } };
-const CHART_GRID_LIGHT = { stroke: "#e2e8f0", strokeDasharray: "3 3" };
-const CHART_AXIS_DARK = { tick: { fill: "#cbd5e1", fontSize: 11 } };
-const CHART_GRID_DARK = { stroke: "#475569", strokeDasharray: "3 3" };
+const CHART_AXIS_LIGHT = { tick: { fill: "#737373", fontSize: 11 } };
+const CHART_GRID_LIGHT = { stroke: "#e5e5e5", strokeDasharray: "3 3" };
+const CHART_AXIS_DARK = { tick: { fill: "#a3a3a3", fontSize: 11 } };
+const CHART_GRID_DARK = { stroke: "#404040", strokeDasharray: "3 3" };
 
 function ReportPreviewRibbon() {
   return (
     <div className="absolute inset-x-0 top-0 h-24 overflow-hidden rounded-t-xl pointer-events-none opacity-95">
-      <svg className="absolute inset-0 h-full w-full text-slate-400/20 dark:text-slate-500/15" preserveAspectRatio="none" aria-hidden>
+      <svg className="absolute inset-0 h-full w-full text-neutral-400/20 dark:text-neutral-500/15" preserveAspectRatio="none" aria-hidden>
         <defs>
           <linearGradient id="repoRibbonGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="rgb(15 23 42)" stopOpacity="0.06" />
-            <stop offset="50%" stopColor="rgb(30 64 175)" stopOpacity="0.07" />
-            <stop offset="100%" stopColor="rgb(15 23 42)" stopOpacity="0.05" />
+            <stop offset="0%" stopColor="rgb(124 58 237)" stopOpacity="0.05" />
+            <stop offset="50%" stopColor="rgb(124 58 237)" stopOpacity="0.09" />
+            <stop offset="100%" stopColor="rgb(124 58 237)" stopOpacity="0.04" />
           </linearGradient>
         </defs>
         <rect width="100%" height="100%" fill="url(#repoRibbonGrad)" />
-        <circle cx="-2%" cy="118%" r="38%" fill="rgb(15 23 42 / 0.04)" />
+        <circle cx="-2%" cy="118%" r="38%" fill="rgb(124 58 237 / 0.05)" />
       </svg>
-      <div className="absolute bottom-3 left-4 right-4 h-px bg-slate-200/80 dark:bg-white/[0.08]" />
+      <div className="absolute bottom-3 left-4 right-4 h-px bg-neutral-200/80 dark:bg-white/[0.08]" />
     </div>
   );
 }
@@ -328,7 +328,7 @@ function ReportPreviewTrendGraphic({ className = "" }: { className?: string }) {
 
 function SectionLayoutGlyph({ type }: { type: SectionLayout["type"] }) {
   const box =
-    "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200/90 bg-white text-slate-600 shadow-sm dark:border-white/[0.09] dark:bg-[#1a1a22] dark:text-slate-300";
+    "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-neutral-200/90 bg-white text-neutral-600 shadow-sm dark:border-white/[0.09] dark:bg-white/[0.06] dark:text-neutral-300";
   if (type === "pipe") {
     return (
       <div className={box} title="Data table" aria-hidden>
@@ -369,18 +369,18 @@ function SectionChartPanel({
   const isDark = useDocumentDarkClass();
   const axisTick = isDark ? CHART_AXIS_DARK.tick : CHART_AXIS_LIGHT.tick;
   const gridProps = isDark ? CHART_GRID_DARK : CHART_GRID_LIGHT;
-  const fill = isDark ? "#60a5fa" : "#1e40af";
+  const fill = isDark ? "#a78bfa" : "#7c3aed";
   const tooltipStyle = isDark
     ? {
-        backgroundColor: "#1e293b",
-        border: "1px solid #475569",
+        backgroundColor: "#101018",
+        border: "1px solid rgba(255,255,255,0.12)",
         borderRadius: "8px",
         fontSize: "12px",
-        color: "#f1f5f9",
+        color: "#f5f5f5",
       }
     : {
-        backgroundColor: "#f8fafc",
-        border: "1px solid #e2e8f0",
+        backgroundColor: "#fafafa",
+        border: "1px solid #e5e5e5",
         borderRadius: "8px",
         fontSize: "12px",
       };
@@ -388,16 +388,16 @@ function SectionChartPanel({
 
   return (
     <div
-      className="mt-4 rounded-lg border border-slate-200/90 bg-slate-50/70 p-3 dark:border-white/[0.14] dark:bg-white/[0.06]"
+      className="mt-4 rounded-lg border border-neutral-200/90 bg-neutral-50/70 p-3 dark:border-white/[0.14] dark:bg-white/[0.06]"
       role="img"
       aria-label={`Chart: ${subtitle}`}
     >
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-300">
           Figure
         </p>
         {spec.yAxisLabel ? (
-          <span className="text-[10px] text-slate-500 dark:text-slate-300">Value — {spec.yAxisLabel}</span>
+          <span className="text-[10px] text-neutral-500 dark:text-neutral-300">Value — {spec.yAxisLabel}</span>
         ) : null}
       </div>
       <div className="h-[196px] w-full min-w-0">
@@ -409,7 +409,7 @@ function SectionChartPanel({
               <YAxis tick={axisTick} width={44} />
               <Tooltip
                 contentStyle={tooltipStyle}
-                labelStyle={isDark ? { color: "#e2e8f0" } : { color: "#0f172a" }}
+                labelStyle={isDark ? { color: "#e5e5e5" } : { color: "#171717" }}
                 formatter={(value: number | string) => {
                   const n = typeof value === "number" ? value : Number(value);
                   return [
@@ -427,7 +427,7 @@ function SectionChartPanel({
               <YAxis tick={axisTick} width={48} />
               <Tooltip
                 contentStyle={tooltipStyle}
-                labelStyle={isDark ? { color: "#e2e8f0" } : { color: "#0f172a" }}
+                labelStyle={isDark ? { color: "#e5e5e5" } : { color: "#171717" }}
                 formatter={(value: number | string) => {
                   const n = typeof value === "number" ? value : Number(value);
                   return [
@@ -1292,12 +1292,12 @@ function ReportSectionBlock({
 
   return (
     <div
-      className="relative overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm dark:border-white/[0.14] dark:bg-[#1c1c26]"
+      className="relative overflow-hidden rounded-xl border border-neutral-200/90 bg-white shadow-sm dark:border-white/[0.14] dark:bg-white/[0.04]"
       role="group"
       aria-label={section.title}
     >
       <svg
-        className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 text-slate-300/25 dark:text-white/[0.04]"
+        className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 text-neutral-300/25 dark:text-white/[0.04]"
         viewBox="0 0 120 120"
         aria-hidden
       >
@@ -1314,11 +1314,11 @@ function ReportSectionBlock({
           </span>
           <SectionLayoutGlyph type={layout.type} />
           <div className="min-w-0 flex-1 pt-1">
-            <p className="text-sm font-semibold leading-snug text-slate-800 dark:text-slate-100">
+            <p className="text-sm font-semibold leading-snug text-neutral-800 dark:text-neutral-100">
               {section.title}
             </p>
-            <p className="mt-1 flex gap-1.5 text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              <span className="rounded border border-slate-200/90 bg-slate-50 px-1.5 py-0.5 dark:border-white/[0.12] dark:bg-white/[0.08] dark:text-slate-200">
+            <p className="mt-1 flex gap-1.5 text-[10px] font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+              <span className="rounded border border-neutral-200/90 bg-neutral-50 px-1.5 py-0.5 dark:border-white/[0.12] dark:bg-white/[0.08] dark:text-neutral-200">
                 {layout.type === "pipe" ? "Table" : layout.type === "indexed" ? "List" : "Narrative"}
               </span>
             </p>
@@ -1330,20 +1330,20 @@ function ReportSectionBlock({
             layout.paragraphs.map((p, pi) => (
               <div
                 key={pi}
-                className="rounded-lg border border-slate-200/80 border-l-[3px] border-l-slate-400 bg-white px-3.5 py-2.5 text-sm leading-relaxed text-slate-700 dark:border-white/[0.12] dark:border-l-slate-400 dark:bg-white/[0.04] dark:text-slate-100"
+                className="rounded-lg border border-neutral-200/80 border-l-[3px] border-l-neutral-400 bg-white px-3.5 py-2.5 text-sm leading-relaxed text-neutral-700 dark:border-white/[0.12] dark:border-l-neutral-400 dark:bg-white/[0.04] dark:text-neutral-100"
               >
                 {p}
               </div>
             ))}
 
           {layout.type === "indexed" && (
-            <div className="overflow-x-auto rounded-lg border border-slate-200/85 dark:border-white/[0.12]">
+            <div className="overflow-x-auto rounded-lg border border-neutral-200/85 dark:border-white/[0.12]">
               <table className="min-w-[260px] w-full border-collapse [caption-side:bottom] text-left text-sm">
-                <caption className="caption-bottom border-b border-slate-100 bg-slate-50 px-3 py-2 text-left text-[11px] font-medium text-slate-500 dark:border-white/[0.08] dark:bg-white/[0.06] dark:text-slate-300">
+                <caption className="caption-bottom border-b border-neutral-100 bg-neutral-50 px-3 py-2 text-left text-[11px] font-medium text-neutral-500 dark:border-white/[0.08] dark:bg-white/[0.06] dark:text-neutral-300">
                   {layout.points.length} item{layout.points.length === 1 ? "" : "s"}
                 </caption>
                 <thead>
-                  <tr className="bg-slate-800 text-white">
+                  <tr className="bg-neutral-800 text-white">
                     <th className="w-11 px-3 py-2.5 text-left text-xs font-semibold">#</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold">Detail</th>
                   </tr>
@@ -1352,14 +1352,14 @@ function ReportSectionBlock({
                   {layout.points.map((pt, i) => (
                     <tr
                       key={i}
-                      className={`border-t border-slate-200/85 dark:border-white/[0.07] ${
-                        i % 2 === 0 ? "bg-slate-50/90 dark:bg-white/[0.05]" : "bg-white dark:bg-transparent"
+                      className={`border-t border-neutral-200/85 dark:border-white/[0.07] ${
+                        i % 2 === 0 ? "bg-neutral-50/90 dark:bg-white/[0.05]" : "bg-white dark:bg-transparent"
                       }`}
                     >
-                      <td className="align-top px-3 py-2 font-semibold tabular-nums text-slate-600 dark:text-slate-400">
+                      <td className="align-top px-3 py-2 font-semibold tabular-nums text-neutral-600 dark:text-neutral-400">
                         {i + 1}
                       </td>
-                      <td className="align-top px-3 py-2 text-slate-700 dark:text-slate-200">{pt}</td>
+                      <td className="align-top px-3 py-2 text-neutral-700 dark:text-neutral-200">{pt}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1368,13 +1368,13 @@ function ReportSectionBlock({
           )}
 
           {layout.type === "pipe" && (
-            <div className="overflow-x-auto rounded-lg border border-slate-200/85 dark:border-white/[0.12]">
+            <div className="overflow-x-auto rounded-lg border border-neutral-200/85 dark:border-white/[0.12]">
               <table className="min-w-max w-full border-collapse [caption-side:bottom] text-left text-sm">
-                <caption className="caption-bottom border-b border-slate-100 bg-slate-50 px-3 py-2 text-left text-[11px] font-medium text-slate-600 dark:border-white/[0.08] dark:bg-white/[0.06] dark:text-slate-300">
+                <caption className="caption-bottom border-b border-neutral-100 bg-neutral-50 px-3 py-2 text-left text-[11px] font-medium text-neutral-600 dark:border-white/[0.08] dark:bg-white/[0.06] dark:text-neutral-300">
                   {layout.rows.length} × {layout.headers.length} data
                 </caption>
                 <thead>
-                  <tr className="bg-slate-800 text-white">
+                  <tr className="bg-neutral-800 text-white">
                     {layout.headers.map((h, hi) => (
                       <th key={hi} className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold">
                         {h || `Column ${hi + 1}`}
@@ -1386,14 +1386,14 @@ function ReportSectionBlock({
                   {layout.rows.map((row, ri) => (
                     <tr
                       key={ri}
-                      className={`border-t border-slate-200/85 dark:border-white/[0.07] ${
-                        ri % 2 === 0 ? "bg-slate-50/80 dark:bg-white/[0.05]" : "bg-white dark:bg-transparent"
+                      className={`border-t border-neutral-200/85 dark:border-white/[0.07] ${
+                        ri % 2 === 0 ? "bg-neutral-50/80 dark:bg-white/[0.05]" : "bg-white dark:bg-transparent"
                       }`}
                     >
                       {layout.headers.map((_, ci) => (
                         <td
                           key={ci}
-                          className="max-w-[16rem] whitespace-pre-wrap px-3 py-2 align-top text-slate-700 dark:text-slate-100 sm:max-w-none"
+                          className="max-w-[16rem] whitespace-pre-wrap px-3 py-2 align-top text-neutral-700 dark:text-neutral-100 sm:max-w-none"
                         >
                           {row[ci]?.trim() || "—"}
                         </td>
@@ -1638,12 +1638,12 @@ export function DocumentGeneratorWidgetWithControls({
     "w-full px-4 py-2.5 rounded-xl border text-sm font-medium shadow-sm " +
     "border-neutral-400 bg-white text-neutral-900 " +
     "focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-500 transition-all duration-150 " +
-    "dark:border-neutral-500 dark:bg-[#1e1e2a] dark:text-neutral-100 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] " +
+    "dark:border-neutral-500 dark:bg-white/[0.06] dark:text-neutral-100 " +
     "dark:focus:ring-primary-400/55 dark:focus:border-primary-300 " +
     "[color-scheme:light] dark:[color-scheme:dark]";
 
   const optionClass =
-    "bg-white text-neutral-900 dark:bg-[#1e1e2a] dark:text-neutral-100";
+    "bg-white text-neutral-900 dark:bg-white/[0.06] dark:text-neutral-100";
 
   const hasResult = state.status === "success" && (parsedDoc !== null || rawFallback !== "");
   const needsMoreInfo =
@@ -1657,7 +1657,7 @@ export function DocumentGeneratorWidgetWithControls({
 
   return (
     <article
-      className="flex flex-col rounded-xl border border-neutral-200 bg-white text-neutral-800 overflow-hidden motion-safe:animate-fade-up shadow-sm [color-scheme:light] dark:[color-scheme:dark] dark:border-white/[0.09] dark:bg-[#101018] dark:text-neutral-200 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_12px_40px_-16px_rgba(0,0,0,0.65)]"
+      className="flex flex-col rounded-xl border border-neutral-200 bg-white text-neutral-800 overflow-hidden motion-safe:animate-fade-up shadow-subtle [color-scheme:light] dark:[color-scheme:dark] dark:border-white/[0.09] dark:bg-[#101018] dark:text-neutral-200 dark:shadow-none"
       aria-label="Report generator widget"
     >
       {/* ── Header ── */}
@@ -1802,19 +1802,19 @@ export function DocumentGeneratorWidgetWithControls({
           <div className="flex flex-col gap-6">
 
             {/* ── Hero card ── */}
-            <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-900 to-[#0f172a] dark:border-white/[0.12] dark:from-[#14141e] dark:to-[#0c0c14]">
+            <div className="relative overflow-hidden rounded-xl border border-neutral-200 bg-gradient-to-br from-neutral-900 to-neutral-950 dark:border-white/[0.12] dark:from-[#14141e] dark:to-[#0c0c14]">
               <ReportPreviewRibbon />
               {/* left colour accent */}
-              <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-blue-500 via-teal-500 to-violet-600" />
+              <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-primary-400 via-primary-500 to-primary-700" />
               <div className="relative z-[1] flex flex-col gap-5 px-5 pb-6 pt-12 sm:flex-row sm:items-end sm:justify-between sm:gap-6 sm:pt-14">
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-400/90">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary-300/90">
                     {parsedDoc.companyName}
                   </p>
                   <h4 className="mt-2 text-[1.15rem] font-bold leading-snug tracking-tight text-white">
                     {parsedDoc.documentType}
                   </h4>
-                  <p className="mt-1.5 text-[11px] font-medium text-slate-400">
+                  <p className="mt-1.5 text-[11px] font-medium text-neutral-400">
                     {parsedDoc.generatedAt}
                   </p>
                 </div>
@@ -1824,7 +1824,7 @@ export function DocumentGeneratorWidgetWithControls({
                     <ReportPreviewTrendGraphic className="h-[3.2rem] w-[7.6rem]" />
                   </div>
                   <div className="flex flex-wrap gap-2 sm:justify-end">
-                    <span className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.08] px-2.5 py-1 text-[11px] font-semibold text-slate-200">
+                    <span className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.08] px-2.5 py-1 text-[11px] font-semibold text-neutral-200">
                       {parsedDoc.sections.length} sections
                     </span>
                     <span className="inline-flex items-center gap-1 rounded-md border border-teal-500/30 bg-teal-500/10 px-2.5 py-1 text-[11px] font-semibold text-teal-300">
@@ -1838,8 +1838,8 @@ export function DocumentGeneratorWidgetWithControls({
             {/* ── Report body ── */}
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
-                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Report sections</span>
-                <span className="flex-1 border-t border-slate-200 dark:border-white/[0.08]" />
+                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-500 dark:text-neutral-400">Report sections</span>
+                <span className="flex-1 border-t border-neutral-200 dark:border-white/[0.08]" />
               </div>
               {parsedDoc.sections.map((section, si) => (
                 <ReportSectionBlock key={`${si}-${section.title}`} section={section} index={si} />
@@ -1847,16 +1847,16 @@ export function DocumentGeneratorWidgetWithControls({
             </div>
 
             {/* ── Disclaimer ── */}
-            <div className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50 px-4 py-3 dark:border-white/[0.09] dark:bg-white/[0.04]">
-              <svg className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+            <div className="flex items-start gap-3 rounded-xl border border-neutral-200/80 bg-neutral-50 px-4 py-3 dark:border-white/[0.09] dark:bg-white/[0.04]">
+              <svg className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400 dark:text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" aria-hidden>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
               </svg>
               <div className="min-w-0">
-                <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Disclaimer</p>
-                <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600 italic dark:text-slate-400">
+                <p className="text-[11px] font-semibold text-neutral-700 dark:text-neutral-300">Disclaimer</p>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-neutral-600 italic dark:text-neutral-400">
                   {parsedDoc.disclaimer}
                 </p>
-                <p className="mt-1.5 text-[10px] text-slate-400 dark:text-slate-500">
+                <p className="mt-1.5 text-[10px] text-neutral-400 dark:text-neutral-500">
                   {REPORT_EXPORT_ATTRIBUTION} · {parsedDoc.generatedAt}
                 </p>
               </div>
@@ -1864,7 +1864,7 @@ export function DocumentGeneratorWidgetWithControls({
 
             {/* Export buttons */}
             <div className="flex flex-col gap-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
                 Download report
               </p>
               <div className="grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap">

@@ -23,14 +23,14 @@ export default function BackToTop() {
       aria-label="Back to top"
       className={`
         fixed bottom-7 left-1/2 -translate-x-1/2 z-40
-        flex items-center gap-1.5 px-4 py-2 rounded-full
-        bg-gradient-to-r from-primary-500 via-primary-400 to-accent-coral
-        text-white text-[11px] font-bold tracking-wide uppercase
-        shadow-lg shadow-primary-900/50
-        ring-1 ring-white/20
-        transition-all duration-500 ease-out
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300
-        hover:scale-105 hover:shadow-primary-500/40
+        flex items-center gap-1.5 px-3.5 py-2 rounded-lg
+        bg-primary-600 hover:bg-primary-500
+        text-white text-[11px] font-semibold tracking-wide uppercase
+        shadow-lg shadow-primary-900/40
+        border border-primary-400/30
+        transition-all duration-300 ease-out
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400
+        active:scale-[0.98]
         ${show
           ? 'opacity-100 translate-y-0'
           : 'opacity-0 translate-y-3 pointer-events-none'
