@@ -1,6 +1,5 @@
 /**
- * Card Component
- * Flexible card container with variants
+ * Card — hairline border surfaces (Linear-style), not heavy bordered stacks.
  */
 
 import { HTMLAttributes, forwardRef } from 'react';
@@ -25,24 +24,28 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
     },
     ref
   ) => {
-    const baseStyles = 'rounded-2xl transition-all duration-200';
+    const baseStyles = 'rounded-xl transition-all duration-200';
 
     const variantStyles = {
-      default: 'bg-white border-2 border-neutral-200',
-      elevated: 'bg-white border-2 border-neutral-950',
-      bordered: 'bg-white border-2 border-neutral-950',
-      glass: 'bg-white/90 backdrop-blur-sm border-2 border-neutral-200',
+      default:
+        'bg-white border border-neutral-200/90 dark:bg-white/[0.03] dark:border-white/[0.08]',
+      elevated:
+        'bg-white border border-neutral-200 shadow-subtle dark:bg-white/[0.04] dark:border-white/[0.1] dark:shadow-none',
+      bordered:
+        'bg-white border border-neutral-300 dark:bg-transparent dark:border-white/[0.12]',
+      glass:
+        'bg-white/80 backdrop-blur-md border border-neutral-200/80 dark:bg-white/[0.06] dark:border-white/[0.1]',
     };
 
     const paddingStyles = {
       none: '',
       sm: 'p-4',
-      md: 'p-6',
-      lg: 'p-8',
+      md: 'p-5',
+      lg: 'p-7',
     };
 
     const hoverStyles = hover
-      ? 'hover:shadow-md cursor-pointer'
+      ? 'hover:border-primary-300/70 hover:shadow-sm cursor-pointer dark:hover:border-primary-400/40'
       : '';
 
     return (
@@ -60,8 +63,6 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
 Card.displayName = 'Card';
 
 export default Card;
-
-// ── Card sub-components ──
 
 export interface CardHeaderProps extends HTMLAttributes<HTMLDivElement> {
   title?: string;
@@ -81,12 +82,12 @@ export function CardHeader({
     <div className={`flex items-start justify-between gap-4 ${className}`} {...props}>
       <div className="flex-1 min-w-0">
         {title && (
-          <h3 className="text-lg font-bold text-neutral-950 truncate">
+          <h3 className="text-base font-semibold tracking-tight text-neutral-950 dark:text-white truncate">
             {title}
           </h3>
         )}
         {subtitle && (
-          <p className="mt-1 text-sm text-neutral-600">{subtitle}</p>
+          <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{subtitle}</p>
         )}
         {children}
       </div>
@@ -99,7 +100,7 @@ export interface CardBodyProps extends HTMLAttributes<HTMLDivElement> {}
 
 export function CardBody({ className = '', children, ...props }: CardBodyProps) {
   return (
-    <div className={`text-neutral-700 ${className}`} {...props}>
+    <div className={`text-neutral-700 dark:text-neutral-300 ${className}`} {...props}>
       {children}
     </div>
   );

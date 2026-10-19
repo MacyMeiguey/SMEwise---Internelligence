@@ -1,6 +1,5 @@
 /**
- * ErrorState Component
- * User-friendly error display with retry option
+ * ErrorState — direct copy, inline retry (no alerts).
  */
 
 import { AlertCircle } from 'lucide-react';
@@ -25,14 +24,18 @@ export default function ErrorState({
       role="alert"
       aria-live="assertive"
     >
-      <div className="mb-4 text-error-500">
-        <AlertCircle size={48} strokeWidth={1.5} />
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400">
+        <AlertCircle size={24} strokeWidth={1.75} aria-hidden />
       </div>
-      <h3 className="text-lg font-semibold text-neutral-900 mb-2">{title}</h3>
-      <p className="text-sm text-neutral-600 max-w-md mb-6">{message}</p>
+      <h3 className="text-base font-semibold tracking-tight text-neutral-900 dark:text-white mb-2">
+        {title}
+      </h3>
+      <p className="text-sm text-neutral-600 dark:text-neutral-400 max-w-md mb-6 leading-relaxed">
+        {message}
+      </p>
       {onRetry && (
-        <Button onClick={onRetry} variant="outline">
-          Try Again
+        <Button onClick={onRetry} variant="outline" size="sm">
+          Try again
         </Button>
       )}
     </div>

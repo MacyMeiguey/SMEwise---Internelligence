@@ -38,20 +38,20 @@ export default {
         },
         // Brand ink – near-black text/borders
         ink: '#0f0f0f',
-        // Semantic — “positive” uses brand lavender (not green) for theme cohesion
+        // Semantic — real status hues (not lavender)
         success: {
-          50:  '#f5f3ff',
-          100: '#ede9fe',
-          500: '#8b5cf6',
-          600: '#7c3aed',
-          700: '#6d28d9',
+          50:  '#ecfdf5',
+          100: '#d1fae5',
+          500: '#10b981',
+          600: '#059669',
+          700: '#047857',
         },
         info: {
-          50:  '#f5f3ff',
-          100: '#ede9fe',
-          500: '#8b5cf6',
-          600: '#7c3aed',
-          700: '#6d28d9',
+          50:  '#f0f9ff',
+          100: '#e0f2fe',
+          500: '#0ea5e9',
+          600: '#0284c7',
+          700: '#0369a1',
         },
         warning: {
           50:  '#fffbeb',
@@ -81,8 +81,8 @@ export default {
         },
       },
       fontFamily: {
-        sans:    ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Inter', 'system-ui', 'sans-serif'],
+        sans:    ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+        display: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
       },
       fontSize: {
         '2xs': ['0.625rem', { lineHeight: '0.875rem' }],

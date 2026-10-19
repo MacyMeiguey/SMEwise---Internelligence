@@ -190,7 +190,7 @@ export default function WorkspaceSidebar({
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             aria-expanded={!isCollapsed}
-            className="p-2 rounded-lg text-neutral-500 hover:text-neutral-200 hover:bg-white/[0.06] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/70"
+            className="p-2 rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 dark:hover:text-neutral-200 dark:hover:bg-white/[0.06] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/70"
           >
             {isCollapsed ? (
               <PanelLeftOpen className="h-[18px] w-[18px]" aria-hidden />
