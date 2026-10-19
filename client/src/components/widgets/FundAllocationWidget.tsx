@@ -75,21 +75,21 @@ async function fetchFundAllocation(profile: BusinessProfile): Promise<FundAlloca
 
 // Colour band per category (index-based, cycles if more than 6)
 const CATEGORY_COLOURS = [
-  "bg-violet-500/20 text-violet-200 border-violet-500/30",
-  "bg-blue-500/20 text-blue-200 border-blue-500/30",
+  "bg-primary-500/20 text-primary-200 border-primary-500/30",
+  "bg-teal-500/20 text-teal-200 border-teal-500/30",
   "bg-emerald-500/20 text-emerald-200 border-emerald-500/30",
   "bg-amber-500/20 text-amber-200 border-amber-500/30",
   "bg-rose-500/20 text-rose-200 border-rose-500/30",
-  "bg-cyan-500/20 text-cyan-200 border-cyan-500/30",
+  "bg-orange-500/20 text-orange-200 border-orange-500/30",
 ];
 
 const BAR_COLOURS = [
-  "bg-violet-500",
-  "bg-blue-500",
+  "bg-primary-500",
+  "bg-teal-500",
   "bg-emerald-500",
   "bg-amber-500",
   "bg-rose-500",
-  "bg-cyan-500",
+  "bg-orange-500",
 ];
 
 function fmt(n: number) {
@@ -233,12 +233,12 @@ function AllocationTable({ plan }: { plan: FundAllocationPlan }) {
 // ─── 3D Chart colour mapping ──────────────────────────────────────────────────
 
 const DONUT_COLOURS = [
-  '#8b5cf6', // violet
-  '#3b82f6', // blue
+  '#7c3aed', // primary
+  '#14b8a6', // teal
   '#10b981', // emerald
   '#f59e0b', // amber
   '#f43f5e', // rose
-  '#06b6d4', // cyan
+  '#f97316', // orange
 ];
 
 function planToDonutSegments(plan: FundAllocationPlan): DonutSegment[] {
@@ -359,7 +359,7 @@ export default function FundAllocationWidget({
                   : 'bg-white/5 text-neutral-400 hover:text-white hover:bg-white/10 border border-white/10'
               }`}
             >
-              📊 Table
+              Table
             </button>
             <button
               type="button"
@@ -370,7 +370,7 @@ export default function FundAllocationWidget({
                   : 'bg-white/5 text-neutral-400 hover:text-white hover:bg-white/10 border border-white/10'
               }`}
             >
-              🎨 3D Chart
+              3D Chart
             </button>
           </div>
 

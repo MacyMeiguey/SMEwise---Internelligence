@@ -59,7 +59,7 @@ function TooltipIcon({ text }: TooltipIconProps) {
       {/* Info circle icon */}
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        className="h-4 w-4 text-[#6b6890] group-hover:text-[#a78bfa] transition-colors"
+        className="h-4 w-4 text-neutral-500 group-hover:text-primary-400 transition-colors"
         viewBox="0 0 20 20"
         fill="currentColor"
         aria-hidden="true"
@@ -75,15 +75,15 @@ function TooltipIcon({ text }: TooltipIconProps) {
         role="tooltip"
         className="
           absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-10
-          w-64 rounded-lg bg-[#1a1728] border border-[#3d3660]
-          px-3 py-2 text-xs text-gray-200 leading-relaxed shadow-lg
+          w-64 rounded-lg bg-neutral-900 border border-white/[0.08]
+          px-3 py-2 text-xs text-neutral-200 leading-relaxed shadow-lg
           opacity-0 group-hover:opacity-100 pointer-events-none
           transition-opacity duration-150
         "
       >
         {text}
         {/* Arrow */}
-        <span className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-[#1a1728]" />
+        <span className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-neutral-900" />
       </span>
     </span>
   );
@@ -102,10 +102,10 @@ function FieldLabel({ htmlFor, label, required = false, tooltipKey }: FieldLabel
   return (
     <label
       htmlFor={htmlFor}
-      className="flex items-center text-[11px] uppercase tracking-widest text-[#a78bfa] font-semibold mb-1"
+      className="flex items-center text-[11px] uppercase tracking-widest text-primary-300 font-semibold mb-1"
     >
       {label}
-      {required && <span className="text-[#a78bfa] ml-0.5">*</span>}
+      {required && <span className="text-primary-300 ml-0.5">*</span>}
       <TooltipIcon text={FIELD_TOOLTIPS[tooltipKey]} />
     </label>
   );
@@ -226,8 +226,8 @@ export default function ProfileForm({ onSubmit, initialProfile }: ProfileFormPro
 
   // ── Shared input classes ──
   const inputBase =
-    "w-full bg-[#221f35] border border-[#3d3660] rounded-[10px] px-3 py-2 text-white " +
-    "placeholder-[#6b6890] focus:outline-none focus:ring-2 focus:ring-[#7c3aed]/40 transition-all duration-200";
+    "w-full bg-white/[0.06] border border-white/[0.08] rounded-lg px-3 py-2 text-white " +
+    "placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-500/40 transition-all duration-200";
 
   const inputError = "border-red-500 focus:ring-red-500";
 
@@ -238,11 +238,11 @@ export default function ProfileForm({ onSubmit, initialProfile }: ProfileFormPro
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-[#0f0d1a] flex items-start justify-center py-12 px-4">
+    <div className="min-h-screen bg-[#07070b] flex items-start justify-center py-12 px-4">
       <div className="w-full max-w-2xl">
         {/* Header */}
         <div className="mb-8 text-center">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-[#7c3aed] to-[#a78bfa] mb-4">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary-600 to-primary-400 mb-4">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-6 w-6 text-white"
@@ -259,7 +259,7 @@ export default function ProfileForm({ onSubmit, initialProfile }: ProfileFormPro
             </svg>
           </div>
           <h2 className="text-2xl font-bold text-white">Set Up Your Business Profile</h2>
-          <p className="mt-2 text-[#6b6890] text-sm">
+          <p className="mt-2 text-neutral-500 text-sm">
             Tell SMEwise about your business so we can generate personalised, Malaysia-specific
             guidance for you.
           </p>
@@ -269,7 +269,7 @@ export default function ProfileForm({ onSubmit, initialProfile }: ProfileFormPro
         <form
           onSubmit={handleSubmit}
           noValidate
-          className="bg-[#1a1728] rounded-xl border border-[#3d3660] p-5"
+          className="bg-neutral-900 rounded-xl border border-white/[0.08] p-5"
         >
           {/* Grid layout for fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -396,7 +396,7 @@ export default function ProfileForm({ onSubmit, initialProfile }: ProfileFormPro
               />
               <div
                 id="currentFunds"
-                className={submitted && errors.currentFunds ? "ring-1 ring-red-500 rounded-[10px]" : ""}
+                className={submitted && errors.currentFunds ? "ring-1 ring-red-500 rounded-lg" : ""}
                 aria-describedby={errors.currentFunds ? "currentFunds-error" : undefined}
               >
                 <FundsInput
@@ -479,7 +479,7 @@ export default function ProfileForm({ onSubmit, initialProfile }: ProfileFormPro
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-[#7c3aed] hover:bg-[#6d28d9] text-white font-semibold rounded-[10px] px-4 py-3 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full bg-primary-600 hover:bg-primary-500 text-white font-semibold rounded-lg px-4 py-3 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070b]"
             >
               {isSubmitting ? (
                 <>
@@ -490,8 +490,8 @@ export default function ProfileForm({ onSubmit, initialProfile }: ProfileFormPro
                 "Generate My Business Guidance →"
               )}
             </button>
-            <p className="mt-3 text-center text-xs text-[#6b6890]">
-              Fields marked <span className="text-[#a78bfa]">*</span> are required.
+            <p className="mt-3 text-center text-xs text-neutral-500">
+              Fields marked <span className="text-primary-300">*</span> are required.
             </p>
           </div>
         </form>

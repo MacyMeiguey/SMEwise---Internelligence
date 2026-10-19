@@ -97,7 +97,7 @@ const DEMO_PLAN: MarketingPlan = {
 
 const PHASE_STYLES = [
   { bg: "bg-emerald-50 dark:bg-emerald-950/30", border: "border-emerald-300 dark:border-emerald-600/50", text: "text-emerald-800 dark:text-emerald-200", badge: "bg-emerald-200 dark:bg-emerald-800/60 text-emerald-900 dark:text-emerald-100", bar: "bg-emerald-500" },
-  { bg: "bg-blue-50 dark:bg-blue-950/30", border: "border-blue-300 dark:border-blue-600/50", text: "text-blue-800 dark:text-blue-200", badge: "bg-blue-200 dark:bg-blue-800/60 text-blue-900 dark:text-blue-100", bar: "bg-blue-500" },
+  { bg: "bg-primary-50 dark:bg-primary-950/30", border: "border-primary-300 dark:border-primary-600/50", text: "text-primary-800 dark:text-primary-200", badge: "bg-primary-200 dark:bg-primary-800/60 text-primary-900 dark:text-primary-100", bar: "bg-primary-500" },
   { bg: "bg-amber-50 dark:bg-amber-950/30", border: "border-amber-300 dark:border-amber-600/50", text: "text-amber-800 dark:text-amber-200", badge: "bg-amber-200 dark:bg-amber-800/60 text-amber-900 dark:text-amber-100", bar: "bg-amber-500" },
   { bg: "bg-rose-50 dark:bg-rose-950/30", border: "border-rose-300 dark:border-rose-600/50", text: "text-rose-800 dark:text-rose-200", badge: "bg-rose-200 dark:bg-rose-800/60 text-rose-900 dark:text-rose-100", bar: "bg-rose-500" },
 ];

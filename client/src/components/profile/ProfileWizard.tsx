@@ -50,11 +50,11 @@ const STEPS = [
 ] as const;
 
 const panelClass =
-  'rounded-2xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-md shadow-panel p-5 sm:p-6';
+  'rounded-xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-md p-5 sm:p-6';
 const btnPrimaryDark =
-  '!bg-primary-600 hover:!bg-primary-500 active:!bg-primary-700 !border-2 !border-primary-400/40 !text-white';
+  '!bg-primary-600 hover:!bg-primary-500 active:!bg-primary-700 !border !border-primary-400/30 !text-white !shadow-sm !shadow-primary-600/20';
 const btnGhostDark =
-  '!border-2 !border-white/15 !text-neutral-200 hover:!bg-white/[0.07] hover:!border-white/25 !bg-transparent';
+  '!border !border-white/15 !text-neutral-200 hover:!bg-white/[0.07] hover:!border-white/25 !bg-transparent';
 
 export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizardProps) {
   const formId = useId();
@@ -209,7 +209,7 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
           {/* Logo + header */}
           <header className="text-center lg:text-left mb-8 lg:mb-10">
             <div className="flex justify-center lg:justify-start mb-4">
-              <LogoWordmark size="lg" variant="light" />
+              <LogoWordmark size="md" showMark variant="light" />
             </div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary-300 mb-2">
               {isEdit ? 'Edit profile' : 'Get started'}
@@ -251,7 +251,7 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
                       onClick={() => canClick && setCurrentStep(n)}
                       className={`w-full flex flex-col lg:flex-row lg:items-center lg:gap-3 items-center text-center lg:text-left gap-1.5 rounded-xl px-2 lg:px-3 py-2 lg:py-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070b] ${
                         active
-                          ? 'bg-white/[0.08] shadow-panel ring-1 ring-white/[0.12]'
+                          ? 'bg-white/[0.08] ring-1 ring-white/[0.12]'
                           : done
                             ? 'hover:bg-white/[0.05]'
                             : 'opacity-55 hover:opacity-90'
@@ -259,12 +259,12 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
                       aria-current={active ? 'step' : undefined}
                     >
                       <span
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold ${
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-sm font-bold ${
                           done
-                            ? 'border-primary-400/50 bg-primary-500/20 text-primary-200'
+                            ? 'border-primary-400/40 bg-primary-500/20 text-primary-200'
                             : active
-                              ? 'border-primary-300 bg-primary-600/30 text-white'
-                              : 'border-white/15 bg-white/[0.04] text-neutral-500'
+                              ? 'border-primary-400/50 bg-primary-600 text-white'
+                              : 'border-white/12 bg-white/[0.04] text-neutral-500'
                         }`}
                       >
                         {done ? <CheckCircle2 className="h-4 w-4" aria-hidden /> : <Icon className="h-4 w-4" aria-hidden />}
@@ -376,11 +376,11 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
                       value={businessStage}
                       onChange={(e) => setBusinessStage(e.target.value as BusinessStage)}
                       className={inputClass(errors.businessStage)}
-                      style={{ backgroundColor: '#1a1a2e', colorScheme: 'dark' }}
+                      style={{ backgroundColor: '#101018', colorScheme: 'dark' }}
                     >
-                      <option value="" style={{ background: '#1a1a2e', color: '#e5e5e5' }}>Select stage…</option>
+                      <option value="" style={{ background: '#101018', color: '#a3a3a3' }}>Select stage…</option>
                       {BUSINESS_STAGE_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt} style={{ background: '#1a1a2e', color: '#ffffff' }}>
+                        <option key={opt} value={opt} style={{ background: '#101018', color: '#f5f5f5' }}>
                           {opt}
                         </option>
                       ))}
@@ -397,11 +397,11 @@ export default function ProfileWizard({ onSubmit, initialProfile }: ProfileWizar
                       value={businessType}
                       onChange={(e) => setBusinessType(e.target.value as BusinessType)}
                       className={inputClass(errors.businessType)}
-                      style={{ backgroundColor: '#1a1a2e', colorScheme: 'dark' }}
+                      style={{ backgroundColor: '#101018', colorScheme: 'dark' }}
                     >
-                      <option value="" style={{ background: '#1a1a2e', color: '#e5e5e5' }}>Select type…</option>
+                      <option value="" style={{ background: '#101018', color: '#a3a3a3' }}>Select type…</option>
                       {BUSINESS_TYPE_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt} style={{ background: '#1a1a2e', color: '#ffffff' }}>
+                        <option key={opt} value={opt} style={{ background: '#101018', color: '#f5f5f5' }}>
                           {opt}
                         </option>
                       ))}
@@ -749,7 +749,7 @@ function ReviewRow({
 }
 
 function inputClass(error?: string) {
-  return `w-full px-3.5 py-2.5 rounded-xl border text-sm transition-shadow duration-150 bg-white/[0.06] text-white placeholder:text-neutral-500 [&_option]:bg-[#1a1728] [&_option]:text-white ${
+  return `w-full px-3.5 py-2.5 rounded-lg border text-sm transition-shadow duration-150 bg-white/[0.06] text-white placeholder:text-neutral-500 [&_option]:bg-neutral-900 [&_option]:text-white ${
     error
       ? '!border-red-500/70 focus:!border-red-400 focus:ring-2 focus:ring-red-500/25'
       : 'border-white/[0.12] focus:border-primary-400 focus:ring-2 focus:ring-primary-500/25 hover:border-white/20'

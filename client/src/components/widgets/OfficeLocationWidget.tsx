@@ -197,7 +197,7 @@ function Badge({ children, variant = "neutral" }: {
     emerald: "border-emerald-300 dark:border-emerald-600/50 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300",
     amber:   "border-amber-300 dark:border-amber-600/50 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300",
     rose:    "border-rose-300 dark:border-rose-600/50 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300",
-    blue:    "border-blue-300 dark:border-blue-600/50 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300",
+    blue:    "border-primary-300 dark:border-primary-600/50 bg-primary-50 dark:bg-primary-950/30 text-primary-700 dark:text-primary-300",
   }[variant];
   return (
     <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${cls}`}>
@@ -226,8 +226,8 @@ function StatsStrip({ plan }: { plan: OfficeLocationPlan }) {
 
 const OPT_PALETTE = [
   { border: "border-amber-300 dark:border-amber-600/50",  bg: "bg-amber-50 dark:bg-amber-950/30",  badge: "bg-amber-100 dark:bg-amber-800/60 text-amber-800 dark:text-amber-200",   cost: "text-amber-700 dark:text-amber-300"   },
-  { border: "border-blue-300 dark:border-blue-600/50",    bg: "bg-blue-50 dark:bg-blue-950/30",    badge: "bg-blue-100 dark:bg-blue-800/60 text-blue-800 dark:text-blue-200",         cost: "text-blue-700 dark:text-blue-300"     },
-  { border: "border-violet-300 dark:border-violet-600/50",bg: "bg-violet-50 dark:bg-violet-950/30",badge: "bg-violet-100 dark:bg-violet-800/60 text-violet-800 dark:text-violet-200",cost: "text-violet-700 dark:text-violet-300" },
+  { border: "border-teal-300 dark:border-teal-600/50",    bg: "bg-teal-50 dark:bg-teal-950/30",    badge: "bg-teal-100 dark:bg-teal-800/60 text-teal-800 dark:text-teal-200",         cost: "text-teal-700 dark:text-teal-300"     },
+  { border: "border-primary-300 dark:border-primary-600/50",bg: "bg-primary-50 dark:bg-primary-950/30",badge: "bg-primary-100 dark:bg-primary-800/60 text-primary-800 dark:text-primary-200",cost: "text-primary-700 dark:text-primary-300" },
 ];
 
 function OptionCard({ option, index }: { option: SpaceOption; index: number }) {
@@ -366,7 +366,7 @@ function CostTable({ c }: { c: CostBreakdown }) {
       {ok(c.affordabilityCheck) && (
         <div className={`rounded-xl border-l-4 pl-3 py-2 pr-3 ${isAffordable ? "border-emerald-400 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20" : "border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-950/20"}`}>
           <p className={`text-sm leading-relaxed font-medium ${isAffordable ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"}`}>
-            {isAffordable ? "✅" : "⚠️"} {c.affordabilityCheck}
+            {c.affordabilityCheck}
           </p>
         </div>
       )}
@@ -390,13 +390,13 @@ function PermitsGrid({ p }: { p: PermitsAndZoning }) {
         <div className="rounded-xl border border-neutral-100 dark:border-white/[0.06] bg-neutral-50 dark:bg-white/[0.02] px-3 py-2.5">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Premise License</p>
           <Badge variant={licenseRequired ? "amber" : "emerald"}>
-            {licenseRequired ? "⚠ Required" : "✓ Not Required"}
+            {licenseRequired ? "Required" : "Not required"}
           </Badge>
         </div>
         <div className="rounded-xl border border-neutral-100 dark:border-white/[0.06] bg-neutral-50 dark:bg-white/[0.02] px-3 py-2.5">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Zoning Approval</p>
           <Badge variant={zoningRequired ? "amber" : "emerald"}>
-            {zoningRequired ? "⚠ Required" : "✓ Not Required"}
+            {zoningRequired ? "Required" : "Not required"}
           </Badge>
         </div>
         {ok(p.localCouncil) && (

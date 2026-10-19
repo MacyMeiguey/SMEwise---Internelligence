@@ -21,7 +21,7 @@ const BANNER_CONFIG: Record<string, BannerConfig> = {
     title: 'Operations',
     subtitle: 'Business Setup · Compliance · Risk Assessment',
     icon: Building2,
-    gradient: 'from-violet-600/20 via-purple-900/30 to-indigo-950/40',
+    gradient: 'from-primary-600/20 via-primary-900/25 to-[#07070b]/40',
     accentColor: '#a78bfa',
     glowColor: 'rgba(167, 139, 250, 0.15)',
     features: ['SSM Registration', 'Location Analysis', 'Risk Snapshot'],
@@ -30,7 +30,7 @@ const BANNER_CONFIG: Record<string, BannerConfig> = {
     title: 'Financial Planning',
     subtitle: 'Fund Allocation · Revenue · Loans & Funding',
     icon: LineChart,
-    gradient: 'from-amber-600/15 via-yellow-900/20 to-orange-950/30',
+    gradient: 'from-amber-600/15 via-amber-900/20 to-[#07070b]/30',
     accentColor: '#fbbf24',
     glowColor: 'rgba(251, 191, 36, 0.12)',
     features: ['Budget Breakdown', 'Revenue Projection', 'Funding Sources'],
@@ -39,7 +39,7 @@ const BANNER_CONFIG: Record<string, BannerConfig> = {
     title: 'Pricing Intelligence',
     subtitle: 'Competitor Analysis · Smart Pricing · History',
     icon: Tags,
-    gradient: 'from-pink-600/15 via-rose-900/20 to-fuchsia-950/30',
+    gradient: 'from-rose-600/15 via-rose-900/20 to-[#07070b]/30',
     accentColor: '#f472b6',
     glowColor: 'rgba(244, 114, 182, 0.12)',
     features: ['Market Scan', 'AI Pricing', 'Price History'],
@@ -48,16 +48,16 @@ const BANNER_CONFIG: Record<string, BannerConfig> = {
     title: 'Marketing',
     subtitle: 'Strategy · Content Guidelines · Forecast',
     icon: Megaphone,
-    gradient: 'from-cyan-600/15 via-sky-900/20 to-blue-950/30',
-    accentColor: '#38bdf8',
-    glowColor: 'rgba(56, 189, 248, 0.12)',
+    gradient: 'from-teal-600/15 via-teal-900/20 to-[#07070b]/30',
+    accentColor: '#2dd4bf',
+    glowColor: 'rgba(45, 212, 191, 0.12)',
     features: ['Channel Strategy', 'Creative Brief', 'Reach Forecast'],
   },
   'Owner Tools': {
     title: 'Owner Tools',
     subtitle: 'Analytics · Reports · Exports',
     icon: FileBarChart,
-    gradient: 'from-violet-600/20 via-purple-900/25 to-indigo-950/35',
+    gradient: 'from-primary-500/15 via-primary-900/20 to-[#07070b]/35',
     accentColor: '#c4b5fd',
     glowColor: 'rgba(196, 181, 253, 0.15)',
     features: ['Dashboard', 'PDF Report', 'DOCX Export'],
@@ -124,7 +124,7 @@ export default function SectionBanner({ section }: SectionBannerProps) {
           {features.map((f) => (
             <span
               key={f}
-              className="px-3 py-1.5 rounded-full text-xs font-medium border backdrop-blur-sm"
+              className="px-2.5 py-1 rounded-md text-xs font-medium border backdrop-blur-sm"
               style={{
                 color: accentColor,
                 borderColor: `${accentColor}30`,

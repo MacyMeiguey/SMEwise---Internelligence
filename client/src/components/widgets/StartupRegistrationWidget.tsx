@@ -116,27 +116,15 @@ async function fetchStartupGuide(profile: BusinessProfile): Promise<StartupGuide
   return JSON.parse(cleaned) as StartupGuide
 }
 
-// ─── Section icon map ─────────────────────────────────────────────────────────
-
-const SECTION_ICONS: Record<string, string> = {
-  'Business Structure': '🏢',
-  'Startup Capital': '💰',
-  'Pre-Registration Checklist': '📋',
-  'Banking': '🏦',
-  'Funding Options': '🚀',
-  'Hiring Obligations': '👥',
-  'Key Warnings': '⚠️',
-}
-
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function FeeBadge({ fee }: { fee: string }) {
   const isFree = fee === 'RM 0' || fee.toLowerCase() === 'free' || fee === 'N/A'
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold border ${
       isFree
-        ? 'bg-green-900/40 text-green-300 border-green-700/50'
-        : 'bg-[#3d3660] text-[#a78bfa] border-[#4c3d8f]'
+        ? 'bg-emerald-900/40 text-emerald-300 border-emerald-700/50'
+        : 'bg-primary-500/20 text-primary-300 border-primary-500/30'
     }`}>
       {fee}
     </span>
@@ -145,7 +133,7 @@ function FeeBadge({ fee }: { fee: string }) {
 
 function TimeBadge({ time }: { time: string }) {
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-[#6b6890] bg-[#221f35] border border-[#3d3660]">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs text-neutral-500 bg-white/[0.04] border border-white/[0.08]">
       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
@@ -155,19 +143,21 @@ function TimeBadge({ time }: { time: string }) {
 }
 
 function Part1Section({ section }: { section: StartupSection }) {
-  const icon = SECTION_ICONS[section.heading] ?? '📌'
   const isWarning = section.heading === 'Key Warnings'
   const isCapital = section.heading === 'Startup Capital'
   const isStructure = section.heading === 'Business Structure'
 
   return (
     <div className={`rounded-lg border p-4 ${
-      isWarning ? 'border-yellow-700/50 bg-yellow-900/10' : 'border-[#3d3660] bg-[#1e1b2e]'
+      isWarning ? 'border-amber-700/50 bg-amber-900/10' : 'border-white/[0.08] bg-white/[0.03]'
     }`}>
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-base">{icon}</span>
-          <h4 className={`text-sm font-semibold ${isWarning ? 'text-yellow-300' : 'text-white'}`}>
+          <span
+            className={`h-1.5 w-1.5 shrink-0 rounded-full ${isWarning ? 'bg-amber-400' : 'bg-primary-500'}`}
+            aria-hidden
+          />
+          <h4 className={`text-sm font-semibold ${isWarning ? 'text-amber-300' : 'text-white'}`}>
             {section.heading}
           </h4>
         </div>
@@ -175,7 +165,7 @@ function Part1Section({ section }: { section: StartupSection }) {
         {isStructure && section.liabilityStatus && (
           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
             section.liabilityStatus === 'LIMITED'
-              ? 'bg-green-900/40 text-green-300 border-green-700/50'
+              ? 'bg-emerald-900/40 text-emerald-300 border-emerald-700/50'
               : 'bg-orange-900/40 text-orange-300 border-orange-700/50'
           }`}>
             {section.liabilityStatus} Liability
@@ -187,14 +177,14 @@ function Part1Section({ section }: { section: StartupSection }) {
       {isCapital && (section.minimumStatutory || section.realisticEstimate) && (
         <div className="flex flex-wrap gap-2 mb-3">
           {section.minimumStatutory && (
-            <div className="flex flex-col rounded-lg bg-[#221f35] border border-[#3d3660] px-3 py-2">
-              <span className="text-[10px] text-[#6b6890] uppercase tracking-wide">Statutory Min.</span>
-              <span className="text-sm font-semibold text-[#a78bfa]">{section.minimumStatutory}</span>
+            <div className="flex flex-col rounded-lg bg-white/[0.04] border border-white/[0.08] px-3 py-2">
+              <span className="text-[10px] text-neutral-500 uppercase tracking-wide">Statutory Min.</span>
+              <span className="text-sm font-semibold text-primary-300">{section.minimumStatutory}</span>
             </div>
           )}
           {section.realisticEstimate && (
-            <div className="flex flex-col rounded-lg bg-[#221f35] border border-[#3d3660] px-3 py-2">
-              <span className="text-[10px] text-[#6b6890] uppercase tracking-wide">Realistic Est.</span>
+            <div className="flex flex-col rounded-lg bg-white/[0.04] border border-white/[0.08] px-3 py-2">
+              <span className="text-[10px] text-neutral-500 uppercase tracking-wide">Realistic Est.</span>
               <span className="text-sm font-semibold text-white">{section.realisticEstimate}</span>
             </div>
           )}
@@ -203,9 +193,9 @@ function Part1Section({ section }: { section: StartupSection }) {
 
       <ul className="space-y-1.5">
         {section.points.map((point, i) => (
-          <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
+          <li key={i} className="flex items-start gap-2 text-sm text-neutral-300">
             <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${
-              isWarning ? 'bg-yellow-500' : 'bg-[#7c3aed]'
+              isWarning ? 'bg-amber-500' : 'bg-primary-600'
             }`} />
             {point}
           </li>
@@ -219,45 +209,45 @@ function StepCard({ step }: { step: StartupStep }) {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="rounded-lg border border-[#3d3660] bg-[#1e1b2e] overflow-hidden">
+    <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#221f35] transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.04] transition-colors"
         aria-expanded={open}
       >
-        <span className="shrink-0 w-7 h-7 rounded-full bg-[#7c3aed] text-white text-xs font-bold flex items-center justify-center">
+        <span className="shrink-0 w-7 h-7 rounded-full bg-primary-600 text-white text-xs font-bold flex items-center justify-center">
           {step.stepNumber}
         </span>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-white truncate">{step.title}</p>
-          <p className="text-xs text-[#6b6890] truncate">{step.where}</p>
+          <p className="text-xs text-neutral-500 truncate">{step.where}</p>
         </div>
         <div className="hidden sm:flex items-center gap-2 shrink-0">
           <FeeBadge fee={step.fee} />
           <TimeBadge time={step.processingTime} />
         </div>
-        <svg className={`w-4 h-4 text-[#6b6890] shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+        <svg className={`w-4 h-4 text-neutral-500 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
           fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
       {open && (
-        <div className="px-4 pb-4 border-t border-[#3d3660] pt-3 space-y-3">
+        <div className="px-4 pb-4 border-t border-white/[0.08] pt-3 space-y-3">
           <div className="flex sm:hidden items-center gap-2 flex-wrap">
             <FeeBadge fee={step.fee} />
             <TimeBadge time={step.processingTime} />
           </div>
           <div>
-            <p className="text-xs text-[#6b6890] mb-1 uppercase tracking-wide">Where</p>
-            <p className="text-sm text-[#a78bfa]">{step.where}</p>
+            <p className="text-xs text-neutral-500 mb-1 uppercase tracking-wide">Where</p>
+            <p className="text-sm text-primary-300">{step.where}</p>
           </div>
           <div>
-            <p className="text-xs text-[#6b6890] mb-1 uppercase tracking-wide">Documents needed</p>
+            <p className="text-xs text-neutral-500 mb-1 uppercase tracking-wide">Documents needed</p>
             <ul className="space-y-1">
               {step.documents.map((doc, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
+                <li key={i} className="flex items-start gap-2 text-sm text-neutral-300">
                   <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#4c3d8f] shrink-0" />
                   {doc}
                 </li>
@@ -265,7 +255,7 @@ function StepCard({ step }: { step: StartupStep }) {
             </ul>
           </div>
           {step.note && (
-            <div className="rounded-lg bg-[#221f35] border border-[#3d3660] px-3 py-2 text-xs text-[#6b6890]">
+            <div className="rounded-lg bg-white/[0.04] border border-white/[0.08] px-3 py-2 text-xs text-neutral-500">
               📝 {step.note}
             </div>
           )}
@@ -277,11 +267,11 @@ function StepCard({ step }: { step: StartupStep }) {
 
 function IndustryLicenseCard({ license }: { license: IndustryLicense }) {
   return (
-    <div className="rounded-lg border border-[#3d3660] bg-[#1e1b2e] px-4 py-3 flex flex-col gap-2">
+    <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-3 flex flex-col gap-2">
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-sm font-medium text-white">{license.licenseName}</p>
-          <p className="text-xs text-[#6b6890]">{license.issuingBody}</p>
+          <p className="text-xs text-neutral-500">{license.issuingBody}</p>
         </div>
         <FeeBadge fee={license.fee} />
       </div>
@@ -291,7 +281,7 @@ function IndustryLicenseCard({ license }: { license: IndustryLicense }) {
             href={license.portal.startsWith('http') ? license.portal : `https://${license.portal}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-[#a78bfa] hover:underline truncate"
+            className="text-xs text-primary-300 hover:underline truncate"
           >
             {license.portal}
           </a>
@@ -326,7 +316,7 @@ function StartupGuideOutput({ guide }: { guide: StartupGuide }) {
       {/* Meta tags */}
       <div className="flex flex-wrap gap-2">
         {[guide.businessType, guide.businessStage, guide.location].map(tag => (
-          <span key={tag} className="px-2.5 py-1 rounded-full text-xs font-medium bg-[#221f35] border border-[#3d3660] text-[#a78bfa]">
+          <span key={tag} className="px-2.5 py-1 rounded-full text-xs font-medium bg-white/[0.04] border border-white/[0.08] text-primary-300">
             {tag}
           </span>
         ))}
@@ -338,25 +328,25 @@ function StartupGuideOutput({ guide }: { guide: StartupGuide }) {
       </div>
 
       {/* Tab bar */}
-      <div className="flex rounded-lg bg-[#221f35] p-1 gap-1">
+      <div className="flex rounded-lg bg-white/[0.04] p-1 gap-1">
         <button type="button" onClick={() => setActiveTab('part1')}
           className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
-            activeTab === 'part1' ? 'bg-[#7c3aed] text-white shadow' : 'text-[#6b6890] hover:text-white'
+            activeTab === 'part1' ? 'bg-primary-600 text-white shadow-sm' : 'text-neutral-500 hover:text-white'
           }`}>
-          📋 Before You Register
+          Before You Register
         </button>
         <button type="button" onClick={() => setActiveTab('part2')}
           className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
-            activeTab === 'part2' ? 'bg-[#7c3aed] text-white shadow' : 'text-[#6b6890] hover:text-white'
+            activeTab === 'part2' ? 'bg-primary-600 text-white shadow-sm' : 'text-neutral-500 hover:text-white'
           }`}>
-          ✅ Registration Checklist
+          Registration Checklist
         </button>
       </div>
 
       {/* Part 1 */}
       {activeTab === 'part1' && (
         <div className="flex flex-col gap-3">
-          <p className="text-xs text-[#6b6890] uppercase tracking-wide font-medium">{guide.part1.title}</p>
+          <p className="text-xs text-neutral-500 uppercase tracking-wide font-medium">{guide.part1.title}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {guide.part1.sections.map(section => (
               <Part1Section key={section.heading} section={section} />
@@ -368,7 +358,7 @@ function StartupGuideOutput({ guide }: { guide: StartupGuide }) {
       {/* Part 2 */}
       {activeTab === 'part2' && (
         <div className="flex flex-col gap-4">
-          <p className="text-xs text-[#6b6890] uppercase tracking-wide font-medium">{guide.part2.title}</p>
+          <p className="text-xs text-neutral-500 uppercase tracking-wide font-medium">{guide.part2.title}</p>
 
           {/* Steps */}
           <div className="flex flex-col gap-2">
@@ -378,12 +368,12 @@ function StartupGuideOutput({ guide }: { guide: StartupGuide }) {
           </div>
 
           {/* Local authority license */}
-          <div className="rounded-lg border border-[#3d3660] bg-[#1e1b2e] p-4 space-y-3">
-            <p className="text-xs text-[#6b6890] uppercase tracking-wide font-medium">Local Authority License</p>
+          <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+            <p className="text-xs text-neutral-500 uppercase tracking-wide font-medium">Local Authority License</p>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-white">{guide.part2.localAuthorityLicense.license}</p>
-                <p className="text-xs text-[#6b6890]">{guide.part2.localAuthorityLicense.council}</p>
+                <p className="text-xs text-neutral-500">{guide.part2.localAuthorityLicense.council}</p>
                 {guide.part2.localAuthorityLicense.portal && (
                   <a
                     href={guide.part2.localAuthorityLicense.portal.startsWith('http')
@@ -391,7 +381,7 @@ function StartupGuideOutput({ guide }: { guide: StartupGuide }) {
                       : `https://${guide.part2.localAuthorityLicense.portal}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-[#a78bfa] hover:underline"
+                    className="text-xs text-primary-300 hover:underline"
                   >
                     {guide.part2.localAuthorityLicense.portal}
                   </a>
@@ -409,7 +399,7 @@ function StartupGuideOutput({ guide }: { guide: StartupGuide }) {
           {/* Industry licenses */}
           {!noLicenses && (
             <div className="flex flex-col gap-2">
-              <p className="text-xs text-[#6b6890] uppercase tracking-wide font-medium">Industry-Specific Licenses</p>
+              <p className="text-xs text-neutral-500 uppercase tracking-wide font-medium">Industry-Specific Licenses</p>
               {industryLicenses.map(lic => (
                 <IndustryLicenseCard key={lic.licenseName} license={lic} />
               ))}
@@ -417,8 +407,8 @@ function StartupGuideOutput({ guide }: { guide: StartupGuide }) {
           )}
 
           {/* Tax registration */}
-          <div className="rounded-lg border border-[#3d3660] bg-[#1e1b2e] p-4 space-y-2">
-            <p className="text-xs text-[#6b6890] uppercase tracking-wide font-medium">Tax & SST</p>
+          <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-4 space-y-2">
+            <p className="text-xs text-neutral-500 uppercase tracking-wide font-medium">Tax & SST</p>
             {taxReg ? (
               <div className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
@@ -426,28 +416,27 @@ function StartupGuideOutput({ guide }: { guide: StartupGuide }) {
                   <FeeBadge fee={taxReg.fee} />
                 </div>
                 <a href={`https://${taxReg.portal}`} target="_blank" rel="noopener noreferrer"
-                  className="text-xs text-[#a78bfa] hover:underline">{taxReg.portal}</a>
-                <p className="text-xs text-gray-400">Form: {taxReg.form} · {taxReg.timeline}</p>
+                  className="text-xs text-primary-300 hover:underline">{taxReg.portal}</a>
+                <p className="text-xs text-neutral-400">Form: {taxReg.form} · {taxReg.timeline}</p>
               </div>
             ) : (
-              <p className="text-sm text-gray-300">{guide.part2.taxRegistration as string}</p>
+              <p className="text-sm text-neutral-300">{guide.part2.taxRegistration as string}</p>
             )}
-            <div className="pt-2 border-t border-[#3d3660]">
-              <p className="text-xs text-[#6b6890] mb-1">SST Registration</p>
-              <p className="text-sm text-gray-300">{guide.part2.sstRegistration}</p>
+            <div className="pt-2 border-t border-white/[0.08]">
+              <p className="text-xs text-neutral-500 mb-1">SST Registration</p>
+              <p className="text-sm text-neutral-300">{guide.part2.sstRegistration}</p>
             </div>
           </div>
         </div>
       )}
 
       {/* Stage note */}
-      <div className="rounded-lg border border-[#4c3d8f]/50 bg-[#7c3aed]/10 px-4 py-3 flex items-start gap-2">
-        <span className="text-base shrink-0">💡</span>
-        <p className="text-sm text-[#c4b5fd]">{guide.stageNote}</p>
+      <div className="rounded-lg border border-primary-500/30 bg-primary-500/10 px-4 py-3">
+        <p className="text-sm text-primary-200">{guide.stageNote}</p>
       </div>
 
       {/* Disclaimer */}
-      <p className="text-xs text-[#6b6890] text-center">{guide.disclaimer}</p>
+      <p className="text-xs text-neutral-500 text-center">{guide.disclaimer}</p>
     </div>
   )
 }
@@ -457,20 +446,21 @@ function StartupGuideOutput({ guide }: { guide: StartupGuide }) {
 function IdlePlaceholder() {
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm text-[#6b6890]">
-        Fill in <span className="text-[#a78bfa] font-medium">Company Name, Industry, City, Business Stage</span> and{' '}
-        <span className="text-[#a78bfa] font-medium">Business Type</span> to generate your personalised startup guide.
+      <p className="text-sm text-neutral-500">
+        Fill in <span className="text-primary-300 font-medium">Company Name, Industry, City, Business Stage</span> and{' '}
+        <span className="text-primary-300 font-medium">Business Type</span> to generate your personalised startup guide.
       </p>
       <div className="grid grid-cols-2 gap-2">
         {[
-          '🏢 Business structure & liability',
-          '💰 Startup capital estimate',
-          '📋 Step-by-step registration',
-          '🏦 Banking & funding options',
-          '👥 EPF, SOCSO, EIS obligations',
-          '⚠️ Compliance warnings',
+          'Business structure & liability',
+          'Startup capital estimate',
+          'Step-by-step registration',
+          'Banking & funding options',
+          'EPF, SOCSO, EIS obligations',
+          'Compliance warnings',
         ].map(item => (
-          <div key={item} className="flex items-center gap-2 text-xs text-[#6b6890] bg-[#1e1b2e] rounded-lg px-3 py-2 border border-[#3d3660]">
+          <div key={item} className="flex items-center gap-2 text-xs text-neutral-500 bg-white/[0.03] rounded-lg px-3 py-2 border border-white/[0.08]">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary-500/70" aria-hidden />
             {item}
           </div>
         ))}

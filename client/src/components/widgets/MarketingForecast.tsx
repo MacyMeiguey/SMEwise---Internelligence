@@ -159,8 +159,8 @@ function normalizeExecutiveSummary(
   };
 }
 
-const PHASE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#f43f5e'];
-const CHANNEL_COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#f43f5e', '#06b6d4', '#ec4899'];
+const PHASE_COLORS = ['#10b981', '#7c3aed', '#f59e0b', '#f43f5e'];
+const CHANNEL_COLORS = ['#7c3aed', '#14b8a6', '#10b981', '#f59e0b', '#f43f5e', '#0ea5e9', '#fb7185'];
 
 const PERF_STYLES: Record<string, { bg: string; text: string; border: string }> = {
   "Above Average": { bg: "bg-emerald-50 dark:bg-emerald-950/30", text: "text-emerald-700 dark:text-emerald-200", border: "border-emerald-300 dark:border-emerald-600/50" },
@@ -171,13 +171,13 @@ const PERF_STYLES: Record<string, { bg: string; text: string; border: string }> 
 // Shared tooltip styling — dark background with white text so it's readable
 // on both light and dark themes.
 const TOOLTIP_STYLE = {
-  contentStyle: { backgroundColor: '#1e1b2e', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8 },
-  labelStyle: { color: '#e2e8f0', fontWeight: 600, marginBottom: 4 },
-  itemStyle: { color: '#e2e8f0' },
+  contentStyle: { backgroundColor: '#171717', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8 },
+  labelStyle: { color: '#e5e5e5', fontWeight: 600, marginBottom: 4 },
+  itemStyle: { color: '#e5e5e5' },
 };
 
 // Axis tick styling — white-ish text readable on dark backgrounds.
-const AXIS_TICK = { fontSize: 11, fill: '#cbd5e1' };
+const AXIS_TICK = { fontSize: 11, fill: '#a3a3a3' };
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 
@@ -283,12 +283,12 @@ export default function MarketingForecastView({ forecast }: { forecast: Marketin
         <SectionHeading>Executive Summary</SectionHeading>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <StatCard label="Projected Growth" value={clampGrowthPct(computedGrowthPct)} sub="total growth" color="#10b981" />
-          <StatCard label="Total Revenue" value={fmtRM(clampRevenue(exec.projectedTotalRevenue, totalBudget))} sub="projected" color="#3b82f6" />
-          <StatCard label="New Clients" value={fmt(exec.projectedTotalNewClients)} sub="total acquired" color="#8b5cf6" />
+          <StatCard label="Total Revenue" value={fmtRM(clampRevenue(exec.projectedTotalRevenue, totalBudget))} sub="projected" color="#7c3aed" />
+          <StatCard label="New Clients" value={fmt(exec.projectedTotalNewClients)} sub="total acquired" color="#a78bfa" />
           <StatCard label="Est. CAC" value={fmtRM(exec.estimatedCAC)} sub="cost per acquisition" color="#f59e0b" />
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
-          <StatCard label="Avg Monthly Success" value={`${avgMonthlySuccess}%`} color="#3b82f6" />
+          <StatCard label="Avg Monthly Success" value={`${avgMonthlySuccess}%`} color="#7c3aed" />
           <StatCard label="Estimated ROI" value={roiPct(exec.projectedTotalRevenue, totalBudget)} color="#10b981" />
           <ConfidenceBar value={exec.forecastConfidence} />
         </div>
@@ -320,8 +320,8 @@ export default function MarketingForecastView({ forecast }: { forecast: Marketin
             <YAxis tick={AXIS_TICK} />
             <Tooltip {...TOOLTIP_STYLE} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Line type="monotone" dataKey="newClients" name="New Clients" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
-            <Line type="monotone" dataKey="cumulativeClients" name="Cumulative" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="5 3" dot={{ r: 2 }} />
+            <Line type="monotone" dataKey="newClients" name="New Clients" stroke="#7c3aed" strokeWidth={2} dot={{ r: 3 }} />
+            <Line type="monotone" dataKey="cumulativeClients" name="Cumulative" stroke="#a78bfa" strokeWidth={2} strokeDasharray="5 3" dot={{ r: 2 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -337,7 +337,7 @@ export default function MarketingForecastView({ forecast }: { forecast: Marketin
             <YAxis yAxisId="right" orientation="right" tick={AXIS_TICK} tickFormatter={(v) => `${v}%`} />
             <Tooltip {...TOOLTIP_STYLE} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Line yAxisId="left" type="monotone" dataKey="reach" name="Reach (K)" stroke="#a855f7" strokeWidth={2} dot={{ r: 3 }} />
+            <Line yAxisId="left" type="monotone" dataKey="reach" name="Reach (K)" stroke="#7c3aed" strokeWidth={2} dot={{ r: 3 }} />
             <Line yAxisId="right" type="monotone" dataKey="growthRate" name="Growth %" stroke="#10b981" strokeWidth={2} strokeDasharray="4 2" dot={{ r: 2 }} />
           </LineChart>
         </ResponsiveContainer>
@@ -417,7 +417,7 @@ export default function MarketingForecastView({ forecast }: { forecast: Marketin
               <p className="text-xs font-semibold text-primary-600 dark:text-primary-300">→ {funnelMetrics.impressionToLeadRate}%</p>
             </div>
             <div className="text-center">
-              <p className="text-lg font-bold text-blue-600 dark:text-blue-300">{fmt(funnelMetrics.totalLeads)}</p>
+              <p className="text-lg font-bold text-primary-600 dark:text-primary-300">{fmt(funnelMetrics.totalLeads)}</p>
               <p className="text-[10px] text-neutral-500">Leads</p>
             </div>
             <div className="text-center hidden sm:block">

@@ -1,24 +1,25 @@
-# syntax=docker/dockerfile:1.6
-
 # ─── Stage 1: build ──────────────────────────────────────────────────────────
-FROM node:20-alpine AS build
+FROM public.ecr.aws/docker/library/node:22-alpine AS build
 WORKDIR /app
 
 # Install deps (including dev deps needed for tsc)
-COPY package*.json ./
-RUN npm ci
+COPY package.json package-lock.json ./
+COPY client/package.json ./client/package.json
+COPY server/package.json ./server/package.json
+RUN npm ci --workspace=server --include-workspace-root=false --ignore-scripts
 
 # Compile TypeScript
-COPY tsconfig.json ./
-COPY src ./src
-RUN npm run build
+COPY server/tsconfig.json ./server/tsconfig.json
+COPY server/src ./server/src
+RUN npm run build --workspace=server
 
 # Drop dev deps so we copy a lean node_modules to the runtime stage
-RUN npm prune --omit=dev
+RUN npm prune --workspace=server --include-workspace-root=false --omit=dev --ignore-scripts \
+    && mkdir -p /app/server/node_modules
 
 # ─── Stage 2: runtime ────────────────────────────────────────────────────────
-FROM node:20-alpine AS runtime
-WORKDIR /app
+FROM public.ecr.aws/docker/library/node:22-alpine AS runtime
+WORKDIR /app/server
 
 ENV NODE_ENV=production
 ENV PORT=3001
@@ -26,9 +27,10 @@ ENV PORT=3001
 # Run as non-root for a smaller blast radius
 RUN addgroup -S smewise && adduser -S smewise -G smewise
 
-COPY --from=build --chown=smewise:smewise /app/node_modules ./node_modules
-COPY --from=build --chown=smewise:smewise /app/dist ./dist
-COPY --chown=smewise:smewise package.json ./
+COPY --from=build --chown=smewise:smewise /app/node_modules /app/node_modules
+COPY --from=build --chown=smewise:smewise /app/server/node_modules ./node_modules
+COPY --from=build --chown=smewise:smewise /app/server/dist ./dist
+COPY --chown=smewise:smewise server/package.json ./
 
 USER smewise
 

@@ -185,7 +185,7 @@ function Megaphone(props: PlacementProps) {
     <group ref={ref} rotation={[0, 0, -0.4]}>
       <mesh position={[-0.45, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.09, 0.09, 0.45, 24]} />
-        <meshStandardMaterial color="#1f2937" roughness={0.5} metalness={0.3} />
+        <meshStandardMaterial color="#171717" roughness={0.5} metalness={0.3} />
       </mesh>
       <mesh position={[0.15, 0, 0]} rotation={[0, 0, -Math.PI / 2]}>
         <coneGeometry args={[0.45, 0.85, 32, 1, true]} />
@@ -227,7 +227,7 @@ function BarChart(props: PlacementProps) {
   useFloater(ref, props);
   const bars: { h: number; color: ColorRepresentation; x: number }[] = [
     { h: 0.45, color: '#a78bfa', x: -0.4 },
-    { h: 0.75, color: '#38bdf8', x:  0.0 },
+    { h: 0.75, color: '#14b8a6', x:  0.0 },
     { h: 1.05, color: '#34d399', x:  0.4 },
   ];
   return (

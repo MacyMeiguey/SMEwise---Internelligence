@@ -163,7 +163,7 @@ function SchemeCard({
       <div className="flex items-start justify-between gap-2">
         <span className="text-sm font-semibold text-neutral-200 leading-snug">{name}</span>
         {badge && (
-          <span className="shrink-0 rounded-full border border-primary-500/30 bg-primary-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary-300">
+          <span className="shrink-0 rounded-md border border-primary-500/30 bg-primary-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary-300">
             {badge}
           </span>
         )}
@@ -215,7 +215,7 @@ function LoansPlanView({ plan }: { plan: LoansFundingPlan }) {
           style={{ animationDelay: "60ms" }}
         >
           <div className="flex items-start gap-3">
-            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-400/20 border border-amber-400/30">
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-400/20 border border-amber-400/30">
               <Star className="h-4 w-4 text-amber-300" aria-hidden />
             </span>
             <div className="min-w-0 space-y-1">

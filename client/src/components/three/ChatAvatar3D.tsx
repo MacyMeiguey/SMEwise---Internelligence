@@ -62,7 +62,7 @@ function StaticAvatar({ size, speaking }: { size: number; speaking: boolean }) {
   // SVG mirror of the 3D mascot: round face, glasses, smile, lavender shirt collar.
   return (
     <div
-      className="relative grid place-items-center rounded-2xl border-2 border-neutral-950 bg-gradient-to-br from-primary-100 to-primary-300 shrink-0 overflow-hidden"
+      className="relative grid place-items-center rounded-xl border border-primary-300/60 bg-gradient-to-br from-primary-100 to-primary-300 shrink-0 overflow-hidden"
       style={{ width: size, height: size }}
       aria-hidden
     >
@@ -121,7 +121,7 @@ export default function ChatAvatar3D({
 
   return (
     <div
-      className={`relative shrink-0 ${borderless ? 'overflow-visible' : 'rounded-2xl border-2 border-neutral-950 bg-neutral-950 overflow-hidden shadow-hard-sm'} ${className}`}
+      className={`relative shrink-0 ${borderless ? 'overflow-visible' : 'rounded-xl border border-primary-500/40 bg-neutral-950 overflow-hidden shadow-sm'} ${className}`}
       style={{ width: size, height: size }}
       aria-hidden
     >

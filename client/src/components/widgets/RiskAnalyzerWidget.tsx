@@ -161,7 +161,7 @@ const OVERALL_RATING_STYLE: Record<string, { border: string; bg: string; text: s
 
 const CAPITAL_PILL: Record<string, string> = {
   "Comfortable": "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30",
-  "Manageable":  "bg-blue-500/20 text-blue-300 border border-blue-500/30",
+  "Manageable":  "bg-primary-500/20 text-primary-300 border border-primary-500/30",
   "Tight":       "bg-amber-500/20 text-amber-300 border border-amber-500/30",
   "High Risk":   "bg-red-500/20 text-red-300 border border-red-500/30",
 };
@@ -169,7 +169,7 @@ const CAPITAL_PILL: Record<string, string> = {
 const APPLICABILITY_PILL: Record<string, string> = {
   "Mandatory":             "bg-red-500/20 text-red-300 border border-red-500/30",
   "Conditional":           "bg-amber-500/20 text-amber-300 border border-amber-500/30",
-  "Optional":              "bg-blue-500/20 text-blue-300 border border-blue-500/30",
+  "Optional":              "bg-primary-500/20 text-primary-300 border border-primary-500/30",
   "Confirm applicability": "bg-neutral-500/20 text-neutral-300 border border-neutral-500/30",
 };
 
@@ -182,7 +182,7 @@ function RiskCard({ risk, isOpen, onToggle }: {
   const fixIt = arr(risk.fixIt);
 
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white min-w-0 overflow-hidden hover:-translate-y-0.5 transition-transform duration-200 dark:border-white/[0.08] dark:bg-[#1a1728]">
+    <div className="rounded-xl border border-neutral-200 bg-white min-w-0 overflow-hidden hover:-translate-y-0.5 transition-transform duration-200 dark:border-white/[0.08] dark:bg-[#101018]">
       {/* Header row — always visible */}
       <button
         type="button"
@@ -201,7 +201,7 @@ function RiskCard({ risk, isOpen, onToggle }: {
             </span>
           </div>
           {ok(risk.category) && (
-            <p className="text-xs text-neutral-400 dark:text-[#6b6890] break-words">{risk.category}</p>
+            <p className="text-xs text-neutral-400 dark:text-neutral-500 break-words">{risk.category}</p>
           )}
           {/* Severity bar */}
           <div className="mt-2 w-full h-1 rounded-full bg-neutral-100 dark:bg-white/[0.08] overflow-hidden">
@@ -224,14 +224,14 @@ function RiskCard({ risk, isOpen, onToggle }: {
           )}
           {ok(risk.whyItApplies) && (
             <div>
-              <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-[#6b6890] mb-1">Why It Applies</p>
+              <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-neutral-500 mb-1">Why It Applies</p>
               <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">{risk.whyItApplies}</p>
             </div>
           )}
           {/* If Ignored — styled like the ⚠ Watch Out block in CompetitorPricing */}
           {ok(risk.ifIgnored) && (
             <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 flex gap-2.5 dark:border-amber-500/30 dark:bg-amber-500/10">
-              <span className="text-amber-500 dark:text-amber-400 shrink-0 text-sm">⚠</span>
+              <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-amber-400" aria-hidden></span>
               <div>
                 <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-widest mb-0.5">If Ignored</p>
                 <p className="text-xs text-amber-800 dark:text-amber-200/80 leading-relaxed">{risk.ifIgnored}</p>
@@ -241,7 +241,7 @@ function RiskCard({ risk, isOpen, onToggle }: {
           {/* Fix it steps */}
           {fixIt.length > 0 && (
             <div>
-              <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-[#6b6890] mb-2">✓ How to Fix It</p>
+              <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-neutral-500 mb-2">How to Fix It</p>
               <ol className="space-y-1.5">
                 {fixIt.map((step, i) => (
                   <li key={i} className="flex items-start gap-2 text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">
@@ -281,17 +281,17 @@ function RiskResult({ plan }: { plan: RiskPlan }) {
       {/* ── Stat boxes (mirrors SmartPricing overview grid) ── */}
       <div className="grid grid-cols-3 gap-2 min-w-0">
         <div className={`rounded-xl border p-2.5 min-w-0 col-span-1 ${ratingStyle.border} ${ratingStyle.bg}`}>
-          <p className="text-[10px] text-neutral-400 dark:text-[#6b6890] mb-1 uppercase tracking-widest font-medium">Overall</p>
+          <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mb-1 uppercase tracking-widest font-medium">Overall</p>
           <p className={`text-base font-extrabold leading-tight ${ratingStyle.text}`}>{str(summary?.overallRating)}</p>
         </div>
         {health && ok(health.capitalPosition) && (
-          <div className="rounded-xl border border-neutral-200 bg-white p-2.5 min-w-0 dark:border-white/[0.08] dark:bg-[#1a1728]">
-            <p className="text-[10px] text-neutral-400 dark:text-[#6b6890] mb-1 uppercase tracking-widest font-medium">Capital</p>
+          <div className="rounded-xl border border-neutral-200 bg-white p-2.5 min-w-0 dark:border-white/[0.08] dark:bg-[#101018]">
+            <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mb-1 uppercase tracking-widest font-medium">Capital</p>
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${capPill}`}>{health.capitalPosition}</span>
           </div>
         )}
-        <div className="rounded-xl border border-neutral-200 bg-white p-2.5 min-w-0 dark:border-white/[0.08] dark:bg-[#1a1728]">
-          <p className="text-[10px] text-neutral-400 dark:text-[#6b6890] mb-1 uppercase tracking-widest font-medium">Risks Found</p>
+        <div className="rounded-xl border border-neutral-200 bg-white p-2.5 min-w-0 dark:border-white/[0.08] dark:bg-[#101018]">
+          <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mb-1 uppercase tracking-widest font-medium">Risks Found</p>
           <p className="text-base font-extrabold text-neutral-900 dark:text-white leading-tight">{plan.risks?.length ?? 0}</p>
         </div>
       </div>
@@ -300,7 +300,7 @@ function RiskResult({ plan }: { plan: RiskPlan }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {ok(summary?.biggestThreatNow) && (
           <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 flex gap-3 dark:border-amber-500/30 dark:bg-amber-500/10">
-            <span className="text-amber-500 dark:text-amber-400 shrink-0 text-base">⚠</span>
+            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-400" aria-hidden></span>
             <div>
               <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-0.5">Biggest Threat Now</p>
               <p className="text-xs text-amber-800 dark:text-amber-200/80 leading-relaxed">{summary.biggestThreatNow}</p>
@@ -308,11 +308,11 @@ function RiskResult({ plan }: { plan: RiskPlan }) {
           </div>
         )}
         {ok(summary?.quickWin) && (
-          <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 flex gap-3 dark:border-[#7c3aed]/30 dark:bg-[#7c3aed]/10">
-            <span className="text-blue-600 dark:text-[#a78bfa] shrink-0 text-base">⚡</span>
+          <div className="rounded-xl border border-primary-200 bg-primary-50 p-4 flex gap-3 dark:border-primary-500/30 dark:bg-primary-500/10">
+            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary-400" aria-hidden></span>
             <div>
-              <p className="text-xs font-semibold text-blue-700 dark:text-[#a78bfa] mb-0.5">Quick Win</p>
-              <p className="text-xs text-blue-800 dark:text-[#a78bfa]/80 leading-relaxed">{summary.quickWin}</p>
+              <p className="text-xs font-semibold text-primary-700 dark:text-primary-300 mb-0.5">Quick Win</p>
+              <p className="text-xs text-primary-800 dark:text-primary-300/80 leading-relaxed">{summary.quickWin}</p>
             </div>
           </div>
         )}
@@ -322,7 +322,7 @@ function RiskResult({ plan }: { plan: RiskPlan }) {
       {plan.risks?.length > 0 && (
         <>
           <div className="flex flex-wrap items-center justify-between gap-2 -mb-3">
-            <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-[#6b6890]">
+            <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-neutral-500">
               Risks Identified
             </p>
             {/* Level count chips */}
@@ -354,19 +354,19 @@ function RiskResult({ plan }: { plan: RiskPlan }) {
       {/* ── Next Actions (mirrors Bottom Line block style) ── */}
       {nextA.length > 0 && (
         <>
-          <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-[#6b6890] -mb-3">
+          <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-neutral-500 -mb-3">
             Next Actions
           </p>
           <div className="flex flex-col gap-2">
             {nextA.map((action, i) => (
-              <div key={i} className="rounded-xl border border-neutral-200 bg-white p-3 flex items-start gap-3 dark:border-white/[0.08] dark:bg-[#1a1728]">
+              <div key={i} className="rounded-xl border border-neutral-200 bg-white p-3 flex items-start gap-3 dark:border-white/[0.08] dark:bg-[#101018]">
                 <span className="shrink-0 w-5 h-5 rounded-full bg-primary-500/20 border border-primary-500/30 text-primary-300 flex items-center justify-center text-[10px] font-bold mt-0.5">
                   {action.priority ?? i + 1}
                 </span>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-neutral-900 dark:text-white leading-snug break-words">{str(action.action)}</p>
                   {ok(action.reason) && (
-                    <p className="text-xs text-neutral-400 dark:text-[#6b6890] mt-0.5 leading-relaxed">{action.reason}</p>
+                    <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5 leading-relaxed">{action.reason}</p>
                   )}
                 </div>
               </div>
@@ -378,20 +378,20 @@ function RiskResult({ plan }: { plan: RiskPlan }) {
       {/* ── Regulatory Checklist ── */}
       {regC.length > 0 && (
         <>
-          <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-[#6b6890] -mb-3">
+          <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-neutral-500 -mb-3">
             Regulatory Checklist
           </p>
           <div className="flex flex-col gap-2">
             {regC.map((item, i) => {
               const appPill = APPLICABILITY_PILL[item.applicability] ?? APPLICABILITY_PILL["Confirm applicability"];
               return (
-                <div key={i} className="rounded-xl border border-neutral-200 bg-white p-3 dark:border-white/[0.08] dark:bg-[#1a1728]">
+                <div key={i} className="rounded-xl border border-neutral-200 bg-white p-3 dark:border-white/[0.08] dark:bg-[#101018]">
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <span className="font-semibold text-neutral-900 dark:text-white text-sm leading-snug min-w-0 break-words">{str(item.item)}</span>
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap ${appPill}`}>{str(item.applicability)}</span>
                   </div>
                   {ok(item.authority) && (
-                    <p className="text-xs text-neutral-400 dark:text-[#6b6890] mb-1.5">{item.authority}</p>
+                    <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-1.5">{item.authority}</p>
                   )}
                   {ok(item.action) && (
                     <p className="text-xs text-emerald-600 dark:text-emerald-400 leading-relaxed">
@@ -400,7 +400,7 @@ function RiskResult({ plan }: { plan: RiskPlan }) {
                   )}
                   {ok(item.portal) && (
                     <a href={str(item.portal)} target="_blank" rel="noopener noreferrer"
-                      className="inline-block mt-1 text-xs text-violet-600 dark:text-violet-300 underline underline-offset-2 break-words">
+                      className="inline-block mt-1 text-xs text-primary-600 dark:text-primary-300 underline underline-offset-2 break-words">
                       Apply here ↗
                     </a>
                   )}
@@ -413,8 +413,8 @@ function RiskResult({ plan }: { plan: RiskPlan }) {
 
       {/* ── Advisor Context (collapsed in a bottom-line style box) ── */}
       {plan.advisorAnalysis && (ok(plan.advisorAnalysis.businessActivityAssumption) || focus.length > 0) && (
-        <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-white/[0.08] dark:bg-[#1a1728]">
-          <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-[#6b6890] mb-2">Advisor Context</p>
+        <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-white/[0.08] dark:bg-[#101018]">
+          <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-neutral-500 mb-2">Advisor Context</p>
           {ok(plan.advisorAnalysis.businessActivityAssumption) && (
             <p className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed mb-2">{plan.advisorAnalysis.businessActivityAssumption}</p>
           )}
@@ -435,7 +435,7 @@ function RiskResult({ plan }: { plan: RiskPlan }) {
 
       {ok(plan.disclaimer) && (
         <div className="border-t border-neutral-200 dark:border-white/[0.08] pt-3">
-          <p className="text-xs text-neutral-400 dark:text-[#6b6890] leading-relaxed italic">{plan.disclaimer}</p>
+          <p className="text-xs text-neutral-400 dark:text-neutral-500 leading-relaxed italic">{plan.disclaimer}</p>
         </div>
       )}
     </div>

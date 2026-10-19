@@ -116,7 +116,7 @@ export default function AdvisorShowcase({ onTryAdvisor }: AdvisorShowcaseProps) 
           {/* LEFT — mascot stage */}
           <div className="lg:col-span-5 relative">
             <div
-              className="relative aspect-square max-w-md mx-auto rounded-[2rem] border border-white/[0.1] bg-gradient-to-br from-primary-950/30 via-neutral-900 to-[#07070b] overflow-hidden shadow-panel"
+              className="relative aspect-square max-w-md mx-auto rounded-xl border border-white/[0.1] bg-gradient-to-br from-primary-950/30 via-neutral-900 to-[#07070b] overflow-hidden"
             >
               {/* glow under mascot */}
               <span
@@ -181,7 +181,7 @@ export default function AdvisorShowcase({ onTryAdvisor }: AdvisorShowcaseProps) 
               {SAMPLE_CHATS.map(({ q, a, delay }) => (
                 <div
                   key={q}
-                className="rounded-2xl border border-white/[0.1] bg-white/[0.03] backdrop-blur-md px-5 py-4 shadow-panel motion-safe:animate-fade-up"
+                className="rounded-xl border border-white/[0.1] bg-white/[0.03] backdrop-blur-md px-5 py-4 motion-safe:animate-fade-up"
                   style={{ animationDelay: `${delay}ms`, animationFillMode: 'backwards' }}
                 >
                   <p className="text-sm font-semibold text-primary-200 flex items-start gap-2">
@@ -204,7 +204,7 @@ export default function AdvisorShowcase({ onTryAdvisor }: AdvisorShowcaseProps) 
               <button
                 type="button"
                 onClick={onTryAdvisor}
-                className="mt-8 inline-flex items-center gap-2 rounded-xl bg-primary-600 hover:bg-primary-500 px-6 py-3 text-sm font-semibold text-white border border-white/[0.1] shadow-panel focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950"
+                className="mt-8 inline-flex items-center gap-2 rounded-xl bg-primary-600 hover:bg-primary-500 px-6 py-3 text-sm font-semibold text-white border border-white/[0.1] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950"
               >
                 Try the advisor · free <ArrowRight className="h-4 w-4" aria-hidden />
               </button>

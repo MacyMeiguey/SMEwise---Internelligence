@@ -144,7 +144,7 @@ function MarketingOrb() {
       {/* Megaphone handle */}
       <mesh position={[-0.5,0,0]} rotation={[0,0,Math.PI/2]}>
         <cylinderGeometry args={[0.1,0.1,0.5,24]}/>
-        <meshStandardMaterial color="#1f2937" metalness={0.5} roughness={0.3}/>
+        <meshStandardMaterial color="#171717" metalness={0.5} roughness={0.3}/>
       </mesh>
       {/* Cone */}
       <mesh position={[0.2,0,0]} rotation={[0,0,-Math.PI/2]}>
@@ -155,12 +155,12 @@ function MarketingOrb() {
       {[0,1,2].map(i=>(
         <mesh key={i} ref={el=>{ if(el) rings.current[i]=el; }} position={[0.75,0,0]} rotation={[0,Math.PI/2,0]}>
           <torusGeometry args={[0.3+i*0.2,0.02,8,32]}/>
-          <meshStandardMaterial color="#38bdf8" emissive="#38bdf8" emissiveIntensity={0.5} transparent opacity={0.5}/>
+          <meshStandardMaterial color="#14b8a6" emissive="#14b8a6" emissiveIntensity={0.5} transparent opacity={0.5}/>
         </mesh>
       ))}
       <mesh rotation={[Math.PI/2,0,0]}>
         <torusGeometry args={[1.3,0.025,8,64]}/>
-        <meshStandardMaterial color="#38bdf8" emissive="#38bdf8" emissiveIntensity={0.4} transparent opacity={0.5}/>
+        <meshStandardMaterial color="#14b8a6" emissive="#14b8a6" emissiveIntensity={0.4} transparent opacity={0.5}/>
       </mesh>
     </group>
   );
@@ -180,7 +180,7 @@ function OwnerOrb() {
       {[0,1,2].map(i=>(
         <mesh key={i} position={[i*0.06-0.06, i*0.06-0.06, i*0.04-0.04]}>
           <boxGeometry args={[0.9,1.1,0.06]}/>
-          <meshStandardMaterial color={i===2?"#ffffff":"#e2e8f0"} roughness={0.7} metalness={0.05} emissive={i===2?"#c4b5fd":"#a78bfa"} emissiveIntensity={i===2?0.15:0.05}/>
+          <meshStandardMaterial color={i===2?"#ffffff":"#e5e5e5"} roughness={0.7} metalness={0.05} emissive={i===2?"#c4b5fd":"#a78bfa"} emissiveIntensity={i===2?0.15:0.05}/>
         </mesh>
       ))}
       {/* Lines on top doc */}

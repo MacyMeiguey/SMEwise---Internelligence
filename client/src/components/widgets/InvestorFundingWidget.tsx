@@ -286,10 +286,10 @@ function InvestorFundingView({ plan }: { plan: InvestorFundingPlan }) {
         icon={<Users className="h-4 w-4" />}
         label="Angel Investors & VC"
         description="Equity investors who provide capital in exchange for ownership — suitable for high-growth startups seeking scale."
-        iconColour="text-violet-300"
-        borderColour="border-violet-500/20 hover:border-violet-400/40"
+        iconColour="text-primary-300"
+        borderColour="border-primary-500/20 hover:border-primary-400/40"
         badgeLabel="Investor"
-        badgeColour="border-violet-500/30 bg-violet-500/10 text-violet-300"
+        badgeColour="border-primary-500/30 bg-primary-500/10 text-primary-300"
         items={plan.investors}
         baseDelay={260}
       />
@@ -299,10 +299,10 @@ function InvestorFundingView({ plan }: { plan: InvestorFundingPlan }) {
         icon={<Rocket className="h-4 w-4" />}
         label="Accelerators & Crowdfunding"
         description="Structured programs offering mentorship, networks, and funding — plus community-backed crowdfunding platforms."
-        iconColour="text-blue-300"
-        borderColour="border-blue-500/20 hover:border-blue-400/40"
+        iconColour="text-teal-300"
+        borderColour="border-teal-500/20 hover:border-teal-400/40"
         badgeLabel="Program"
-        badgeColour="border-blue-500/30 bg-blue-500/10 text-blue-300"
+        badgeColour="border-teal-500/30 bg-teal-500/10 text-teal-300"
         items={plan.accelerators}
         baseDelay={400}
       />

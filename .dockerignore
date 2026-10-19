@@ -1,0 +1,14 @@
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+**/*.log
+.git
+.aws
+.codex
+.agents
+docs
+client/public
+client/src
+scripts
+deployment

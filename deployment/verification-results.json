@@ -1,0 +1,46 @@
+{
+  "checkedAt": "2026-10-19T13:50:02.329Z",
+  "website": "https://df9kx3mn95m8a.cloudfront.net",
+  "results": [
+    {
+      "name": "Homepage",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "Direct navigation",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "API health",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "API missing route",
+      "status": 404,
+      "passed": true
+    },
+    {
+      "name": "API validation",
+      "status": 400,
+      "passed": true
+    },
+    {
+      "name": "JavaScript asset",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "Bedrock text generation",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "AgentCore advisor stream",
+      "status": 200,
+      "passed": true
+    }
+  ]
+}

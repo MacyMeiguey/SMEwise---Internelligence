@@ -129,7 +129,7 @@ function CompetitorPanel({ data }: { data: CompetitorAnalysisResult }) {
             <div key={i} className="rounded-lg border border-neutral-200 bg-white p-3 dark:border-white/[0.08] dark:bg-white/[0.03]">
               <div className="flex items-start justify-between gap-2 mb-1">
                 <span className="text-xs font-semibold text-neutral-900 dark:text-white">{c.competitorType}</span>
-                <span className="shrink-0 rounded-full bg-violet-100 text-violet-700 dark:bg-[#7c3aed]/20 dark:text-[#a78bfa] px-2 py-0.5 text-[10px] font-semibold">{c.priceRange}</span>
+                <span className="shrink-0 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-500/20 dark:text-primary-300 px-2 py-0.5 text-[10px] font-semibold">{c.priceRange}</span>
               </div>
               {c.exampleNames && <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mb-1">e.g. {c.exampleNames}</p>}
               <p className="text-[11px] leading-relaxed">
@@ -144,10 +144,10 @@ function CompetitorPanel({ data }: { data: CompetitorAnalysisResult }) {
 
       {/* Recommended position */}
       {pos && (
-        <div className="rounded-lg border border-violet-200 bg-violet-50 p-3 dark:border-[#7c3aed]/30 dark:bg-[#7c3aed]/10">
-          <p className="text-[10px] font-semibold text-violet-600 dark:text-[#a78bfa] mb-1">Recommended Position</p>
+        <div className="rounded-lg border border-primary-200 bg-primary-50 p-3 dark:border-primary-500/30 dark:bg-primary-500/10">
+          <p className="text-[10px] font-semibold text-primary-700 dark:text-primary-300 mb-1">Recommended Position</p>
           <p className="text-xs font-semibold text-neutral-900 dark:text-white mb-0.5">{pos.marketPosition}</p>
-          <p className="text-[11px] text-violet-700 dark:text-[#a78bfa]/80 leading-relaxed">{pos.reason}</p>
+          <p className="text-[11px] text-primary-800 dark:text-primary-300/80 leading-relaxed">{pos.reason}</p>
         </div>
       )}
 
@@ -222,9 +222,9 @@ function SmartPricingPanel({ data }: { data: SmartPricingSnapshot }) {
             </div>
           )}
           {data.quickRevenueOpportunity && (
-            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-[#7c3aed]/25 dark:bg-[#7c3aed]/10">
-              <p className="text-[10px] font-semibold text-blue-700 dark:text-[#a78bfa] mb-1">⚡ Revenue Opportunity</p>
-              <p className="text-[11px] text-blue-800 dark:text-[#a78bfa]/80 leading-relaxed">{data.quickRevenueOpportunity}</p>
+            <div className="rounded-lg border border-primary-200 bg-primary-50 p-3 dark:border-primary-500/25 dark:bg-primary-500/10">
+              <p className="text-[10px] font-semibold text-primary-800 dark:text-primary-200 mb-1">Revenue opportunity</p>
+              <p className="text-[11px] text-primary-900/80 dark:text-primary-200/80 leading-relaxed">{data.quickRevenueOpportunity}</p>
             </div>
           )}
         </div>
@@ -282,7 +282,7 @@ function HistoryRow({ entry, onDelete }: { entry: PricingHistoryEntry; onDelete:
         {/* Status badges */}
         <div className="flex items-center gap-1.5 shrink-0">
           {hasCompetitor && (
-            <span className="rounded-full bg-violet-100 text-violet-700 dark:bg-[#7c3aed]/20 dark:text-[#a78bfa] text-[10px] font-semibold px-2 py-0.5">
+            <span className="rounded-full bg-primary-100 text-primary-700 dark:bg-primary-500/20 dark:text-primary-300 text-[10px] font-semibold px-2 py-0.5">
               Competitor ✓
             </span>
           )}
@@ -336,11 +336,11 @@ function HistoryRow({ entry, onDelete }: { entry: PricingHistoryEntry; onDelete:
                   onClick={() => setActiveTab(tab)}
                   className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-150 ${
                     activeTab === tab
-                      ? 'bg-white text-neutral-900 shadow-sm dark:bg-[#1a1728] dark:text-white'
+                      ? 'bg-white text-neutral-900 shadow-sm dark:bg-white/[0.04] dark:text-white'
                       : 'text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200'
                   }`}
                 >
-                  {tab === 'competitor' ? '🏪 Competitor Analysis' : '💰 Smart Pricing'}
+                  {tab === 'competitor' ? 'Competitor Analysis' : 'Smart Pricing'}
                 </button>
               ))}
             </div>

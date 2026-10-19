@@ -65,7 +65,6 @@ export default function FinancialDonut3D({ segments, height = 400, className = '
       <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-950/60 to-primary-900/30 border border-primary-500/20 ${className}`} style={{ height }}>
         <div className="absolute inset-0 grid place-items-center p-6">
           <div className="text-center">
-            <div className="text-4xl mb-3">📊</div>
             <p className="text-sm text-primary-300">3D visualization not available on this device</p>
             <p className="text-xs text-primary-400 mt-2">View on desktop for interactive 3D chart</p>
           </div>
@@ -76,7 +75,7 @@ export default function FinancialDonut3D({ segments, height = 400, className = '
 
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0a0818] to-[#1a0f35] border border-primary-500/20 shadow-2xl shadow-primary-950/50 ${className}`}
+      className={`relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#07070b] to-[#101018] border border-white/[0.09] shadow-lg shadow-black/40 ${className}`}
       style={{ height }}
     >
       <ErrorBoundary onError={() => setFailed(true)}>

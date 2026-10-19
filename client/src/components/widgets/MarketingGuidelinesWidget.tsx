@@ -1,15 +1,15 @@
 ﻿/**
- * MarketingGuidelinesWidget â€” Marketing Section
+ * MarketingGuidelinesWidget — Marketing Section
  * Generates a detailed marketing guidelines report (feasibility audit,
  * operational roadmap, resource requirements) by invoking the guidelines
  * Bedrock agent with the marketing plan JSON as input.
  *
  * This widget is disabled until the MarketingStrategyWidget has generated
- * a plan â€” the marketing plan JSON is passed in via the `marketingPlanJson` prop.
+ * a plan — the marketing plan JSON is passed in via the `marketingPlanJson` prop.
  *
  * Props:
- *   marketingPlanJson â€” raw JSON string from the /api/bedrock/marketing response
- *   onGenerateRef     â€” callback to register the generate handler for Generate All
+ *   marketingPlanJson — raw JSON string from the /api/bedrock/marketing response
+ *   onGenerateRef     — callback to register the generate handler for Generate All
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
@@ -17,7 +17,7 @@ import { useWidgetState } from "../../hooks/useWidgetState";
 import MarketingGuidelines, { type MarketingGuidelines as MarketingGuidelinesData } from "./MarketingGuidelines";
 import { API_BASE } from "../../lib/api";
 
-// â”€â”€â”€ API call â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ──â”€ API call ────────────────────────────────────────────────────────────────â”€
 
 async function fetchMarketingGuidelines(marketingPlanJson: string): Promise<string> {
   const res = await fetch(`${API_BASE}/api/bedrock/marketing-guidelines`, {
@@ -35,7 +35,7 @@ async function fetchMarketingGuidelines(marketingPlanJson: string): Promise<stri
   return data.content;
 }
 
-// â”€â”€â”€ JSON extraction helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ──â”€ JSON extraction helper ──────────────────────────────────────────────────â”€
 
 function extractJson(raw: string): string {
   const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -46,7 +46,7 @@ function extractJson(raw: string): string {
   return raw.trim();
 }
 
-// â”€â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ──â”€ Component ────────────────────────────────────────────────────────────────
 
 import { checkCache, writeCache, hashInputs } from '../../utils/widgetCache';
 
@@ -146,17 +146,17 @@ export default function MarketingGuidelinesWidget({
 
   return (
     <article
-      className="flex flex-col h-full rounded-xl border border-neutral-200 bg-white text-neutral-800 overflow-hidden motion-safe:animate-fade-up shadow-sm dark:border-white/[0.09] dark:bg-[#101018] dark:text-neutral-200 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_12px_40px_-16px_rgba(0,0,0,0.65)]"
+      className="flex flex-col h-full rounded-xl border border-neutral-200 bg-white text-neutral-800 overflow-hidden motion-safe:animate-fade-up shadow-subtle dark:border-white/[0.09] dark:bg-[#101018] dark:text-neutral-200 dark:shadow-none"
       aria-label="Marketing Guidelines widget"
     >
-      {/* â”€â”€ Header â”€â”€ */}
+      {/* ── Header ── */}
       <header className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50/80 px-4 sm:px-5 py-3 min-h-[3rem] dark:border-white/[0.08] dark:bg-white/[0.03]">
         <div className="flex items-center gap-2 min-w-0">
           <h3 className="text-sm font-semibold text-neutral-900 tracking-tight leading-snug dark:text-white">
             Marketing Guidelines
           </h3>
           {isDisabled && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 dark:border-white/[0.12] bg-neutral-100 dark:bg-white/[0.04] px-2 py-0.5 text-[10px] font-semibold text-neutral-500 dark:text-neutral-400">
+            <span className="inline-flex items-center gap-1 rounded-md border border-neutral-200 dark:border-white/[0.12] bg-neutral-100 dark:bg-white/[0.04] px-2 py-0.5 text-[10px] font-semibold text-neutral-500 dark:text-neutral-400">
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
@@ -171,7 +171,7 @@ export default function MarketingGuidelinesWidget({
               type="button"
               onClick={() => handleGenerate()}
               disabled={isDisabled}
-              className="inline-flex items-center justify-center rounded-lg bg-primary-600 hover:bg-primary-500 disabled:opacity-35 disabled:cursor-not-allowed text-white text-xs font-semibold py-2 px-4 min-h-[38px] min-w-[5rem] shrink-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#101018]"
+              className="inline-flex items-center justify-center rounded-lg bg-primary-600 hover:bg-primary-500 disabled:opacity-35 disabled:cursor-not-allowed text-white text-xs font-semibold py-2 px-4 min-h-[38px] min-w-[5rem] shrink-0 transition-all duration-150 active:scale-[0.98] shadow-sm shadow-primary-600/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#101018]"
               aria-label={status === "idle" ? "Generate guidelines" : "Regenerate guidelines"}
             >
               {status === "idle" ? "Generate" : "Regenerate"}
@@ -181,31 +181,31 @@ export default function MarketingGuidelinesWidget({
             <span
               className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-primary-400 border-t-transparent"
               role="status"
-              aria-label="Generatingâ€¦"
+              aria-label="Generating…"
             />
           )}
         </div>
       </header>
 
-      {/* â”€â”€ Body â”€â”€ */}
+      {/* ── Body ── */}
       <div className="flex flex-col p-4 sm:p-5">
         {/* Idle state */}
         {status === "idle" && (
           <p className="text-sm text-neutral-600 leading-relaxed dark:text-neutral-400">
             {isDisabled
-              ? "Generate the Marketing Strategy first â€” this widget uses that plan as its input."
+              ? "Generate the Marketing Strategy first — this widget uses that plan as its input."
               : "Generates a feasibility audit, step-by-step operational roadmap, and resource requirements based on your marketing plan."}
           </p>
         )}
 
         {/* Loading */}
         {isLoading && (
-          <div className="animate-pulse space-y-3" role="status" aria-label="Generatingâ€¦">
+          <div className="animate-pulse space-y-3" role="status" aria-label="Generating…">
             <div className="h-3.5 bg-neutral-200 dark:bg-white/10 rounded-full w-3/4" />
             <div className="h-3.5 bg-neutral-200 dark:bg-white/10 rounded-full w-full" />
             <div className="h-3.5 bg-neutral-200 dark:bg-white/10 rounded-full w-5/6" />
             <div className="h-3.5 bg-neutral-200 dark:bg-white/10 rounded-full w-2/3" />
-            <span className="sr-only">Generatingâ€¦</span>
+            <span className="sr-only">Generating…</span>
           </div>
         )}
 

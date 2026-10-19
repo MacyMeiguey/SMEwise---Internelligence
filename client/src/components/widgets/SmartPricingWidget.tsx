@@ -64,8 +64,8 @@ function SmartPricingResult({
           ].map((s) => (
             <div key={s.label}
               className="rounded-xl border border-neutral-200 bg-white p-2.5 min-w-0
-                         dark:border-white/[0.08] dark:bg-[#1a1728]">
-              <p className="text-[10px] text-neutral-400 dark:text-[#6b6890] mb-1 uppercase tracking-widest font-medium whitespace-normal leading-snug">
+                         dark:border-white/[0.08] dark:bg-white/[0.04]">
+              <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mb-1 uppercase tracking-widest font-medium whitespace-normal leading-snug">
                 {s.label}
               </p>
               <p className="text-base font-semibold text-neutral-900 dark:text-white leading-tight break-words">
@@ -79,14 +79,14 @@ function SmartPricingResult({
       {/* ── SKU price ladder ── */}
       {products.length > 0 && (
         <>
-          <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-[#6b6890] -mb-3">
+          <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-neutral-500 -mb-3">
             Pricing Recommendation
           </p>
           <div className="flex flex-col gap-3">
             {products.map((p, i) => (
               <div key={i}
                 className="rounded-xl border border-neutral-200 bg-white p-3 min-w-0 overflow-hidden
-                           dark:border-white/[0.08] dark:bg-[#1a1728]">
+                           dark:border-white/[0.08] dark:bg-white/[0.04]">
                 <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
                   <span className="font-semibold text-neutral-900 dark:text-white text-sm leading-snug min-w-0 break-words">
                     {p.productName}
@@ -98,7 +98,7 @@ function SmartPricingResult({
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-1 text-xs mb-2">
-                  <span className="text-neutral-500 dark:text-[#6b6890]">Cost {p.cost}</span>
+                  <span className="text-neutral-500 dark:text-neutral-500">Cost {p.cost}</span>
                   <span className="font-black text-lg text-emerald-400 mx-1">→</span>
                   <span className="font-bold text-emerald-600 dark:text-emerald-400">
                     {p.recommendedPrice}
@@ -107,12 +107,12 @@ function SmartPricingResult({
                   <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                     {p.marginPercentage} margin
                   </span>
-                  <span className="text-neutral-300 dark:text-[#3d3660]">·</span>
-                  <span className="text-neutral-500 dark:text-[#6b6890]">
+                  <span className="text-neutral-300 dark:text-neutral-600">·</span>
+                  <span className="text-neutral-500 dark:text-neutral-500">
                     {p.profitPerUnit} profit/unit
                   </span>
                 </div>
-                <p className="text-xs text-neutral-400 dark:text-[#6b6890] break-words">
+                <p className="text-xs text-neutral-400 dark:text-neutral-500 break-words">
                   Method: <span className="font-medium text-neutral-600 dark:text-neutral-300">{p.pricingMethod}</span>
                 </p>
               </div>
@@ -124,7 +124,7 @@ function SmartPricingResult({
       {/* ── Margin callouts ── */}
       {(data.pricingRisks || data.quickRevenueOpportunity) && (
         <>
-          <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-[#6b6890] -mb-3">
+          <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400 dark:text-neutral-500 -mb-3">
             Margin Callouts
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -149,19 +149,18 @@ function SmartPricingResult({
               </div>
             )}
             {data.quickRevenueOpportunity && (
-              <div className="rounded-xl border border-blue-200 bg-blue-50 p-4
-                              dark:border-[#7c3aed]/30 dark:bg-[#7c3aed]/10">
+              <div className="rounded-lg border border-primary-200 bg-primary-50 p-4 dark:border-primary-500/30 dark:bg-primary-500/10">
                 <div className="flex items-center gap-2 mb-2">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                    className="text-blue-600 dark:text-[#a78bfa] shrink-0" aria-hidden="true">
+                    className="text-primary-600 dark:text-primary-300 shrink-0" aria-hidden="true">
                     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
                   </svg>
-                  <span className="text-xs font-semibold text-blue-700 dark:text-[#a78bfa]">
+                  <span className="text-xs font-semibold text-primary-800 dark:text-primary-200">
                     Revenue opportunity
                   </span>
                 </div>
-                <p className="text-xs text-blue-800 dark:text-[#a78bfa]/80 leading-relaxed">
+                <p className="text-xs text-primary-900/80 dark:text-primary-200/80 leading-relaxed">
                   {data.quickRevenueOpportunity}
                 </p>
               </div>
@@ -173,7 +172,7 @@ function SmartPricingResult({
       {/* ── Footer goal ── */}
       {mainGoal && (
         <div className="border-t border-neutral-200 dark:border-white/[0.08] pt-3">
-          <p className="text-xs text-neutral-400 dark:text-[#6b6890] leading-relaxed">
+          <p className="text-xs text-neutral-400 dark:text-neutral-500 leading-relaxed">
             Goal: <span className="font-semibold text-neutral-700 dark:text-white">{mainGoal}</span>
           </p>
         </div>
@@ -299,7 +298,7 @@ export default function SmartPricingWidget({
       {data ? (
         <SmartPricingResult data={data} mainGoal={profile.mainGoal} />
       ) : rawFallback ? (
-        <pre className="whitespace-pre-wrap font-sans text-sm text-[#a78bfa] leading-relaxed">
+        <pre className="whitespace-pre-wrap font-sans text-sm text-primary-300 leading-relaxed">
           {rawFallback}
       </pre>
       ) : null}

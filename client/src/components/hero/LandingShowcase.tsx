@@ -18,10 +18,9 @@ const WEBM_LOCAL = '/marketing/product-tour.webm';
 export function HeroProductMockup() {
   return (
     <div
-      className="relative mx-auto mt-12 lg:mt-0 w-full max-w-lg lg:max-w-none lg:sticky lg:top-28 lg:self-start rounded-2xl border-2 border-neutral-950 bg-gradient-to-br from-primary-50 to-white p-4 sm:p-5 motion-safe:lg:animate-hero-float"
-      style={{ boxShadow: '6px 6px 0 0 #0f0f0f' }}
+      className="relative mx-auto mt-12 lg:mt-0 w-full max-w-lg lg:max-w-none lg:sticky lg:top-28 lg:self-start rounded-xl border border-primary-200/80 bg-gradient-to-br from-primary-50 to-white p-4 sm:p-5 shadow-subtle motion-safe:lg:animate-hero-float"
     >
-      <span className="absolute -top-px -right-px rounded-bl-xl rounded-tr-[0.875rem] bg-primary-600 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white border-l-2 border-b-2 border-neutral-950">
+      <span className="absolute top-3 right-3 rounded-md bg-primary-600 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
         Preview
       </span>
       <p className="text-xs font-semibold uppercase tracking-widest text-primary-700 mb-3 pr-16">
@@ -30,7 +29,7 @@ export function HeroProductMockup() {
       <img
         src={MOCKUP_SRC}
         alt="Stylised preview of SMEwise: navigation, summaries and generators."
-        className="w-full h-auto rounded-xl border-2 border-neutral-200 bg-white shadow-inner"
+        className="w-full h-auto rounded-lg border border-neutral-200 bg-white"
         loading="lazy"
         decoding="async"
         width={520}
@@ -51,7 +50,7 @@ interface TileProps {
 function IllustrationTile({ label, tagline, children }: TileProps) {
   return (
     <figure
-      className="relative aspect-[4/3] rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-md overflow-hidden flex flex-col shadow-panel hover:shadow-panel-hover hover:border-white/[0.12] transition-shadow"
+      className="relative aspect-[4/3] rounded-xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-md overflow-hidden flex flex-col hover:border-white/[0.12] transition-colors"
     >
       <div className="relative flex-1 grid place-items-center p-4">
         <span
@@ -77,7 +76,7 @@ function ShopfrontSVG({ accent }: { accent: string }) {
       <rect x="130" y="68" width="36" height="36" rx="3" fill="#c4b5fd" />
       <rect x="86" y="84" width="28" height="44" rx="3" fill="#7c3aed" />
       <rect x="32" y="60" width="136" height="10" rx="3" fill="#a78bfa" />
-      <text x="100" y="68" fontSize="7" fontWeight="700" textAnchor="middle" fill="#fff" fontFamily="Inter, sans-serif">
+      <text x="100" y="68" fontSize="7" fontWeight="700" textAnchor="middle" fill="#fff" fontFamily="Plus Jakarta Sans, system-ui, sans-serif">
         KEDAI WISE
       </text>
     </svg>
@@ -92,7 +91,7 @@ function CoinStackSVG({ accent }: { accent: string }) {
           <ellipse cx="100" cy={y + 14} rx="56" ry="8" fill="#a16207" opacity="0.4" />
           <rect x="44" y={y} width="112" height="18" rx="3" fill={accent} />
           <ellipse cx="100" cy={y} rx="56" ry="8" fill="#fde68a" />
-          <text x="100" y={y + 3} fontSize="8" fontWeight="800" textAnchor="middle" fill="#92400e" fontFamily="Inter, sans-serif">
+          <text x="100" y={y + 3} fontSize="8" fontWeight="800" textAnchor="middle" fill="#92400e" fontFamily="Plus Jakarta Sans, system-ui, sans-serif">
             RM
           </text>
         </g>
@@ -104,9 +103,9 @@ function CoinStackSVG({ accent }: { accent: string }) {
 function BarChartSVG({ accent }: { accent: string }) {
   return (
     <svg viewBox="0 0 200 140" className="w-full h-auto" aria-hidden>
-      <line x1="30" y1="120" x2="180" y2="120" stroke="#475569" strokeWidth="2" />
+      <line x1="30" y1="120" x2="180" y2="120" stroke="#525252" strokeWidth="2" />
       <rect x="40"  y="80"  width="22" height="40"  rx="3" fill="#a78bfa" />
-      <rect x="74"  y="60"  width="22" height="60"  rx="3" fill="#38bdf8" />
+      <rect x="74"  y="60"  width="22" height="60"  rx="3" fill="#14b8a6" />
       <rect x="108" y="40"  width="22" height="80"  rx="3" fill="#34d399" />
       <rect x="142" y="20"  width="22" height="100" rx="3" fill={accent} />
       <polyline
@@ -144,7 +143,7 @@ function MegaphoneSVG({ accent }: { accent: string }) {
     <svg viewBox="0 0 200 140" className="w-full h-auto" aria-hidden>
       <polygon points="40,55 40,95 110,118 110,32" fill={accent} />
       <ellipse cx="110" cy="75" rx="8" ry="42" fill="#fbbf24" />
-      <rect x="22" y="64" width="22" height="22" rx="4" fill="#1f2937" />
+      <rect x="22" y="64" width="22" height="22" rx="4" fill="#171717" />
       <g stroke="#fff" strokeWidth="2" strokeLinecap="round">
         <line x1="138" y1="40" x2="156" y2="30" />
         <line x1="138" y1="75" x2="160" y2="75" />
@@ -159,7 +158,7 @@ function CalculatorSVG({ accent }: { accent: string }) {
     <svg viewBox="0 0 200 140" className="w-full h-auto" aria-hidden>
       <rect x="50" y="14" width="100" height="112" rx="10" fill="#0f0f0f" stroke="#262626" strokeWidth="2" />
       <rect x="58" y="22" width="84" height="26" rx="4" fill={accent} />
-      <text x="138" y="42" fontSize="14" fontWeight="800" textAnchor="end" fill="#0f0f0f" fontFamily="Inter, sans-serif">
+      <text x="138" y="42" fontSize="14" fontWeight="800" textAnchor="end" fill="#0f0f0f" fontFamily="Plus Jakarta Sans, system-ui, sans-serif">
         1,250
       </text>
       {Array.from({ length: 12 }).map((_, i) => {
@@ -234,7 +233,7 @@ export function LandingMediaGallery() {
           </div>
 
           <div
-            className="relative rounded-2xl border border-white/[0.1] overflow-hidden bg-neutral-900 aspect-video shadow-panel"
+            className="relative rounded-xl border border-white/[0.1] overflow-hidden bg-neutral-900 aspect-video"
           >
             {!sourcesExhausted ? (
               <video
