@@ -236,6 +236,14 @@ const OFFICE_MAX_TOKENS =
     Number(process.env.OFFICE_MAX_TOKENS) || 32000
 
 /**
+ * Response timeout for the office-location harness. It runs live web search +
+ * a headless browser, so it is much slower than the text-only harnesses and
+ * needs a larger timeout budget. Override via OFFICE_TIMEOUT_MS.
+ */
+const OFFICE_TIMEOUT_MS =
+    Number(process.env.OFFICE_TIMEOUT_MS) || 300_000
+
+/**
  * AgentCore harness ARN for the risk and regulations analyzer. Invoked via the
  * InvokeHarness API using the harness ARN (not the underlying runtime ARN).
  */
@@ -571,9 +579,12 @@ async function invokeAgentCore(
     harnessArn: string,
     qualifier?: string,
     maxTokens?: number,
+    timeoutMs?: number,
 ): Promise<string> {
     const THROTTLE_RETRIES = 5
-    const AGENT_TIMEOUT_MS = 120_000
+    // Default response timeout. Slow, tool-using harnesses (e.g. ones with a
+    // browser or web-search gateway) can be given a larger budget per call.
+    const AGENT_TIMEOUT_MS = timeoutMs && timeoutMs > 0 ? timeoutMs : 120_000
 
     // InvokeHarness requires runtimeSessionId to be at least 33 characters.
     const safeSessionId =
@@ -996,7 +1007,7 @@ router.post('/office-location', async (req: Request, res: Response) => {
 
     let lastRaw = ''
 
-// retry loop
+    // retry loop
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
 
         // New session for each attempt
@@ -1014,6 +1025,7 @@ router.post('/office-location', async (req: Request, res: Response) => {
                 OFFICE_HARNESS_ARN,
                 OFFICE_AGENT_QUALIFIER,
                 OFFICE_MAX_TOKENS,
+                OFFICE_TIMEOUT_MS,
             )
 
             lastRaw = raw
@@ -1052,11 +1064,11 @@ router.post('/office-location', async (req: Request, res: Response) => {
             if (err instanceof SyntaxError) {
                 console.warn(
                     `[office-location] Attempt ${attempt}/${MAX_RETRIES} did NOT return valid JSON. ` +
-                        (
-                            attempt < MAX_RETRIES
-                                ? 'Retrying in 3s...'
-                                : 'No retries left.'
-                        ),
+                    (
+                        attempt < MAX_RETRIES
+                            ? 'Retrying in 3s...'
+                            : 'No retries left.'
+                    ),
                 )
 
                 if (attempt < MAX_RETRIES) {
