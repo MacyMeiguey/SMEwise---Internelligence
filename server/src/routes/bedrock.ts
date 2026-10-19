@@ -22,10 +22,6 @@
 
 import { Router, Request, Response } from 'express'
 import {
-    BedrockAgentRuntimeClient,
-    InvokeAgentCommand,
-} from '@aws-sdk/client-bedrock-agent-runtime'
-import {
     BedrockAgentCoreClient,
     InvokeHarnessCommand,
 } from '@aws-sdk/client-bedrock-agentcore'
@@ -44,6 +40,7 @@ import {
 import { validateStartupGuide } from '../utils/validateStartupGuide.js'
 import { normaliseAnalyticsDashboard } from '../utils/normaliseAnalyticsDashboard.js'
 import { validateGeneratedDocument } from '../utils/validateGeneratedDocument.js'
+import { validateRiskAnalysis } from '../utils/validateRiskAnalysis.js'
 
 const router = Router()
 
@@ -72,11 +69,6 @@ function resolveAwsCredentials() {
 }
 
 const AWS_REGION = process.env.AWS_REGION ?? 'ap-southeast-1'
-
-const client = new BedrockAgentRuntimeClient({
-    region: AWS_REGION,
-    ...resolveAwsCredentials(),
-})
 
 // ─── Bedrock AgentCore client ────────────────────────────────────────────────
 //
@@ -227,6 +219,43 @@ const INVESTOR_AGENT_QUALIFIER = process.env.INVESTOR_AGENT_QUALIFIER || undefin
  * response is a compact list JSON; 4096 is enough.
  */
 const INVESTOR_MAX_TOKENS = Number(process.env.INVESTOR_MAX_TOKENS ?? '4096')
+
+
+/**
+ * AgentCore harness ARN for the risk and regulations analyzer. Invoked via the
+ * InvokeHarness API using the harness ARN (not the underlying runtime ARN).
+ */
+const OFFICE_HARNESS_ARN =
+    process.env.OFFICE_HARNESS_ARN ??
+    'arn:aws:bedrock-agentcore:ap-southeast-1:781897846709:harness/hew_office_location_finder-kTVYIjiGbQ'
+
+const OFFICE_AGENT_QUALIFIER =
+    process.env.OFFICE_AGENT_QUALIFIER || undefined
+
+const OFFICE_MAX_TOKENS =
+    Number(process.env.OFFICE_MAX_TOKENS) || 32000
+
+/**
+ * Response timeout for the office-location harness. It runs live web search +
+ * a headless browser, so it is much slower than the text-only harnesses and
+ * needs a larger timeout budget. Override via OFFICE_TIMEOUT_MS.
+ */
+const OFFICE_TIMEOUT_MS =
+    Number(process.env.OFFICE_TIMEOUT_MS) || 300_000
+
+/**
+ * AgentCore harness ARN for the risk and regulations analyzer. Invoked via the
+ * InvokeHarness API using the harness ARN (not the underlying runtime ARN).
+ */
+const RISK_HARNESS_ARN =
+    process.env.RISK_HARNESS_ARN ??
+    'arn:aws:bedrock-agentcore:ap-southeast-1:781897846709:harness/hew_risk_regulations-my3Wo3YIUT'
+
+const RISK_AGENT_QUALIFIER =
+    process.env.RISK_AGENT_QUALIFIER ?? 'DEFAULT'
+
+const RISK_MAX_TOKENS =
+    Number(process.env.RISK_MAX_TOKENS) || 10000
 
 /**
  * AgentCore harness ARN for the startup registration guide. Invoked via the
@@ -538,95 +567,11 @@ function extractJsonString(raw: string): string {
 }
 
 /**
- * Invoke a Bedrock agent and return the raw response string.
- * Automatically retries up to 3 times on throttle errors with exponential backoff.
- * Handles throttle errors that occur both during client.send() AND during stream iteration.
- */
-async function invokeAgent(
-    inputText: string,
-    sessionId: string,
-    agentId: string,
-    agentAliasId: string,
-): Promise<string> {
-    const THROTTLE_RETRIES = 5
-    const AGENT_TIMEOUT_MS = 60_000 // 60 s — abort if the agent never responds
-
-    for (let t = 1; t <= THROTTLE_RETRIES; t++) {
-        try {
-            const command = new InvokeAgentCommand({
-                agentId,
-                agentAliasId,
-                sessionId,
-                inputText,
-            })
-
-            const agentResponse = await client.send(command)
-
-            let raw = ''
-            try {
-                // Wrap the stream in a timeout so a silent/hanging agent doesn't
-                // block the request forever.
-                const streamWithTimeout = new Promise<string>((resolve, reject) => {
-                    const timer = setTimeout(() => {
-                        reject(new Error(`invokeAgent timeout: agentId=${agentId} did not respond within ${AGENT_TIMEOUT_MS}ms`))
-                    }, AGENT_TIMEOUT_MS)
-
-                        ; (async () => {
-                            let accumulated = ''
-                            for await (const chunk of agentResponse.completion ?? []) {
-                                if (chunk.chunk?.bytes) {
-                                    accumulated += new TextDecoder().decode(chunk.chunk.bytes)
-                                }
-                                if (chunk.trace) {
-                                    console.log(`[Bedrock agent trace] agentId=${agentId}`, JSON.stringify(chunk.trace).slice(0, 300))
-                                }
-                            }
-                            clearTimeout(timer)
-                            resolve(accumulated)
-                        })().catch((err) => {
-                            clearTimeout(timer)
-                            reject(err)
-                        })
-                })
-
-                raw = await streamWithTimeout
-            } catch (streamErr) {
-                // Throttle errors often surface here during stream iteration
-                if (isThrottleError(streamErr) && t < THROTTLE_RETRIES) {
-                    const delay = 5000 * (t * 0.5)
-                    console.warn(`[Bedrock] Throttled during stream on attempt ${t}/${THROTTLE_RETRIES}. Waiting ${delay}ms...`)
-                    await sleep(delay)
-                    continue
-                }
-                throw streamErr
-            }
-
-            if (raw.length === 0) {
-                console.warn(`[Bedrock] agentId=${agentId} aliasId=${agentAliasId} returned EMPTY response.`)
-            }
-
-            return raw
-        } catch (err) {
-            if (isThrottleError(err) && t < THROTTLE_RETRIES) {
-                const delay = 5000 * (t * 0.5)
-                console.warn(`[Bedrock] Throttled on attempt ${t}/${THROTTLE_RETRIES}. Waiting ${delay}ms before retry...`)
-                await sleep(delay)
-                continue
-            }
-            throw err
-        }
-    }
-    throw new Error('invokeAgent: all throttle retries exhausted')
-}
-
-/**
  * Invoke a Bedrock AgentCore harness via the InvokeHarness API and return the
- * accumulated assistant text. Mirrors invokeAgent (throttle retries + timeout).
+ * accumulated assistant text, with throttle retries and a response timeout.
  *
  * The prompt is sent as a single user message. The harness streams back events;
- * we accumulate the text from contentBlockDelta events. The harness is expected
- * to emit the marketing-plan JSON as text (the caller then runs extractJsonString
- * + JSON.parse on it).
+ * we accumulate the text from contentBlockDelta events for the caller to parse.
  */
 async function invokeAgentCore(
     promptText: string,
@@ -634,9 +579,12 @@ async function invokeAgentCore(
     harnessArn: string,
     qualifier?: string,
     maxTokens?: number,
+    timeoutMs?: number,
 ): Promise<string> {
     const THROTTLE_RETRIES = 5
-    const AGENT_TIMEOUT_MS = 120_000
+    // Default response timeout. Slow, tool-using harnesses (e.g. ones with a
+    // browser or web-search gateway) can be given a larger budget per call.
+    const AGENT_TIMEOUT_MS = timeoutMs && timeoutMs > 0 ? timeoutMs : 120_000
 
     // InvokeHarness requires runtimeSessionId to be at least 33 characters.
     const safeSessionId =
@@ -1022,15 +970,26 @@ router.post('/office-location', async (req: Request, res: Response) => {
         currentFunds: number
     }
 
-    if (!companyName || !industry || !city || !businessStage || !businessType || !currentFunds) {
+    // Convert currentFunds to number
+    const funds = Number(currentFunds)
+
+    // Validate input
+    if (
+        !companyName ||
+        !industry ||
+        !city ||
+        !businessStage ||
+        !businessType ||
+        !Number.isFinite(funds) ||
+        funds < 0
+    ) {
         res.status(400).json({
-            error: 'companyName, industry, city, businessStage, businessType, and currentFunds are required.',
+            error:
+                'companyName, industry, city, businessStage, businessType, and valid currentFunds are required.',
         })
         return
     }
 
-    const OFFICE_AGENT_ID = process.env.BEDROCK_OFFICE_AGENT_ID ?? 'SYN0JX0DXX'
-    const OFFICE_AGENT_ALIAS_ID = process.env.BEDROCK_OFFICE_AGENT_ALIAS_ID ?? 'DVRSIKLAPX'
 
     const inputText = [
         `Company: ${companyName}`,
@@ -1038,53 +997,120 @@ router.post('/office-location', async (req: Request, res: Response) => {
         `Business Stage: ${businessStage}`,
         `Location: ${city}, Malaysia`,
         `Business Type: ${businessType}`,
-        `Current Funds: RM ${Number(currentFunds).toLocaleString('en-MY')}`,
+        `Current Funds: RM ${funds.toLocaleString('en-MY')}`,
     ].join('\n')
 
-    console.log('=== [office-location] inputText sent to Bedrock agent ===\n', inputText)
+    console.log(
+        '=== [office-location] inputText sent to AgentCore Harness ===\n',
+        inputText,
+    )
 
     let lastRaw = ''
 
+    // retry loop
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        const sessionId = `office-loc-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+        // New session for each attempt
+        const sessionId =
+            `office-loc-${Date.now()}-${Math.random()
+                .toString(36)
+                .slice(2)}`
 
         try {
-            const raw = await invokeAgent(inputText, sessionId, OFFICE_AGENT_ID, OFFICE_AGENT_ALIAS_ID)
+            // INVOKE OFFICE & LOCATION HARNESS
+
+            const raw = await invokeAgentCore(
+                inputText,
+                sessionId,
+                OFFICE_HARNESS_ARN,
+                OFFICE_AGENT_QUALIFIER,
+                OFFICE_MAX_TOKENS,
+                OFFICE_TIMEOUT_MS,
+            )
+
             lastRaw = raw
 
             console.log(
                 `[office-location] Attempt ${attempt}/${MAX_RETRIES} — response length: ${raw.length} chars`,
             )
-            console.log(`[office-location] Raw preview:`, raw.slice(0, 300))
+
+            console.log(
+                '[office-location] Raw preview:',
+                raw.slice(0, 300),
+            )
+
+            // EXTRACT JSON FROM <answer>...</answer>
 
             const jsonString = extractJsonString(raw)
-            JSON.parse(jsonString) // validate
 
-            console.log(`[office-location] Attempt ${attempt} returned valid JSON`)
-            res.status(200).json({ content: raw })
+            // Validate + parse JSON
+            const parsed = JSON.parse(jsonString)
+
+            console.log(
+                `[office-location] Attempt ${attempt} returned valid JSON`,
+            )
+
+            // RETURN RESULT
+
+            res.status(200).json({
+                content: parsed,
+            })
+
             return
         } catch (err) {
+
+            // INVALID JSON
+
             if (err instanceof SyntaxError) {
                 console.warn(
                     `[office-location] Attempt ${attempt}/${MAX_RETRIES} did NOT return valid JSON. ` +
-                    (attempt < MAX_RETRIES ? 'Retrying in 3s...' : 'No retries left.'),
+                    (
+                        attempt < MAX_RETRIES
+                            ? 'Retrying in 3s...'
+                            : 'No retries left.'
+                    ),
                 )
-                if (attempt < MAX_RETRIES) await new Promise(r => setTimeout(r, 3000))
+
+                if (attempt < MAX_RETRIES) {
+                    await new Promise(resolve =>
+                        setTimeout(resolve, 3000),
+                    )
+                }
+
                 continue
             }
 
-            console.error(`[SMEwise] /api/bedrock/office-location error on attempt ${attempt}:`, err)
+            // HARNESS / AWS ERROR
+
+            console.error(
+                `[SMEwise] /api/bedrock/office-location error on attempt ${attempt}:`,
+                err,
+            )
+
             res.status(500).json({
-                error: 'Something went wrong while generating the office & location guide. Please try again.',
+                error:
+                    'Something went wrong while generating the office & location guide. Please try again.',
             })
+
             return
         }
     }
 
+    // ALL RETRIES FAILED
+
     console.error(
-        `[office-location] All ${MAX_RETRIES} attempts failed to return valid JSON. Returning last raw response.`,
+        `[office-location] All ${MAX_RETRIES} attempts failed to return valid JSON.`,
     )
-    res.status(200).json({ content: lastRaw })
+
+    console.error(
+        '[office-location] Last raw response:',
+        lastRaw.slice(0, 1000),
+    )
+
+    res.status(500).json({
+        error:
+            'The office & location guide could not be generated in a valid format. Please try again.',
+    })
 })
 
 // ─── POST /api/bedrock/risk-analyzer ─────────────────────────────────────────
@@ -1108,15 +1134,27 @@ router.post('/risk-analyzer', async (req: Request, res: Response) => {
         currentFunds: number
     }
 
-    if (!companyName || !industry || !city || !businessStage || !businessType) {
+    // 1. Validate user input
+
+    const funds = Number(currentFunds)
+
+    if (
+        !companyName ||
+        !industry ||
+        !city ||
+        !businessStage ||
+        !businessType ||
+        !Number.isFinite(funds) ||
+        funds < 0
+    ) {
         res.status(400).json({
-            error: 'companyName, industry, city, businessStage, and businessType are required.',
+            error:
+                'companyName, industry, city, businessStage, businessType, and valid currentFunds are required.',
         })
         return
     }
 
-    const RISK_AGENT_ID = process.env.BEDROCK_RISK_AGENT_ID ?? '4RYTKWLEVB'
-    const RISK_AGENT_ALIAS_ID = process.env.BEDROCK_RISK_AGENT_ALIAS_ID ?? 'ODFAKDIZFV'
+    // 2. Build input for Risk AgentCore Harness
 
     const inputText = [
         `Company: ${companyName}`,
@@ -1124,49 +1162,157 @@ router.post('/risk-analyzer', async (req: Request, res: Response) => {
         `Business Stage: ${businessStage}`,
         `Location: ${city}, Malaysia`,
         `Business Type: ${businessType}`,
-        currentFunds ? `Current Funds: RM ${Number(currentFunds).toLocaleString('en-MY')}` : null,
-    ].filter(Boolean).join('\n')
+        `Current Funds: RM ${funds.toLocaleString('en-MY')}`,
+    ].join('\n')
 
-    console.log('=== [risk-analyzer] inputText sent to Bedrock agent ===\n', inputText)
+    console.log(
+        '=== [risk-analyzer] inputText sent to AgentCore Harness ===\n',
+        inputText,
+    )
 
-    let lastRaw = ''
+    // 3. Generate + validate Risk Analysis
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        const sessionId = `risk-${Date.now()}-${Math.random().toString(36).slice(2)}`
+        const sessionId =
+            `risk-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
         try {
-            const raw = await invokeAgent(inputText, sessionId, RISK_AGENT_ID, RISK_AGENT_ALIAS_ID)
-            lastRaw = raw
 
-            console.log(`[risk-analyzer] Attempt ${attempt}/${MAX_RETRIES} — response length: ${raw.length} chars`)
-            console.log(`[risk-analyzer] Raw preview:`, raw.slice(0, 300))
+            // Invoke Risk AgentCore Harness
 
-            const jsonString = extractJsonString(raw)
-            JSON.parse(jsonString) // validate
+            const raw = await invokeAgentCore(
+                inputText,
+                sessionId,
+                RISK_HARNESS_ARN,
+                RISK_AGENT_QUALIFIER,
+                RISK_MAX_TOKENS,
+            )
 
-            console.log(`[risk-analyzer] Attempt ${attempt} returned valid JSON`)
-            res.status(200).json({ content: raw })
-            return
-        } catch (err) {
-            if (err instanceof SyntaxError) {
+            console.log(
+                `[risk-analyzer] Attempt ${attempt}/${MAX_RETRIES} — response length: ${raw.length} chars`,
+            )
+
+            console.log(
+                '[risk-analyzer] Raw preview:',
+                raw.slice(0, 300),
+            )
+
+            // Extract JSON from <answer>{...}</answer>
+
+            let parsed: unknown
+
+            try {
+                const jsonString = extractJsonString(raw)
+                parsed = JSON.parse(jsonString)
+            } catch (parseError) {
                 console.warn(
-                    `[risk-analyzer] Attempt ${attempt}/${MAX_RETRIES} did NOT return valid JSON. ` +
-                    (attempt < MAX_RETRIES ? 'Retrying in 3s...' : 'No retries left.'),
+                    `[risk-analyzer] Attempt ${attempt}/${MAX_RETRIES} returned invalid JSON.`,
+                    parseError,
                 )
-                if (attempt < MAX_RETRIES) await new Promise(r => setTimeout(r, 3000))
-                continue
+
+                if (attempt < MAX_RETRIES) {
+                    console.warn(
+                        '[risk-analyzer] Retrying in 3 seconds...',
+                    )
+
+                    await new Promise(resolve =>
+                        setTimeout(resolve, 3000),
+                    )
+
+                    continue
+                }
+
+                console.error(
+                    '[risk-analyzer] No retries left after JSON parsing failure.',
+                )
+
+                res.status(500).json({
+                    error:
+                        'Unable to generate a valid risk analysis. Please try again.',
+                })
+                return
             }
 
-            console.error(`[SMEwise] /api/bedrock/risk-analyzer error on attempt ${attempt}:`, err)
-            res.status(500).json({
-                error: 'Something went wrong while generating the risk analysis. Please try again.',
+            // Backend structural validation
+
+            const validation = validateRiskAnalysis(parsed, {
+                companyName,
+                industry,
+                businessStage,
+                city,
+                businessType,
+                currentFunds: funds,
             })
+
+            if (!validation.valid) {
+                console.warn(
+                    `[risk-analyzer] Attempt ${attempt}/${MAX_RETRIES} failed backend validation:`,
+                    validation.errors,
+                )
+
+                if (attempt < MAX_RETRIES) {
+                    console.warn(
+                        '[risk-analyzer] Retrying in 3 seconds...',
+                    )
+
+                    await new Promise(resolve =>
+                        setTimeout(resolve, 3000),
+                    )
+
+                    continue
+                }
+
+                console.error(
+                    '[risk-analyzer] No retries left after validation failure.',
+                )
+
+                res.status(500).json({
+                    error:
+                        'Unable to generate a valid risk analysis. Please try again.',
+                })
+                return
+            }
+
+            // Valid response
+
+            console.log(
+                `[risk-analyzer] Attempt ${attempt} returned valid JSON and passed backend validation.`,
+            )
+
+
+            res.status(200).json({
+                content: raw,
+            })
+
+            return
+        } catch (err) {
+
+            // Unexpected AgentCore / AWS / infrastructure error
+
+            console.error(
+                `[SMEwise] /api/bedrock/risk-analyzer error on attempt ${attempt}:`,
+                err,
+            )
+
+            res.status(500).json({
+                error:
+                    'Something went wrong while generating the risk analysis. Please try again.',
+            })
+
             return
         }
     }
 
-    console.error(`[risk-analyzer] All ${MAX_RETRIES} attempts failed. Returning last raw response.`)
-    res.status(200).json({ content: lastRaw })
+    // Safety fallback
+
+    console.error(
+        `[risk-analyzer] All ${MAX_RETRIES} attempts failed.`,
+    )
+
+    res.status(500).json({
+        error:
+            'Unable to generate a valid risk analysis. Please try again.',
+    })
 })
 
 // ─── POST /api/bedrock/marketing-guidelines ───────────────────────────────────

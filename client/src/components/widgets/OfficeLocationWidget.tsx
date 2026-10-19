@@ -1,9 +1,6 @@
 /**
- * OfficeLocationWidget — Operations Section
- * Calls the dedicated Bedrock agent which returns a structured JSON workspace
- * recommendation guide, then renders it as a rich multi-section UI.
- *
- * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
+ * OfficeLocationWidget — scannable at a glance.
+ * Key info surfaces immediately; details expand on demand.
  */
 
 import { useState, useCallback, useEffect } from "react";
@@ -11,28 +8,48 @@ import type { BusinessProfile } from "../../types";
 import { useWidgetState } from "../../hooks/useWidgetState";
 import WidgetCard from "../WidgetCard";
 import { API_BASE } from "../../lib/api";
+import { checkCache, writeCache, hashInputs } from "../../utils/widgetCache";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface AdvisorAnalysis {
-  industrySpaceType: string;
+  businessModelAssumption: string;
+  businessActivity: string;
+  customerAccessNeed: string;
+  storageNeed: string;
+  locationDependency: string;
+  primarySpaceType: string;
+  secondarySpaceType: string;
+  requiredFacilities: string[];
   stageCommitment: string;
   budgetVerdict: string;
-  locationAvailability: string;
   keyConstraint: string;
+}
+
+interface BestFit {
+  spaceType: string;
+  reason: string;
+  idealAreaCharacteristics: string[] | string;
 }
 
 interface SpaceOption {
   rank: number;
   label: string;
+  name: string;
   type: string;
+  area: string;
+  locationMatch: string;
+  rentalEvidence: string;
   whyItFits: string;
   estimatedCost: string;
-  spaceNeeded: string;
-  namedOptions: string[];
-  whereToSearch: string;
   url: string;
+  urlVerified: boolean;
+  availability: string;
   headsUp: string;
+  spaceNeeded?: string;
+  namedOptions?: string[];
+  namedSpaces?: string[];
+  whereToSearch?: string;
 }
 
 interface CostBreakdown {
@@ -60,7 +77,7 @@ interface OfficeLocationPlan {
   businessType: string;
   currentFunds: string;
   advisorAnalysis: AdvisorAnalysis;
-  bestFit: string;
+  bestFit: BestFit;
   options: SpaceOption[];
   costBreakdown: CostBreakdown;
   leaseNegotiationPoints: string[];
@@ -69,417 +86,336 @@ interface OfficeLocationPlan {
   disclaimer: string;
 }
 
-// ─── API call ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function ok(v: unknown): boolean {
+  if (v == null) return false;
+  const s = String(v).trim();
+  return !!s && s !== "null" && s !== "undefined" && s !== "N/A";
+}
+function str(v: unknown) { return ok(v) ? String(v).trim() : ""; }
+function arr(v: unknown): string[] {
+  if (!Array.isArray(v)) return [];
+  return v.map((x) => String(x).trim()).filter(Boolean);
+}
+
+// ─── API ──────────────────────────────────────────────────────────────────────
 
 async function fetchOfficeLocation(profile: BusinessProfile): Promise<OfficeLocationPlan> {
-  const payload = {
-    companyName:   profile.companyName,
-    industry:      profile.industry,
-    businessStage: profile.businessStage,
-    city:          profile.city,
-    businessType:  profile.businessType,
-    currentFunds:  profile.currentFunds,
-  };
-
   const res = await fetch(`${API_BASE}/api/bedrock/office-location`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      companyName: profile.companyName,
+      industry: profile.industry,
+      businessStage: profile.businessStage,
+      city: profile.city,
+      businessType: profile.businessType,
+      currentFunds: profile.currentFunds,
+    }),
   });
-
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { error?: string }).error ?? `HTTP ${res.status}`);
   }
-
-  const data = (await res.json()) as { content: string };
-
-  let jsonStr = data.content.trim();
-  if (jsonStr.startsWith("```")) {
-    jsonStr = jsonStr.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/, "").trim();
+  const data = (await res.json()) as { content: OfficeLocationPlan | string };
+  if (typeof data.content === "string") {
+    let s = (data.content as string).trim();
+    if (s.startsWith("```")) s = s.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/, "").trim();
+    s = s.replace(/^<answer>\s*/i, "").replace(/\s*<\/answer>$/i, "").trim();
+    const a = s.indexOf("{"), b = s.lastIndexOf("}");
+    if (a !== -1 && b !== -1) s = s.slice(a, b + 1);
+    return JSON.parse(s) as OfficeLocationPlan;
   }
-  jsonStr = jsonStr.replace(/^<answer>\s*/i, "").replace(/\s*<\/answer>$/i, "").trim();
-  const start = jsonStr.indexOf("{");
-  const end   = jsonStr.lastIndexOf("}");
-  if (start !== -1 && end !== -1) jsonStr = jsonStr.slice(start, end + 1);
-
-  return JSON.parse(jsonStr) as OfficeLocationPlan;
+  return data.content;
 }
 
-// ─── Icons ────────────────────────────────────────────────────────────────────
+// ─── Accordion row ────────────────────────────────────────────────────────────
 
-function IconBuilding() {
-  return (
-    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <path d="M3 17V7a1 1 0 0 1 .553-.894l6-3a1 1 0 0 1 .894 0l6 3A1 1 0 0 1 17 7v10M3 17h14M3 17H1m16 0h2M8 17v-4h4v4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-
-function IconCash() {
-  return (
-    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <rect x="1" y="5" width="18" height="12" rx="2" stroke="currentColor" strokeWidth="1.4"/>
-      <circle cx="10" cy="11" r="2.5" stroke="currentColor" strokeWidth="1.4"/>
-      <path d="M5 11h.01M15 11h.01" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
-function IconShield() {
-  return (
-    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <path d="M10 2L3 5v5c0 4.418 3.134 8.223 7 9 3.866-.777 7-4.582 7-9V5l-7-3Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-      <path d="M7 10l2 2 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-
-function IconNegotiate() {
-  return (
-    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <path d="M2 10h16M2 10l4-4M2 10l4 4M18 10l-4-4M18 10l-4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-
-function IconLink() {
-  return (
-    <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M6 3H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-3M9 2h5m0 0v5m0-5L7 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-
-function IconWarning() {
-  return (
-    <svg className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <path d="M10 3L2 17h16L10 3Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-      <path d="M10 9v4M10 15h.01" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
-// ─── Section wrapper ──────────────────────────────────────────────────────────
-
-function Section({
-  icon,
-  title,
-  children,
+function AccordionRow({
+  icon, title, badge, children,
 }: {
-  icon: React.ReactNode;
-  title: string;
-  children: React.ReactNode;
+  icon: string; title: string; badge?: React.ReactNode; children: React.ReactNode;
 }) {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <span className="text-primary-400">{icon}</span>
-        <h4 className="text-sm font-semibold text-white">{title}</h4>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-// ─── Advisor Analysis ─────────────────────────────────────────────────────────
-
-function AnalysisGrid({ analysis }: { analysis: AdvisorAnalysis }) {
-  const items = [
-    { label: "Space Type",     value: analysis.industrySpaceType },
-    { label: "Commitment",     value: analysis.stageCommitment },
-    { label: "Budget",         value: analysis.budgetVerdict },
-    { label: "Availability",   value: analysis.locationAvailability },
-    { label: "Key Constraint", value: analysis.keyConstraint },
-  ];
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-      {items.map(({ label, value }) => (
-        <div
-          key={label}
-          className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 space-y-1.5"
+    <div className="rounded-xl border border-neutral-200 bg-white dark:border-white/[0.08] dark:bg-white/[0.02] overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-neutral-50 dark:hover:bg-white/[0.03] transition-colors"
+        aria-expanded={open}
+      >
+        <span className="text-base shrink-0">{icon}</span>
+        <span className="flex-1 text-sm font-semibold text-neutral-800 dark:text-neutral-200">{title}</span>
+        {badge && <span className="shrink-0">{badge}</span>}
+        <svg
+          className={`w-4 h-4 shrink-0 text-neutral-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
         >
-          <div className="flex items-center gap-1.5">
-            <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide">{label}</p>
-          </div>
-          <p className="text-sm text-neutral-200 leading-relaxed">{value}</p>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {open && (
+        <div className="px-4 pb-4 pt-1 border-t border-neutral-100 dark:border-white/[0.05]">
+          {children}
         </div>
-      ))}
+      )}
     </div>
   );
 }
 
-// ─── Option tabs ──────────────────────────────────────────────────────────────
+// ─── Stat pill ────────────────────────────────────────────────────────────────
 
-const OPTION_STYLES = [
-  {
-    tab:    "border-amber-400/60 text-amber-300 bg-amber-400/10",
-    active: "border-amber-400/40 bg-amber-400/[0.06]",
-    badge:  "bg-amber-400/15 text-amber-300 border-amber-400/30",
-    cost:   "bg-amber-400/10 text-amber-200 border-amber-400/25",
-    dot:    "bg-amber-400",
-  },
-  {
-    tab:    "border-primary-400/60 text-primary-300 bg-primary-400/10",
-    active: "border-primary-400/40 bg-primary-400/[0.06]",
-    badge:  "bg-primary-400/15 text-primary-300 border-primary-400/30",
-    cost:   "bg-primary-400/10 text-primary-200 border-primary-400/25",
-    dot:    "bg-primary-400",
-  },
-  {
-    tab:    "border-neutral-400/60 text-neutral-300 bg-neutral-400/10",
-    active: "border-neutral-400/40 bg-neutral-400/[0.06]",
-    badge:  "bg-neutral-400/15 text-neutral-300 border-neutral-400/30",
-    cost:   "bg-neutral-400/10 text-neutral-200 border-neutral-400/25",
-    dot:    "bg-neutral-400",
-  },
+function StatPill({ label, value, color = "neutral" }: {
+  label: string; value: string;
+  color?: "neutral" | "emerald" | "amber" | "primary" | "rose";
+}) {
+  const text = {
+    neutral: "text-neutral-800 dark:text-neutral-100",
+    emerald: "text-emerald-700 dark:text-emerald-300",
+    amber:   "text-amber-700 dark:text-amber-300",
+    primary: "text-primary-700 dark:text-primary-300",
+    rose:    "text-rose-700 dark:text-rose-300",
+  }[color];
+  return (
+    <div className="flex flex-col gap-0.5 rounded-xl border border-neutral-200 bg-neutral-50 dark:border-white/[0.08] dark:bg-white/[0.03] px-3 py-2.5 min-w-0">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">{label}</span>
+      <span className={`text-sm font-bold leading-snug break-words ${text}`}>{value}</span>
+    </div>
+  );
+}
+
+// ─── Badge ────────────────────────────────────────────────────────────────────
+
+function Badge({ children, variant = "neutral" }: {
+  children: React.ReactNode;
+  variant?: "neutral" | "emerald" | "amber" | "rose" | "blue";
+}) {
+  const cls = {
+    neutral: "border-neutral-300 dark:border-white/[0.12] bg-neutral-50 dark:bg-white/[0.04] text-neutral-600 dark:text-neutral-300",
+    emerald: "border-emerald-300 dark:border-emerald-600/50 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300",
+    amber:   "border-amber-300 dark:border-amber-600/50 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300",
+    rose:    "border-rose-300 dark:border-rose-600/50 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300",
+    blue:    "border-primary-300 dark:border-primary-600/50 bg-primary-50 dark:bg-primary-950/30 text-primary-700 dark:text-primary-300",
+  }[variant];
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${cls}`}>
+      {children}
+    </span>
+  );
+}
+
+// ─── Key stats strip (always visible) ────────────────────────────────────────
+
+function StatsStrip({ plan }: { plan: OfficeLocationPlan }) {
+  const a = plan.advisorAnalysis;
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+      {ok(plan.bestFit?.spaceType)    && <StatPill label="Best Fit"   value={plan.bestFit.spaceType}    color="primary" />}
+      {ok(plan.costBreakdown?.totalMonthly) && <StatPill label="Total/Month" value={plan.costBreakdown.totalMonthly} color="emerald" />}
+      {ok(a?.primarySpaceType)        && <StatPill label="Space Type" value={a.primarySpaceType}          color="neutral" />}
+      {ok(a?.stageCommitment)         && <StatPill label="Commitment" value={a.stageCommitment}            color="neutral" />}
+      {ok(a?.budgetVerdict)           && <StatPill label="Budget"     value={a.budgetVerdict}              color="neutral" />}
+      {ok(a?.keyConstraint)           && <StatPill label="Constraint" value={a.keyConstraint}              color="amber"   />}
+    </div>
+  );
+}
+
+// ─── Workspace options cards ──────────────────────────────────────────────────
+
+const OPT_PALETTE = [
+  { border: "border-amber-300 dark:border-amber-600/50",  bg: "bg-amber-50 dark:bg-amber-950/30",  badge: "bg-amber-100 dark:bg-amber-800/60 text-amber-800 dark:text-amber-200",   cost: "text-amber-700 dark:text-amber-300"   },
+  { border: "border-teal-300 dark:border-teal-600/50",    bg: "bg-teal-50 dark:bg-teal-950/30",    badge: "bg-teal-100 dark:bg-teal-800/60 text-teal-800 dark:text-teal-200",         cost: "text-teal-700 dark:text-teal-300"     },
+  { border: "border-primary-300 dark:border-primary-600/50",bg: "bg-primary-50 dark:bg-primary-950/30",badge: "bg-primary-100 dark:bg-primary-800/60 text-primary-800 dark:text-primary-200",cost: "text-primary-700 dark:text-primary-300" },
 ];
 
-function OptionPanel({ option, style }: { option: SpaceOption; style: typeof OPTION_STYLES[0] }) {
+function OptionCard({ option, index }: { option: SpaceOption; index: number }) {
+  const s = OPT_PALETTE[index % OPT_PALETTE.length];
+  const [open, setOpen] = useState(false);
+  const venues = arr(option.namedOptions ?? option.namedSpaces);
+  const isValidUrl =
+    typeof option.url === "string" && option.url !== "N/A" && option.url.startsWith("https://");
+
   return (
-    <div className={`rounded-xl border p-5 space-y-4 ${style.active}`}>
-      {/* Type + label */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <p className="text-base font-bold text-white">{option.type}</p>
-          <span className={`inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full border ${style.badge}`}>
-            {option.label}
-          </span>
+    <div className={`rounded-xl border ${s.border} overflow-hidden bg-white dark:bg-[#101018]`}>
+      {/* Always-visible header */}
+      <div className={`flex items-center gap-3 px-4 py-3 ${s.bg}`}>
+        <div className={`w-7 h-7 rounded-full ${s.badge} flex items-center justify-center text-xs font-bold shrink-0`}>
+          {option.rank ?? index + 1}
         </div>
-        <span className={`text-sm font-bold px-3 py-1.5 rounded-lg border ${style.cost}`}>
-          {option.estimatedCost}
-        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-neutral-900 dark:text-white truncate">
+            {str(option.name) || str(option.type) || `Option ${index + 1}`}
+          </p>
+          {ok(option.area) && (
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{option.area}</p>
+          )}
+        </div>
+        {ok(option.estimatedCost) && (
+          <span className={`text-sm font-extrabold shrink-0 ${s.cost}`}>{option.estimatedCost}</span>
+        )}
       </div>
 
-      {/* Why it fits */}
-      <p className="text-sm text-neutral-300 leading-relaxed">{option.whyItFits}</p>
-
-      {/* Named options */}
-      {option.namedOptions?.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Suggested Spaces</p>
-          <div className="flex flex-wrap gap-2">
-            {option.namedOptions.map((name) => (
-              <span
-                key={name}
-                className="rounded-lg border border-white/[0.10] bg-white/[0.05] px-3 py-1 text-sm text-neutral-200"
-              >
-                {name}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Where to search */}
-      <div className="space-y-1.5">
-        <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Where to Search</p>
-        <p className="text-sm text-neutral-400 leading-relaxed">{option.whereToSearch}</p>
+      {/* Quick chips row */}
+      <div className="flex flex-wrap gap-1.5 px-4 py-2.5 border-t border-neutral-100 dark:border-white/[0.05]">
+        {ok(option.label)        && <Badge variant="neutral">{option.label}</Badge>}
+        {ok(option.availability) && <Badge variant="blue">{option.availability}</Badge>}
+        {option.urlVerified === true && <Badge variant="emerald">✓ Verified</Badge>}
       </div>
 
-      {/* URL */}
-      {option.url && option.url !== "N/A" && (
-        <a
-          href={option.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm text-primary-300 hover:text-primary-200 underline underline-offset-2 transition-colors break-all"
-          aria-label={`Visit ${option.type} listing`}
-        >
-          <IconLink />
-          {option.url}
-        </a>
-      )}
+      {/* Expand toggle */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-2 text-xs text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-white/[0.02] transition-colors border-t border-neutral-100 dark:border-white/[0.05]"
+        aria-expanded={open}
+      >
+        <span>{open ? "Show less" : "Show details"}</span>
+        <svg className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
 
-      {/* Heads up */}
-      {option.headsUp && (
-        <div className="flex gap-3 rounded-xl border border-amber-500/20 bg-amber-500/[0.07] px-4 py-3">
-          <span className="text-amber-400 mt-0.5"><IconWarning /></span>
-          <p className="text-sm text-amber-200/90 leading-relaxed">{option.headsUp}</p>
+      {open && (
+        <div className="px-4 pb-4 pt-2 border-t border-neutral-100 dark:border-white/[0.05] space-y-3">
+          {ok(option.whyItFits) && (
+            <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">{option.whyItFits}</p>
+          )}
+          {ok(option.locationMatch) && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-0.5">Location Match</p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-300">{option.locationMatch}</p>
+            </div>
+          )}
+          {ok(option.rentalEvidence) && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-0.5">Rental Evidence</p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-300">{option.rentalEvidence}</p>
+            </div>
+          )}
+          {venues.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Suggested Spaces</p>
+              <div className="flex flex-wrap gap-1.5">
+                {venues.map((v, i) => (
+                  <span key={i} className="rounded-full border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.05] px-2.5 py-0.5 text-xs text-neutral-600 dark:text-neutral-300">
+                    {v}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {ok(option.whereToSearch) && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-0.5">Where to Search</p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-300">{option.whereToSearch}</p>
+            </div>
+          )}
+          {isValidUrl && (
+            <a href={option.url} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm text-primary-600 dark:text-primary-300 underline underline-offset-2 hover:opacity-80 transition-opacity">
+              View listing ↗
+            </a>
+          )}
+          {ok(option.headsUp) && (
+            <div className="rounded-lg border-l-4 border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-950/20 pl-3 pr-3 py-2">
+              <p className="text-xs font-semibold text-amber-700 dark:text-amber-300 mb-0.5">Heads Up</p>
+              <p className="text-sm text-amber-700 dark:text-amber-200 leading-relaxed">{option.headsUp}</p>
+            </div>
+          )}
         </div>
-      )}
-
-      {/* Space needed */}
-      {option.spaceNeeded && option.spaceNeeded !== "N/A" && (
-        <p className="text-xs text-neutral-500">Space needed: {option.spaceNeeded}</p>
       )}
     </div>
   );
 }
 
-function OptionsSection({ options }: { options: SpaceOption[] }) {
-  const [active, setActive] = useState(0);
+// ─── Cost table ───────────────────────────────────────────────────────────────
 
-  return (
-    <div className="space-y-3">
-      {/* Tab row */}
-      <div className="flex gap-2 flex-wrap">
-        {options.map((opt, i) => {
-          const style = OPTION_STYLES[i] ?? OPTION_STYLES[2];
-          return (
-            <button
-              key={opt.rank}
-              type="button"
-              onClick={() => setActive(i)}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
-                active === i
-                  ? style.tab
-                  : "border-white/[0.08] text-neutral-500 bg-transparent hover:text-neutral-300 hover:border-white/20"
-              }`}
-            >
-              <span className={`h-2 w-2 rounded-full ${active === i ? style.dot : "bg-neutral-600"}`} />
-              {opt.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Active panel */}
-      {options[active] && (
-        <OptionPanel
-          option={options[active]}
-          style={OPTION_STYLES[active] ?? OPTION_STYLES[2]}
-        />
-      )}
-    </div>
-  );
-}
-
-// ─── Cost Breakdown ───────────────────────────────────────────────────────────
-
-function CostTable({ breakdown }: { breakdown: CostBreakdown }) {
+function CostTable({ c }: { c: CostBreakdown }) {
   const rows = [
-    { label: "Monthly Rental", value: breakdown.rental    },
-    { label: "Deposit",        value: breakdown.deposit   },
-    { label: "Utilities",      value: breakdown.utilities },
-    { label: "Fit-Out",        value: breakdown.fitOut    },
-  ];
+    { label: "Rental",    value: c.rental },
+    { label: "Deposit",   value: c.deposit },
+    { label: "Utilities", value: c.utilities },
+    { label: "Fit-Out",   value: c.fitOut },
+  ].filter((r) => ok(r.value));
 
   const isAffordable =
-    typeof breakdown.affordabilityCheck === "string" &&
-    breakdown.affordabilityCheck.toLowerCase().startsWith("yes");
+    typeof c.affordabilityCheck === "string" &&
+    c.affordabilityCheck.toLowerCase().startsWith("yes");
 
   return (
-    <div className="space-y-3">
-      {/* Cost rows */}
-      <div className="rounded-xl border border-white/[0.08] overflow-hidden">
-        {rows.map(({ label, value }, i) => (
-          <div
-            key={label}
-            className={`flex items-center justify-between px-4 py-3 ${
-              i < rows.length - 1 ? "border-b border-white/[0.05]" : ""
-            }`}
-          >
-            <span className="text-sm text-neutral-400">{label}</span>
-            <span className="text-sm font-medium text-neutral-200 tabular-nums">{value}</span>
-          </div>
-        ))}
-        {/* Total row */}
-        <div className="flex items-center justify-between px-4 py-3.5 bg-white/[0.04] border-t border-white/[0.08]">
-          <span className="text-sm font-bold text-white">Total Monthly</span>
-          <span className="text-base font-bold text-primary-300 tabular-nums">{breakdown.totalMonthly}</span>
+    <div className="space-y-3 pt-2">
+      {rows.length > 0 && (
+        <div className="rounded-xl border border-neutral-200 dark:border-white/[0.08] overflow-hidden">
+          {rows.map(({ label, value }, i) => (
+            <div key={label}
+              className={`flex items-center justify-between px-3 py-2.5 text-sm ${i < rows.length - 1 ? "border-b border-neutral-100 dark:border-white/[0.05]" : ""}`}>
+              <span className="text-neutral-500 dark:text-neutral-400">{label}</span>
+              <span className="font-medium text-neutral-800 dark:text-neutral-200 tabular-nums">{value}</span>
+            </div>
+          ))}
+          {ok(c.totalMonthly) && (
+            <div className="flex items-center justify-between px-3 py-3 bg-neutral-50 dark:bg-white/[0.04] border-t border-neutral-200 dark:border-white/[0.08]">
+              <span className="text-sm font-bold text-neutral-900 dark:text-white">Total / Month</span>
+              <span className="text-base font-extrabold text-primary-600 dark:text-primary-300 tabular-nums">{c.totalMonthly}</span>
+            </div>
+          )}
         </div>
-      </div>
-
-      {/* Affordability */}
-      <div
-        className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${
-          isAffordable
-            ? "border-emerald-500/25 bg-emerald-500/[0.07] text-emerald-300"
-            : "border-amber-500/25 bg-amber-500/[0.07] text-amber-300"
-        }`}
-      >
-        <span
-          className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${isAffordable ? "bg-emerald-400" : "bg-amber-400"}`}
-          aria-hidden
-        />
-        <p className="text-sm leading-relaxed">{breakdown.affordabilityCheck}</p>
-      </div>
+      )}
+      {ok(c.affordabilityCheck) && (
+        <div className={`rounded-xl border-l-4 pl-3 py-2 pr-3 ${isAffordable ? "border-emerald-400 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20" : "border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-950/20"}`}>
+          <p className={`text-sm leading-relaxed font-medium ${isAffordable ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"}`}>
+            {c.affordabilityCheck}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── Negotiation Tips ─────────────────────────────────────────────────────────
+// ─── Permits grid ─────────────────────────────────────────────────────────────
 
-function NegotiationList({ points }: { points: string[] }) {
-  return (
-    <div className="space-y-2.5">
-      {points.map((point, i) => (
-        <div
-          key={i}
-          className="flex gap-3 rounded-xl border border-white/[0.07] bg-white/[0.03] px-4 py-3"
-        >
-          <span className="shrink-0 h-6 w-6 rounded-full bg-primary-500/20 text-primary-300 flex items-center justify-center text-xs font-bold">
-            {i + 1}
-          </span>
-          <p className="text-sm text-neutral-300 leading-relaxed">{point}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── Permits & Zoning ─────────────────────────────────────────────────────────
-
-function PermitsBlock({ permits }: { permits: PermitsAndZoning }) {
+function PermitsGrid({ p }: { p: PermitsAndZoning }) {
   const licenseRequired =
-    permits.businessPremiseLicenseRequired === true ||
-    String(permits.businessPremiseLicenseRequired).toLowerCase() === "yes";
+    p.businessPremiseLicenseRequired === true ||
+    String(p.businessPremiseLicenseRequired).toLowerCase() === "yes";
   const zoningRequired =
-    permits.zoningApprovalNeeded === true ||
-    String(permits.zoningApprovalNeeded).toLowerCase() === "yes";
+    p.zoningApprovalNeeded === true ||
+    String(p.zoningApprovalNeeded).toLowerCase() === "yes";
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        {/* License required */}
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 space-y-2">
-          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Business Premise License</p>
-          <span className={`inline-flex items-center gap-1.5 text-sm font-semibold px-2.5 py-1 rounded-lg border ${
-            licenseRequired
-              ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
-              : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-          }`}>
-            {licenseRequired ? "⚠ Required" : "✓ Not Required"}
-          </span>
+    <div className="space-y-3 pt-2">
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-xl border border-neutral-100 dark:border-white/[0.06] bg-neutral-50 dark:bg-white/[0.02] px-3 py-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Premise License</p>
+          <Badge variant={licenseRequired ? "amber" : "emerald"}>
+            {licenseRequired ? "Required" : "Not required"}
+          </Badge>
         </div>
-
-        {/* Zoning */}
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 space-y-2">
-          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Zoning Approval</p>
-          <span className={`inline-flex items-center gap-1.5 text-sm font-semibold px-2.5 py-1 rounded-lg border ${
-            zoningRequired
-              ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
-              : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-          }`}>
-            {zoningRequired ? "⚠ Required" : "✓ Not Required"}
-          </span>
+        <div className="rounded-xl border border-neutral-100 dark:border-white/[0.06] bg-neutral-50 dark:bg-white/[0.02] px-3 py-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Zoning Approval</p>
+          <Badge variant={zoningRequired ? "amber" : "emerald"}>
+            {zoningRequired ? "Required" : "Not required"}
+          </Badge>
         </div>
-
-        {/* Local council */}
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 space-y-1.5">
-          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Local Council</p>
-          <p className="text-sm text-neutral-200 font-medium">{permits.localCouncil}</p>
-        </div>
-
-        {/* Industry permit */}
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 space-y-1.5">
-          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Industry Permit</p>
-          <p className="text-sm text-neutral-200">{permits.industrySpecificPermit}</p>
-        </div>
+        {ok(p.localCouncil) && (
+          <div className="rounded-xl border border-neutral-100 dark:border-white/[0.06] bg-neutral-50 dark:bg-white/[0.02] px-3 py-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-0.5">Local Council</p>
+            <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">{p.localCouncil}</p>
+          </div>
+        )}
+        {ok(p.industrySpecificPermit) && (
+          <div className="rounded-xl border border-neutral-100 dark:border-white/[0.06] bg-neutral-50 dark:bg-white/[0.02] px-3 py-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-0.5">Industry Permit</p>
+            <p className="text-sm text-neutral-700 dark:text-neutral-300 leading-snug">{p.industrySpecificPermit}</p>
+          </div>
+        )}
       </div>
-
-      {/* Portal link */}
-      {permits.licensePortal && permits.licensePortal !== "N/A" && (
-        <a
-          href={permits.licensePortal}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 rounded-lg border border-primary-500/25 bg-primary-500/[0.07] px-4 py-2.5 text-sm text-primary-300 hover:text-primary-200 hover:bg-primary-500/[0.12] transition-colors"
-          aria-label="Open license portal"
-        >
-          <IconLink />
-          Apply / check status at {permits.licensePortal}
+      {ok(p.licensePortal) && (
+        <a href={str(p.licensePortal)} target="_blank" rel="noopener noreferrer"
+          className="inline-flex text-sm text-primary-600 dark:text-primary-300 underline underline-offset-2 hover:opacity-80 transition-opacity">
+          Apply / check status ↗
         </a>
       )}
     </div>
@@ -489,64 +425,144 @@ function PermitsBlock({ permits }: { permits: PermitsAndZoning }) {
 // ─── Full result ──────────────────────────────────────────────────────────────
 
 function OfficeLocationResult({ plan }: { plan: OfficeLocationPlan }) {
+  const a    = plan.advisorAnalysis;
+  const chars = arr(
+    typeof plan.bestFit?.idealAreaCharacteristics === "string"
+      ? [plan.bestFit.idealAreaCharacteristics]
+      : plan.bestFit?.idealAreaCharacteristics
+  );
+  const tips = arr(plan.leaseNegotiationPoints);
+
   return (
-    <div className="space-y-7">
+    <div className="space-y-3 font-sans max-w-none">
 
-      {/* Hero summary bar */}
-      <div className="rounded-xl border border-primary-500/20 bg-gradient-to-r from-primary-500/[0.08] to-transparent px-5 py-4 space-y-1">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-400">
-          <span className="font-semibold text-white text-base">{plan.company}</span>
-          <span>·</span>
-          <span>{plan.industry}</span>
-          <span>·</span>
-          <span>{plan.location}</span>
-          <span>·</span>
-          <span>{plan.currentFunds}</span>
-        </div>
-        <div className="flex items-center gap-2 pt-1">
-          <span className="text-xs text-neutral-500">Best fit:</span>
-          <span className="text-sm font-bold text-primary-300">{plan.bestFit}</span>
-        </div>
-      </div>
+      {/* ① At-a-glance stats */}
+      <StatsStrip plan={plan} />
 
-      {/* Advisor Analysis */}
-      <Section icon={<IconBuilding />} title="Advisor Analysis">
-        <AnalysisGrid analysis={plan.advisorAnalysis} />
-      </Section>
-
-      {/* Workspace Options */}
-      <Section icon={<IconBuilding />} title="Workspace Options">
-        <OptionsSection options={plan.options} />
-      </Section>
-
-      {/* Cost Breakdown */}
-      <Section icon={<IconCash />} title="Cost Breakdown">
-        <CostTable breakdown={plan.costBreakdown} />
-      </Section>
-
-      {/* Negotiation Tips */}
-      {plan.leaseNegotiationPoints?.length > 0 && (
-        <Section icon={<IconNegotiate />} title="Lease Negotiation Tips">
-          <NegotiationList points={plan.leaseNegotiationPoints} />
-        </Section>
-      )}
-
-      {/* Permits & Zoning */}
-      <Section icon={<IconShield />} title="Permits & Zoning">
-        <PermitsBlock permits={plan.permitsAndZoning} />
-      </Section>
-
-      {/* Verdict */}
-      {plan.verdict && (
-        <div className="rounded-xl border border-primary-500/25 bg-primary-500/[0.07] px-5 py-4 space-y-2">
-          <p className="text-xs font-bold uppercase tracking-wider text-primary-400">Advisor Verdict</p>
-          <p className="text-sm text-neutral-200 leading-relaxed">{plan.verdict}</p>
+      {/* ② Best Fit — always visible, compact */}
+      {ok(plan.bestFit?.spaceType) && (
+        <div className="rounded-xl border border-primary-200 dark:border-primary-500/20 bg-primary-50 dark:bg-primary-500/[0.06] px-4 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-primary-500 dark:text-primary-400 mb-0.5">
+                🏆 Best Fit
+              </p>
+              <p className="text-base font-bold text-primary-700 dark:text-primary-300 leading-snug">
+                {plan.bestFit.spaceType}
+              </p>
+            </div>
+            {ok(plan.bestFit.reason) && (
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 max-w-[55%] text-right leading-relaxed hidden sm:block">
+                {plan.bestFit.reason}
+              </p>
+            )}
+          </div>
+          {ok(plan.bestFit.reason) && (
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2 leading-relaxed sm:hidden">
+              {plan.bestFit.reason}
+            </p>
+          )}
+          {chars.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2.5">
+              {chars.map((c, i) => <Badge key={i} variant="neutral">{c}</Badge>)}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Disclaimer */}
-      {plan.disclaimer && (
-        <p className="text-xs text-neutral-600 italic border-t border-white/[0.05] pt-4">{plan.disclaimer}</p>
+      {/* ③ Workspace Options — always visible */}
+      {plan.options?.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400 px-0.5">
+            Workspace Options
+          </p>
+          {plan.options.map((opt, i) => (
+            <OptionCard key={opt.rank ?? i} option={opt} index={i} />
+          ))}
+        </div>
+      )}
+
+      {/* ④ Cost Breakdown — accordion */}
+      {plan.costBreakdown && ok(plan.costBreakdown.totalMonthly) && (
+        <AccordionRow
+          icon="💰"
+          title="Cost Breakdown"
+          badge={
+            <span className="text-sm font-extrabold text-primary-600 dark:text-primary-300 tabular-nums">
+              {plan.costBreakdown.totalMonthly}
+            </span>
+          }
+        >
+          <CostTable c={plan.costBreakdown} />
+        </AccordionRow>
+      )}
+
+      {/* ⑤ Analysis details — accordion */}
+      {a && (
+        <AccordionRow icon="🔍" title="Space Analysis"
+          badge={ok(a.primarySpaceType) ? <Badge variant="neutral">{a.primarySpaceType}</Badge> : undefined}
+        >
+          <div className="pt-2 space-y-2">
+            {[
+              { label: "Commitment",         value: a.stageCommitment    },
+              { label: "Location Dependency", value: a.locationDependency },
+              { label: "Customer Access",     value: a.customerAccessNeed },
+              { label: "Storage Need",        value: a.storageNeed        },
+              { label: "Key Constraint",      value: a.keyConstraint      },
+              { label: "Budget Verdict",      value: a.budgetVerdict      },
+            ].filter(r => ok(r.value)).map(({ label, value }) => (
+              <div key={label} className="flex items-start gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 w-28 shrink-0 pt-0.5">{label}</span>
+                <span className="text-sm text-neutral-700 dark:text-neutral-300 leading-snug">{value}</span>
+              </div>
+            ))}
+            {arr(a.requiredFacilities).length > 0 && (
+              <div className="flex items-start gap-2 pt-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 w-28 shrink-0 pt-0.5">Facilities</span>
+                <div className="flex flex-wrap gap-1">
+                  {arr(a.requiredFacilities).map((f, i) => <Badge key={i} variant="neutral">{f}</Badge>)}
+                </div>
+              </div>
+            )}
+          </div>
+        </AccordionRow>
+      )}
+
+      {/* ⑥ Permits — accordion */}
+      {plan.permitsAndZoning && (
+        <AccordionRow icon="📋" title="Permits & Zoning">
+          <PermitsGrid p={plan.permitsAndZoning} />
+        </AccordionRow>
+      )}
+
+      {/* ⑦ Negotiation Tips — accordion */}
+      {tips.length > 0 && (
+        <AccordionRow icon="🤝" title={`${tips.length} Lease Negotiation Tips`}>
+          <ol className="pt-2 space-y-2">
+            {tips.map((tip, i) => (
+              <li key={i} className="flex items-start gap-2.5 text-sm text-neutral-600 dark:text-neutral-300">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-primary-500/20 border border-primary-500/30 text-primary-600 dark:text-primary-300 flex items-center justify-center text-[10px] font-bold mt-0.5">
+                  {i + 1}
+                </span>
+                {tip}
+              </li>
+            ))}
+          </ol>
+        </AccordionRow>
+      )}
+
+      {/* ⑧ Verdict */}
+      {ok(plan.verdict) && (
+        <div className="rounded-xl border-l-4 border-primary-400 dark:border-primary-500 bg-primary-50 dark:bg-primary-500/[0.05] pl-4 pr-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-primary-500 dark:text-primary-400 mb-1">Advisor Verdict</p>
+          <p className="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">{plan.verdict}</p>
+        </div>
+      )}
+
+      {ok(plan.disclaimer) && (
+        <p className="text-[10px] text-neutral-400 italic border-t border-neutral-100 dark:border-white/[0.05] pt-3">
+          {plan.disclaimer}
+        </p>
       )}
     </div>
   );
@@ -554,9 +570,7 @@ function OfficeLocationResult({ plan }: { plan: OfficeLocationPlan }) {
 
 // ─── Widget ───────────────────────────────────────────────────────────────────
 
-import { checkCache, writeCache, hashInputs } from '../../utils/widgetCache';
-
-const CACHE_KEY = 'office-location';
+const CACHE_KEY = "office-location";
 
 interface OfficeLocationWidgetProps {
   profile: BusinessProfile;
@@ -564,40 +578,32 @@ interface OfficeLocationWidgetProps {
   hideGenerateButton?: boolean;
 }
 
-export default function OfficeLocationWidget({ profile, onGenerateRef, hideGenerateButton = false }: OfficeLocationWidgetProps) {
+export default function OfficeLocationWidget({
+  profile, onGenerateRef, hideGenerateButton = false,
+}: OfficeLocationWidgetProps) {
   const { state, generate, restoreSuccess } = useWidgetState();
-  const [plan, setPlan] = useState<OfficeLocationPlan | null>(null);
+  const [plan, setPlan]           = useState<OfficeLocationPlan | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
 
   const cacheInputs = {
-    companyName: profile.companyName,
-    industry: profile.industry,
+    companyName:   profile.companyName,
+    industry:      profile.industry,
     businessStage: profile.businessStage,
-    city: profile.city,
-    businessType: profile.businessType,
-    currentFunds: profile.currentFunds,
+    city:          profile.city,
+    businessType:  profile.businessType,
+    currentFunds:  profile.currentFunds,
   };
 
   useEffect(() => {
     const cached = checkCache<OfficeLocationPlan>(CACHE_KEY, cacheInputs);
-    if (cached) {
-      setPlan(cached.result);
-      restoreSuccess();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (cached) { setPlan(cached.result); restoreSuccess(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleGenerate = useCallback(async () => {
     const cached = checkCache<OfficeLocationPlan>(CACHE_KEY, cacheInputs);
-    if (cached) {
-      setPlan(cached.result);
-      setParseError(null);
-      restoreSuccess();
-      return;
-    }
-    setPlan(null);
-    setParseError(null);
-
+    if (cached) { setPlan(cached.result); setParseError(null); restoreSuccess(); return; }
+    setPlan(null); setParseError(null);
     await generate(async () => {
       try {
         const result = await fetchOfficeLocation(profile);
@@ -611,12 +617,9 @@ export default function OfficeLocationWidget({ profile, onGenerateRef, hideGener
         throw err;
       }
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile, generate]);
+  }, [profile, generate]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    onGenerateRef?.(handleGenerate);
-  }, [onGenerateRef, handleGenerate]);
+  useEffect(() => { onGenerateRef?.(handleGenerate); }, [onGenerateRef, handleGenerate]);
 
   return (
     <WidgetCard
@@ -624,15 +627,15 @@ export default function OfficeLocationWidget({ profile, onGenerateRef, hideGener
       onGenerate={handleGenerate}
       state={state}
       idleHint="Weighs your city, industry, and budget into a ranked workspace shortlist — with real RM costs, permit notes, and negotiation tips."
-      idleButtonLabel="Suggest sites"
-      regenerateLabel="Rerun search"
+      idleButtonLabel="Find spaces"
+      regenerateLabel="Search again"
       hideGenerateButton={hideGenerateButton}
     >
       {parseError ? (
-        <p className="text-sm text-red-400">{parseError}</p>
-      ) : plan ? (
-        <OfficeLocationResult plan={plan} />
-      ) : null}
+        <div className="rounded-lg border border-rose-200 dark:border-red-500/30 bg-rose-50 dark:bg-red-950/40 px-4 py-3">
+          <p className="text-sm text-rose-800 dark:text-red-200">{parseError}</p>
+        </div>
+      ) : plan ? <OfficeLocationResult plan={plan} /> : null}
     </WidgetCard>
   );
 }
