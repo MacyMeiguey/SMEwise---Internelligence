@@ -140,6 +140,7 @@ export default function MarketingForecastWidget({
   // callback in onGenerateRef is never stale when called from handleGenerateAll.
   handleGenerateRef.current = handleGenerate;
 
+
   useEffect(() => {
     // Register a stable wrapper that always calls the latest handleGenerate via ref.
     onGenerateRef?.((planJsonOverride?: string) => handleGenerateRef.current!(planJsonOverride));
